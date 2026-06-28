@@ -1,0 +1,95 @@
+const express = require('express');
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const cors = require('cors');
+
+const app = express();
+app.use(cors());
+
+const CACHE_DIR = path.join(__dirname, '../audio/cache');
+const PORT = process.env.PORT || 3001;
+
+// Создать папку кэша если её нет
+if (!fs.existsSync(CACHE_DIR)) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  console.log(`Created cache directory: ${CACHE_DIR}`);
+}
+
+// Hash текста для имени файла
+function getHashFileName(text, lang = 'it_IT') {
+  const hash = crypto.createHash('md5').update(text + lang).digest('hex');
+  return `${hash}.wav`;
+}
+
+// API endpoint для озвучки
+app.get('/api/speak', async (req, res) => {
+  const { text, lang = 'it_IT' } = req.query;
+
+  if (!text) {
+    return res.status(400).json({ error: 'Missing text parameter' });
+  }
+
+  const fileName = getHashFileName(text, lang);
+  const filePath = path.join(CACHE_DIR, fileName);
+
+  // Если уже есть кэш, возвращаем его как base64
+  if (fs.existsSync(filePath)) {
+    console.log(`Cache hit: ${text.substring(0, 30)}`);
+    const audioBuffer = fs.readFileSync(filePath);
+    const base64 = audioBuffer.toString('base64');
+    return res.json({ audio: `data:audio/wav;base64,${base64}` });
+  }
+
+  // Генерируем новый файл через TTS Python скрипт (pyttsx3)
+  const voicePrefix = lang === 'it_IT' ? 'it' : lang;
+  const pythonScript = path.join(__dirname, 'tts.py');
+
+  // Экранируем кавычки в тексте для cmd
+  const escapedText = text.replace(/"/g, '\\"');
+  const cmd = `python "${pythonScript}" "${escapedText}" "${filePath}" "${voicePrefix}"`;
+
+  console.log(`Generating: ${text.substring(0, 30)}...`);
+  console.log(`Command: ${cmd}`);
+
+  exec(cmd, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error generating speech:`, stderr || error.message);
+      return res.status(500).json({ error: 'TTS generation failed', details: stderr });
+    }
+
+    if (!fs.existsSync(filePath)) {
+      console.error(`File was not created: ${filePath}`);
+      return res.status(500).json({ error: 'Generated file not found' });
+    }
+
+    // Отправляем сгенерированный файл как base64
+    console.log(`Generated successfully: ${text.substring(0, 30)}`);
+    const audioBuffer = fs.readFileSync(filePath);
+    const base64 = audioBuffer.toString('base64');
+    res.json({ audio: `data:audio/wav;base64,${base64}` });
+  });
+});
+
+// Простая страница для тестирования
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>Piper TTS Server</h1>
+    <p>Server is running on port ${PORT}</p>
+    <p>Usage: <code>/api/speak?text=hello&lang=it_IT</code></p>
+    <button onclick="test()">Test Audio</button>
+    <audio id="audio" controls></audio>
+    <script>
+      function test() {
+        const url = '/api/speak?text=Ciao%20mondo&lang=it_IT';
+        document.getElementById('audio').src = url;
+      }
+    </script>
+  `);
+});
+
+app.listen(PORT, () => {
+  console.log(`🎤 TTS Server running at http://localhost:${PORT}`);
+  console.log(`📁 Cache directory: ${CACHE_DIR}`);
+});

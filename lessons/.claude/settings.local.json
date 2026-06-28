@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:/Users/danik/Documents/sites/italian VIKA A2\")"
+    ]
+  }
+}
