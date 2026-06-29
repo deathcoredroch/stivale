@@ -1292,6 +1292,90 @@
     font-size: 14px;
   }
 
+  /* ── Авто-кнопки «Ответы» / «Перевод» для каждого задания ДЗ.
+     Генерируются JS (enhanceHomeworkReveals) из блоков .hw-answers / .hw-translation
+     внутри .hw-section — поэтому любой будущий урок получает их автоматически. ── */
+  .hw-reveal-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .hw-reveal-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--terracotta);
+    background: linear-gradient(150deg, rgba(193,84,58,0.10), rgba(193,84,58,0.03));
+    border: 1px solid rgba(193,84,58,0.28);
+    border-radius: 100px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: background 0.18s ease, transform 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hw-reveal-btn:hover { background: rgba(193,84,58,0.15); transform: translateY(-1px); }
+  .hw-reveal-btn:active { transform: translateY(0); }
+  .hw-reveal-btn .ico { width: 15px; height: 15px; }
+  .hw-reveal-caret {
+    width: 13px; height: 13px; margin-left: 1px; opacity: 0.7;
+    transition: transform 0.25s ease;
+  }
+  .hw-reveal-btn.is-open {
+    background: var(--terracotta);
+    color: #fff;
+    border-color: var(--terracotta);
+    box-shadow: 0 6px 16px -8px rgba(193,84,58,0.6);
+  }
+  .hw-reveal-btn.is-open .hw-reveal-caret { transform: rotate(180deg); opacity: 1; }
+
+  .hw-answers, .hw-translation {
+    display: none;
+    margin-top: 12px;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    animation: hwRevealIn 0.28s cubic-bezier(0.22,0.61,0.36,1);
+  }
+  .hw-answers.is-open, .hw-translation.is-open { display: block; }
+  .hw-answers {
+    background: linear-gradient(135deg, #eef3e3, var(--olive-soft));
+    border: 1px solid rgba(107,122,77,0.25);
+    color: #44502f;
+  }
+  .hw-translation {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--terracotta);
+    color: var(--ink);
+  }
+  .hw-rev-title {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.6;
+    margin: 0 0 9px;
+  }
+  .hw-answers ol, .hw-translation ol { margin: 0; padding-left: 22px; }
+  .hw-answers li, .hw-translation li { margin: 0 0 6px; }
+  .hw-answers li:last-child, .hw-translation li:last-child { margin-bottom: 0; }
+  .hw-answers p:last-child, .hw-translation p:last-child { margin-bottom: 0; }
+  .hw-answers .hw-it { color: #51612c; }
+  @keyframes hwRevealIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hw-answers, .hw-translation { animation: none; }
+    .hw-reveal-btn, .hw-reveal-caret { transition: none; }
+  }
+
   .hw-table {
     width: 100%;
     border-collapse: collapse;
@@ -1560,11 +1644,16 @@
     flex-direction: column;
   }
   /* В теле «Историй» фиксированы тема/заголовок/чипсы/кнопки, а сам текст истории
-     забирает остаток и скроллится ВНУТРИ себя только при очень длинном тексте. */
+     забирает остаток и скроллится ВНУТРИ себя только при очень длинном тексте.
+     Текст центрируется по вертикали, чтобы просторный блок выглядел намеренно;
+     `safe` не даёт обрезать верх при переполнении. */
   .vocab-section-idea2 .story-text {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
     scrollbar-width: thin;
     scrollbar-color: rgba(193,84,58,0.28) transparent;
   }
@@ -3366,6 +3455,17 @@
 //     ... HTML домашнего задания (показывается в модалке ДЗ) ...
 //   </div>
 //
+// КНОПКИ «ОТВЕТЫ» / «ПЕРЕВОД» (появляются автоматически):
+// Внутри любого задания <div class="hw-section"> положи блок ответов и/или перевода —
+// сайт сам добавит к заданию кнопки и сделает блоки раскрывающимися (enhanceHomeworkReveals):
+//   <div class="hw-section">
+//     ... условие задания ...
+//     <div class="hw-answers"><p class="hw-rev-title">Ответы</p> ... </div>
+//     <div class="hw-translation"><p class="hw-rev-title">Перевод</p> ... </div>
+//   </div>
+// Блоки должны быть ПРЯМЫМИ детьми .hw-section. Нет блока — нет кнопки (это нормально:
+// у словарных таблиц и творческих заданий ответа нет). Никакого JS в файле урока не нужно.
+//
 // При старте сайт сам проверяет наличие файлов lesson-1.html ... lesson-41.html и подключает
 // все, которые существуют, — без единой правки в коде. id урока всегда `lesson-{N}`, поэтому
 // статус ДЗ, стрик и карта прогресса (ключ — lesson.id, число — lesson.number) продолжают
@@ -3451,6 +3551,28 @@ const LESSON_1_META = {
           <li>Voi <span class="hw-blank">_____</span> molto gentili.</li>
           <li>I miei amici <span class="hw-blank">_____</span> a Milano. <em>(Мои друзья в Милане)</em></li>
         </ol>
+        <div class="hw-answers">
+          <p class="hw-rev-title">Ответы</p>
+          <ol>
+            <li>Io <span class="hw-it">sono</span> felice oggi.</li>
+            <li>Tu <span class="hw-it">sei</span> una ragazza simpatica.</li>
+            <li>Mia madre <span class="hw-it">è</span> insegnante.</li>
+            <li>Noi <span class="hw-it">siamo</span> studenti di italiano.</li>
+            <li>Voi <span class="hw-it">siete</span> molto gentili.</li>
+            <li>I miei amici <span class="hw-it">sono</span> a Milano.</li>
+          </ol>
+        </div>
+        <div class="hw-translation">
+          <p class="hw-rev-title">Перевод</p>
+          <ol>
+            <li>Я счастлив(а) сегодня.</li>
+            <li>Ты симпатичная девушка.</li>
+            <li>Моя мама — учительница.</li>
+            <li>Мы студенты, изучающие итальянский.</li>
+            <li>Вы очень любезны.</li>
+            <li>Мои друзья в Милане.</li>
+          </ol>
+        </div>
       </div>
 
       <div class="hw-section">
@@ -3501,6 +3623,24 @@ const LESSON_1_META = {
           <li><span class="hw-blank">___</span> fratello</li>
           <li><span class="hw-blank">___</span> nonno</li>
         </ol>
+        <div class="hw-answers">
+          <p class="hw-rev-title">Ответы</p>
+          <ol>
+            <li><span class="hw-it">una</span> famiglia <em>(ж. род)</em></li>
+            <li><span class="hw-it">una</span> sorella <em>(ж. род)</em></li>
+            <li><span class="hw-it">un</span> fratello <em>(м. род)</em></li>
+            <li><span class="hw-it">un</span> nonno <em>(м. род)</em></li>
+          </ol>
+        </div>
+        <div class="hw-translation">
+          <p class="hw-rev-title">Перевод</p>
+          <ol>
+            <li>(одна) семья</li>
+            <li>(одна) сестра</li>
+            <li>(один) брат</li>
+            <li>(один) дедушка</li>
+          </ol>
+        </div>
       </div>
 
       <div class="hw-section">
@@ -3514,6 +3654,11 @@ const LESSON_1_META = {
         <div class="hw-task-box">
           <p class="hw-task-label">Задание</p>
           <p>Переведи текст на русский язык письменно (от руки или в заметках телефона). Подчеркни все формы глагола essere, которые встретишь.</p>
+        </div>
+        <div class="hw-translation">
+          <p class="hw-rev-title">Перевод текста</p>
+          <p>Привет! Я Анна. Я русская, я из Москвы. Я студентка. У меня небольшая семья: я, моя мама и мой брат. Моя мама — учительница. Мой брат — студент, как и я. Мы очень счастливы вместе.</p>
+          <p style="margin-top:8px; opacity:0.8;"><strong>Формы essere:</strong> <span class="hw-it">sono</span> (×4), <span class="hw-it">è</span> (×2), <span class="hw-it">siamo</span> (×1).</p>
         </div>
       </div>
 
@@ -3643,6 +3788,32 @@ const LESSON_2_META = {
           <li><span class="hw-it">generoso</span> → <span class="hw-blank">_____</span></li>
           <li><span class="hw-it">coraggioso</span> → <span class="hw-blank">_____</span></li>
         </ol>
+        <div class="hw-answers">
+          <p class="hw-rev-title">Ответы</p>
+          <ol>
+            <li>allegro → <span class="hw-it">triste</span></li>
+            <li>simpatico → <span class="hw-it">antipatico</span></li>
+            <li>gentile → <span class="hw-it">scortese</span></li>
+            <li>calmo → <span class="hw-it">nervoso</span></li>
+            <li>onesto → <span class="hw-it">bugiardo</span></li>
+            <li>paziente → <span class="hw-it">impaziente</span></li>
+            <li>generoso → <span class="hw-it">avaro</span></li>
+            <li>coraggioso → <span class="hw-it">timido</span></li>
+          </ol>
+        </div>
+        <div class="hw-translation">
+          <p class="hw-rev-title">Перевод пар</p>
+          <ol>
+            <li>весёлый → грустный</li>
+            <li>приятный → неприятный</li>
+            <li>вежливый → грубый</li>
+            <li>спокойный → нервный</li>
+            <li>честный → лживый</li>
+            <li>терпеливый → нетерпеливый</li>
+            <li>щедрый → жадный</li>
+            <li>смелый → робкий</li>
+          </ol>
+        </div>
         <div class="hw-task-box" style="margin-top:14px;">
           <p class="hw-task-label"><span class="hw-task-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L14.2 9L20.6 9.2L15.5 13.1L17.3 19.3L12 15.7L6.7 19.3L8.5 13.1L3.4 9.2L9.8 9L12 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></span>Бонус — если хочешь большего</p>
           <p>Выбери 3 антонимные пары и для каждой придумай по одному предложению, которое описывает реального человека из твоей жизни. Например: <span class="hw-it">Mio fratello è molto nervoso, ma io sono abbastanza calma.</span></p>
@@ -3663,6 +3834,32 @@ const LESSON_2_META = {
           <li>Le mie amiche sono <span class="hw-blank">_____</span> e <span class="hw-blank">_____</span>. (simpatico / generoso)</li>
           <li>Mio nonno è <span class="hw-blank">_____</span>, ma a volte è anche un po' <span class="hw-blank">_____</span>. (serio / scherzoso)</li>
         </ol>
+        <div class="hw-answers">
+          <p class="hw-rev-title">Ответы</p>
+          <ol>
+            <li>Marco è molto <span class="hw-it">intelligente</span>.</li>
+            <li>Sofia è un po' <span class="hw-it">timida</span>.</li>
+            <li>I miei amici sono <span class="hw-it">allegri</span>.</li>
+            <li>Le studentesse sono <span class="hw-it">serie</span>.</li>
+            <li>Mia madre è molto <span class="hw-it">paziente</span>.</li>
+            <li>Il professore è abbastanza <span class="hw-it">gentile</span>.</li>
+            <li>Le mie amiche sono <span class="hw-it">simpatiche</span> e <span class="hw-it">generose</span>.</li>
+            <li>Mio nonno è <span class="hw-it">serio</span>, ma a volte è anche un po' <span class="hw-it">scherzoso</span>.</li>
+          </ol>
+        </div>
+        <div class="hw-translation">
+          <p class="hw-rev-title">Перевод</p>
+          <ol>
+            <li>Марко очень умный.</li>
+            <li>София немного застенчивая.</li>
+            <li>Мои друзья весёлые.</li>
+            <li>Студентки серьёзные.</li>
+            <li>Моя мама очень терпеливая.</li>
+            <li>Преподаватель довольно вежливый.</li>
+            <li>Мои подруги симпатичные и щедрые.</li>
+            <li>Мой дедушка серьёзный, но иногда тоже немного шутливый.</li>
+          </ol>
+        </div>
         <div class="hw-task-box" style="background:var(--terracotta-soft); margin-top:12px;">
           <p class="hw-task-label" style="color:#8C3724;"><span class="hw-task-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L21 19.5H3L12 4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 10V14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor"/></svg></span>Ловушка</p>
           <p style="color:#5c2a1a;">Прилагательные на <span class="hw-it">-e</span> (gentile, paziente, intelligente) <strong>не меняются</strong> между мужским и женским родом в единственном числе — меняется только окончание во множественном (-i). Проверь свои ответы 1, 5, 6!</p>
@@ -3680,6 +3877,16 @@ const LESSON_2_META = {
           <tr><td>Он — повар</td><td class="hw-it"></td></tr>
           <tr><td>Она — студентка</td><td class="hw-it"></td></tr>
         </table>
+        <div class="hw-answers">
+          <p class="hw-rev-title">Ответы</p>
+          <ol>
+            <li>Она — учительница → <span class="hw-it">È un'insegnante.</span></li>
+            <li>Он — актёр → <span class="hw-it">È un attore.</span></li>
+            <li>Она — певица → <span class="hw-it">È una cantante.</span></li>
+            <li>Он — повар → <span class="hw-it">È un cuoco.</span></li>
+            <li>Она — студентка → <span class="hw-it">È una studentessa.</span></li>
+          </ol>
+        </div>
       </div>
 
       <div class="hw-section">
@@ -3692,6 +3899,26 @@ const LESSON_2_META = {
           <li>Tom è <span class="hw-blank">_____</span>. (inglese)</li>
           <li>Maria e Sofia sono <span class="hw-blank">_____</span>. (spagnolo)</li>
         </ol>
+        <div class="hw-answers">
+          <p class="hw-rev-title">Ответы</p>
+          <ol>
+            <li>Carla è <span class="hw-it">italiana</span>.</li>
+            <li>Pierre è <span class="hw-it">francese</span>.</li>
+            <li>Anna è <span class="hw-it">russa</span>.</li>
+            <li>Tom è <span class="hw-it">inglese</span>.</li>
+            <li>Maria e Sofia sono <span class="hw-it">spagnole</span>.</li>
+          </ol>
+        </div>
+        <div class="hw-translation">
+          <p class="hw-rev-title">Перевод</p>
+          <ol>
+            <li>Карла итальянка.</li>
+            <li>Пьер француз.</li>
+            <li>Анна русская.</li>
+            <li>Том англичанин.</li>
+            <li>Мария и София испанки.</li>
+          </ol>
+        </div>
       </div>
 
       <div class="hw-section">
@@ -3707,6 +3934,12 @@ const LESSON_2_META = {
           <p class="hw-task-label">Задание</p>
           <p>Заполни пропуски любыми подходящими прилагательными — правильного согласования нет, важно использовать слова из урока. Потом прочитай диалог вслух.</p>
         </div>
+        <div class="hw-translation">
+          <p class="hw-rev-title">Перевод диалога</p>
+          <p>— Привет! Какая ты по характеру?<br>
+          — Я довольно ___ и немного ___. А ты?<br>
+          — Я очень ___, но иногда тоже ___.</p>
+        </div>
       </div>
 
       <div class="hw-section">
@@ -3720,6 +3953,10 @@ const LESSON_2_META = {
         <div class="hw-task-box">
           <p class="hw-task-label">Задание</p>
           <p>Переведи текст письменно. Подчеркни все прилагательные и обозначь их род: М (мужской) или Ж (женский). Затем найди пример согласования прилагательного с существительным — как минимум два.</p>
+        </div>
+        <div class="hw-translation">
+          <p class="hw-rev-title">Перевод текста</p>
+          <p>Меня зовут Елена. Я русская, я из Санкт-Петербурга. Я преподавательница математики. На работе я довольно серьёзная, но с друзьями я очень весёлая и шутливая. Я терпеливая со своими студентами — это важно для преподавательницы! Моего мужа зовут Дмитрий. Он архитектор, он очень спокойный и щедрый. У нас двое детей: симпатичный мальчик и смелая девочка.</p>
         </div>
       </div>
 
@@ -5069,6 +5306,47 @@ function renderHwButton(lesson) {
   `;
 }
 
+// Иконки для авто-кнопок раскрытия в ДЗ
+const ICON_KEY_SVG = '<span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="4.3" stroke="currentColor" stroke-width="1.6"/><path d="M11.2 11.2L19.5 19.5M16.5 16.5L18.5 14.5M19.5 19.5L21 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+const ICON_TRANSLATE_SVG = '<span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 5.5H11M7.2 5.5V4M9 5.5C9 9 6.5 12 3.5 13.5M5 9.5C6.2 11.2 8.3 12.4 10 12.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 20L16.5 11.5L20 20M14.2 17.2H18.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+const ICON_CARET_SVG = '<svg class="hw-reveal-caret" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9.5L12 15.5L18 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// Авто-обогащение ДЗ: для каждого задания (.hw-section), где автор положил блок
+// .hw-answers и/или .hw-translation, генерируем кнопки «Ответы» / «Перевод» и
+// делаем блоки раскрывающимися. Любой будущий урок получает это БЕЗ правок кода —
+// достаточно вложить такие блоки в секцию задания (см. комментарий-инструкцию выше).
+function enhanceHomeworkReveals(root) {
+  if (!root) return;
+  const defs = [
+    { sel: '.hw-answers',     label: 'Ответы',  icon: ICON_KEY_SVG },
+    { sel: '.hw-translation', label: 'Перевод', icon: ICON_TRANSLATE_SVG },
+  ];
+  root.querySelectorAll('.hw-section').forEach(section => {
+    const found = [];
+    defs.forEach(d => {
+      const panel = section.querySelector(':scope > ' + d.sel);
+      if (panel && !panel.dataset.enhanced) found.push({ d, panel });
+    });
+    if (!found.length) return;
+    const row = document.createElement('div');
+    row.className = 'hw-reveal-row';
+    found.forEach(({ d, panel }) => {
+      panel.dataset.enhanced = '1';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hw-reveal-btn';
+      btn.innerHTML = d.icon + '<span>' + d.label + '</span>' + ICON_CARET_SVG;
+      btn.addEventListener('click', () => {
+        const open = panel.classList.toggle('is-open');
+        btn.classList.toggle('is-open', open);
+      });
+      row.appendChild(btn);
+    });
+    // строка кнопок встаёт сразу после контента задания, перед раскрывающимися блоками
+    section.insertBefore(row, found[0].panel);
+  });
+}
+
 // Домашнее задание — часть того же файла урока (lesson.homeworkHTML заполняется при
 // подключении файла в discoverLessons), поэтому рендер модалки полностью синхронный.
 function renderHwModalContent(lesson) {
@@ -5106,6 +5384,7 @@ function openHwModal(lessonId) {
   modalContent.scrollTop = 0;
   document.body.style.overflow = 'hidden';
   wrapResponsiveTables(modalContent);
+  enhanceHomeworkReveals(modalContent);
 
   document.getElementById('hwModalCloseBtn').onclick = closeHwModal;
 
@@ -5178,7 +5457,9 @@ const lessonFragmentCache = new Map();
 async function loadLessonFragment(url) {
   if (!url) return '';
   if (lessonFragmentCache.has(url)) return lessonFragmentCache.get(url);
-  const res = await fetch(url);
+  // no-cache: всегда сверяемся с сервером (условный запрос), чтобы после правки файла
+  // урока изменения подхватывались сразу, а не отдавалась устаревшая версия из кэша.
+  const res = await fetch(url, { cache: 'no-cache' });
   if (!res.ok) throw new Error(`Не удалось загрузить фрагмент урока: ${url} (HTTP ${res.status})`);
   const html = await res.text();
   lessonFragmentCache.set(url, html);
