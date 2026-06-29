@@ -677,55 +677,122 @@
   }
 
   .header {
-    background: linear-gradient(135deg, #C1543A 0%, #9A3A24 60%, #7D2E1A 100%);
+    background:
+      radial-gradient(120% 130% at 88% -22%, rgba(255,202,134,0.26) 0%, rgba(255,150,70,0) 52%),
+      linear-gradient(150deg, #C75A3E 0%, #9A3A24 55%, #6B2516 100%);
     color: #FFF3EA;
-    padding: 44px 48px 36px;
+    padding: 50px 48px 38px;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 20px 44px -24px rgba(70,25,12,0.55);
   }
   .header::before {
     content: '';
     position: absolute;
-    top: -60px; right: -60px;
-    width: 260px; height: 260px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.05);
+    inset: 0;
+    background: repeating-linear-gradient(125deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 16px);
+    opacity: 0.6;
     pointer-events: none;
   }
   .header::after {
     content: '';
     position: absolute;
-    bottom: -40px; left: 30px;
-    width: 160px; height: 160px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.04);
+    left: -10%; right: -10%; bottom: -25%; height: 70%;
+    background: radial-gradient(60% 100% at 50% 100%, rgba(15,6,3,0.35) 0%, rgba(15,6,3,0) 70%);
     pointer-events: none;
   }
-  .header-title { margin: 0 0 8px; font-size: 34px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2; }
-  .header-subtitle { margin: 0; font-size: 15.5px; opacity: 0.75; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 400; }
-  .header-divider {
-    width: 40px;
-    height: 3px;
-    background: rgba(255,255,255,0.3);
-    border-radius: 2px;
-    margin: 16px 0;
+  .header-text { position: relative; z-index: 2; max-width: 680px; }
+  .header-lesson-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,224,176,0.88);
+    margin-bottom: 14px;
   }
+  .header-lesson-badge::before {
+    content: '';
+    width: 18px;
+    height: 1.5px;
+    background: rgba(255,202,134,0.6);
+    display: inline-block;
+  }
+  .header-title {
+    margin: 0 0 10px;
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+    color: #FFF8E9;
+    text-shadow: 0 1px 14px rgba(0,0,0,0.22);
+  }
+  .header-subtitle {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+    color: rgba(255,244,230,0.8);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-weight: 400;
+    max-width: 560px;
+  }
+  .header-divider { display: none; }
   .header-meta {
+    position: relative;
+    z-index: 2;
     display: flex;
-    gap: 10px;
-    margin-top: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     flex-wrap: wrap;
+    margin-top: 28px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 13px;
+  }
+  .header-meta-info {
+    display: flex;
     align-items: center;
+    background: linear-gradient(150deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 100px;
+    padding: 4px;
+    backdrop-filter: blur(10px) saturate(120%);
+    box-shadow: 0 8px 20px -10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.14);
   }
   .meta-pill {
-    background: rgba(255,255,255,0.13);
-    border: 1px solid rgba(255,255,255,0.22);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: transparent;
+    border: none;
     border-radius: 100px;
-    padding: 5px 13px;
-    backdrop-filter: blur(4px);
-    font-weight: 500;
+    padding: 8px 16px;
+    font-weight: 600;
+    color: #FFF3EA;
+    position: relative;
+  }
+  .meta-pill svg { opacity: 0.85; flex-shrink: 0; }
+  .meta-pill + .meta-pill::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 22%; bottom: 22%;
+    width: 1px;
+    background: rgba(20,9,4,0.22);
+    box-shadow: 1px 0 0 rgba(255,238,214,0.22);
+  }
+  .header-meta .hw-open-btn {
+    background: #FFF8EF;
+    padding: 9px 20px 9px 9px;
+    box-shadow: 0 12px 28px -12px rgba(20,8,4,0.55);
+  }
+  .header-meta .hw-open-btn:hover {
+    background: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px -12px rgba(20,8,4,0.6);
   }
 
   /* Контент урока — гладкая карточка поверх городского фона */
@@ -1137,10 +1204,15 @@
     align-items: flex-start;
   }
   .hw-intro::before {
-    content: '📋';
-    font-size: 20px;
+    content: '';
+    display: block;
+    width: 22px;
+    height: 22px;
     flex-shrink: 0;
-    margin-top: 2px;
+    margin-top: 1px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><rect x='5' y='4' width='14' height='17' rx='2.2' stroke='%238a6a2e' stroke-width='1.5'/><rect x='9' y='2.2' width='6' height='3' rx='1.2' fill='%238a6a2e'/><path d='M8.3 10.3H15.7M8.3 13.6H15.7M8.3 16.9H12.7' stroke='%238a6a2e' stroke-width='1.4' stroke-linecap='round'/></svg>");
+    background-size: contain;
+    background-repeat: no-repeat;
   }
   .hw-intro p { margin: 0; }
 
@@ -1443,7 +1515,7 @@
     padding: 48px 48px 56px;
     max-width: 1280px;
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 28px;
   }
   .welcome-main-col {
@@ -1452,12 +1524,15 @@
     max-width: 900px;
   }
 
-  /* ── Правая колонка: два согласованных, но различимых окна друг под другом ── */
+  /* ── Правая колонка: ровно по высоте левой (welcome-content: align-items:stretch),
+     без скролла всей колонки. Карточка растягивается на всю высоту; свободное место
+     уходит ВНУТРЬ карточки (чистая бумага), а не наружу (фон города). Текст истории
+     получает запас и скроллится внутри себя только при аномально длинном ИИ-тексте. */
   .welcome-side-rail {
     flex: 0 0 336px;
     width: 336px;
-    position: sticky;
-    top: 48px;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Единая карточка: видно, что внутри две разные вещи — у каждой своя шапка
@@ -1465,6 +1540,8 @@
   .vocab-combo-card {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     background: var(--paper);
     border: 1.5px solid var(--line);
     border-radius: 18px;
@@ -1472,6 +1549,27 @@
     box-shadow: 0 10px 30px rgba(35,25,15,0.18), 0 2px 8px rgba(35,25,15,0.08);
   }
   .vocab-section { display: flex; flex-direction: column; min-width: 0; }
+  /* Тренажёр — по содержимому; «Истории» забирают остаток высоты, чтобы карточка
+     заполняла колонку целиком, а свободное место было внутри (чистая бумага). */
+  #vocabTrainerCard { flex: 0 0 auto; }
+  .vocab-section-idea2 { flex: 1 1 auto; min-height: 0; }
+  .vocab-section-idea2 > .vocab-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  /* В теле «Историй» фиксированы тема/заголовок/чипсы/кнопки, а сам текст истории
+     забирает остаток и скроллится ВНУТРИ себя только при очень длинном тексте. */
+  .vocab-section-idea2 .story-text {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(193,84,58,0.28) transparent;
+  }
+  .vocab-section-idea2 .story-text::-webkit-scrollbar { width: 6px; }
+  .vocab-section-idea2 .story-text::-webkit-scrollbar-thumb { background: rgba(193,84,58,0.22); border-radius: 4px; }
   .vocab-section-divider { height: 1px; background: var(--line); flex-shrink: 0; }
   .vocab-card-head {
     display: flex;
@@ -2540,7 +2638,7 @@
     .overlay.open { display: block; }
 
     .main { width: 100%; }
-    .header { padding: 28px 20px 22px; }
+    .header { padding: 30px 22px 26px; }
     .header-title { font-size: 24px; }
     .content { padding: 24px 16px; max-width: 100%; margin: 0; }
 
@@ -2551,7 +2649,8 @@
     .welcome-content { padding: 28px 16px 40px; }
     .lesson-grid { grid-template-columns: 1fr; }
 
-    .header-meta { gap: 10px; }
+    .header-meta { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 22px; }
+    .header-meta-info { align-self: flex-start; }
     .hw-open-btn {
       width: 100%;
       justify-content: center;
@@ -2602,6 +2701,8 @@
     .section-head h2 { font-size: 19px; }
     .header-title { font-size: 21px; }
     .header-subtitle { font-size: 13.5px; }
+    .header-lesson-badge { font-size: 10.5px; margin-bottom: 11px; }
+    .meta-pill { padding: 7px 13px; font-size: 12px; }
     h3 { font-size: 15px; }
     p, li { font-size: 14.5px; }
   }
@@ -2990,15 +3091,82 @@
        чтобы оставаться видимой и на светлых, и на тёмных участках фото */
     .status-card,
     .status-stat{ position:relative !important; border-left:none !important; }
-    .status-stats-row::before,
-    .status-stat:not(:first-child)::before{
+    /* ::after (а не ::before) — у .streak-stat.is-active уже занят ::before анимацией свечения */
+    .status-stats-row::after,
+    .status-stat:not(:first-child)::after{
       content:''; position:absolute; left:0; top:14%; bottom:14%; width:1px;
-      background:rgba(20,9,4,0.30);
-      box-shadow:1px 0 0 rgba(255,238,214,0.24);
+      background:rgba(20,9,4,0.30) !important;
+      box-shadow:1px 0 0 rgba(255,238,214,0.24) !important;
+      opacity:1 !important; display:block !important; z-index:1;
     }
     .status-stats-row{ position:relative !important; }
 
     .progress-map-wrap{ margin:4px 0 14px !important; padding:10px 18px 14px !important; }
+  }
+
+  /* ============================================================
+     ИКОНКИ — единая система SVG вместо эмодзи-стикеров
+     Линейный стиль (stroke=currentColor), наследует цвет родителя.
+     ============================================================ */
+  .ico{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1em; height:1em; flex-shrink:0; vertical-align:-0.14em;
+    line-height:0;
+  }
+  .ico svg{ width:100%; height:100%; display:block; }
+
+  /* Иконки внутри бейджей шапки (одинаковый размер с эмодзи, что были) */
+  .welcome-badge-icon .ico{ width:15px; height:15px; }
+  .vocab-card-icon .ico, .vocab-card-icon-muted .ico{ width:18px; height:18px; }
+  .video-tag .ico{ width:13px; height:13px; margin-right:3px; }
+  .welcome-section-label-text .ico{ width:14px; height:14px; margin-right:2px; }
+  .hw-task-icon{ display:inline-flex; width:13px; height:13px; vertical-align:-2px; margin-right:6px; }
+  .lesson-card-future-icon .ico,
+  .vocab-idea2-lock .ico{ width:1em; height:1em; }
+  .hw-open-btn-icon .ico, .hw-checkbox .ico{ width:14px; height:14px; }
+  .hw-modal-head .ico{ width:19px; height:19px; margin-right:7px; vertical-align:-3px; }
+  .progress-city-card-lock .ico{ width:12px; height:12px; margin-right:3px; vertical-align:-1px; }
+  .story-theme-icon{ display:inline-flex; width:16px; height:16px; vertical-align:-3px; margin-right:2px; }
+  .story-src .ico{ width:11px; height:11px; margin-right:3px; }
+  .story-btn .ico{ width:13px; height:13px; margin-right:5px; vertical-align:-2px; }
+
+  /* — Анимации (тонкие, премиальные, не перегружают интерфейс) — */
+  @keyframes ico-check-pop{
+    0%{ transform:scale(0.3); opacity:0; }
+    55%{ transform:scale(1.18); opacity:1; }
+    100%{ transform:scale(1); opacity:1; }
+  }
+  .ico-check{ animation:ico-check-pop .42s cubic-bezier(.34,1.56,.64,1) both; }
+
+  @keyframes ico-sparkle-twinkle{
+    0%, 100%{ opacity:0.6; transform:scale(0.92) rotate(0deg); }
+    50%{ opacity:1; transform:scale(1.08) rotate(10deg); }
+  }
+  .ico-sparkle{ animation:ico-sparkle-twinkle 2.4s ease-in-out infinite; transform-origin:50% 50%; }
+
+  @keyframes ico-target-ping{
+    0%{ box-shadow:0 0 0 0 rgba(193,84,58,0.38); }
+    70%{ box-shadow:0 0 0 6px rgba(193,84,58,0); }
+    100%{ box-shadow:0 0 0 0 rgba(193,84,58,0); }
+  }
+  .welcome-badge-icon--target{ border-radius:50%; animation:ico-target-ping 2.8s ease-in-out infinite; }
+
+  @keyframes ico-lock-breathe{
+    0%, 100%{ opacity:0.85; transform:scale(1); }
+    50%{ opacity:1; transform:scale(1.1); }
+  }
+  .progress-city-card.current .progress-city-card-lock .ico{ animation:ico-lock-breathe 2s ease-in-out infinite; }
+
+  @keyframes ico-story-pop{
+    0%{ transform:scale(0.5) rotate(-8deg); opacity:0; }
+    100%{ transform:scale(1) rotate(0deg); opacity:1; }
+  }
+  .story-theme-icon{ animation:ico-story-pop .45s cubic-bezier(.34,1.56,.64,1) both; }
+
+  @media (prefers-reduced-motion: reduce){
+    .ico-check, .ico-sparkle, .welcome-badge-icon--target,
+    .progress-city-card.current .progress-city-card-lock .ico,
+    .story-theme-icon{ animation:none !important; }
   }
 </style>
 </head>
@@ -3081,8 +3249,8 @@
         <h1 class="welcome-title">Buongiorno!</h1>
         <p class="welcome-subtitle">Структурированный курс итальянского — от первых слов до уверенного уровня A2</p>
         <div class="welcome-badges">
-          <span class="welcome-badge"><span class="welcome-badge-icon">🎯</span>С нуля до уровня A2</span>
-          <span class="welcome-badge"><span class="welcome-badge-icon">📚</span>43 занятия</span>
+          <span class="welcome-badge"><span class="welcome-badge-icon welcome-badge-icon--target"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8.25" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="4.75" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg></span></span>С нуля до уровня A2</span>
+          <span class="welcome-badge"><span class="welcome-badge-icon"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19.5V6C4 5.4 4.4 5 5 5H10C11.1 5 12 5.9 12 7V19.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 19.5V7C12 5.9 12.9 5 14 5H19C19.6 5 20 5.4 20 6V19.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 19.5H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></span>43 занятия</span>
         </div>
       </div>
       <div class="welcome-content">
@@ -3091,7 +3259,7 @@
           <div class="lesson-grid" id="lessonGrid"></div>
 
           <div class="video-section">
-            <div class="welcome-section-label"><span class="welcome-section-label-text">🎬 Посмотри в свободное время</span></div>
+            <div class="welcome-section-label"><span class="welcome-section-label-text"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8.8L4.9 6C5.1 5.4 5.8 5.1 6.4 5.3L18.9 9.4C19.5 9.6 19.8 10.3 19.6 10.9L19.3 11.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="3.5" y="9.5" width="17" height="9.7" rx="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M7.7 5.7L9.7 9M12 5.7L14 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span> Посмотри в свободное время</span></div>
             <div class="video-grid">
               <a class="video-card" href="https://www.youtube.com/watch?v=Ip5ABJWUE1k" target="_blank" rel="noopener">
                 <div class="video-thumb">
@@ -3100,7 +3268,7 @@
                   <span class="video-badge">≈ 4 ч</span>
                 </div>
                 <div class="video-info">
-                  <span class="video-tag">🎧 Аудирование</span>
+                  <span class="video-tag"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13.5V12C4 7.6 7.6 4 12 4C16.4 4 20 7.6 20 12V13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="2.7" y="13" width="4" height="6" rx="1.6" stroke="currentColor" stroke-width="1.4"/><rect x="17.3" y="13" width="4" height="6" rx="1.6" stroke="currentColor" stroke-width="1.4"/></svg></span> Аудирование</span>
                   <h3>SpongeBob — классические эпизоды на итальянском</h3>
                   <p>Подборка коротких мультэпизодов с простой, разговорной речью — отлично «фонит» итальянский на фоне и тренирует слух.</p>
                 </div>
@@ -3113,7 +3281,7 @@
                   <span class="video-badge">≈ 25 мин</span>
                 </div>
                 <div class="video-info">
-                  <span class="video-tag">🎧 Аудирование</span>
+                  <span class="video-tag"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13.5V12C4 7.6 7.6 4 12 4C16.4 4 20 7.6 20 12V13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="2.7" y="13" width="4" height="6" rx="1.6" stroke="currentColor" stroke-width="1.4"/><rect x="17.3" y="13" width="4" height="6" rx="1.6" stroke="currentColor" stroke-width="1.4"/></svg></span> Аудирование</span>
                   <h3>Гамбол — подборка приключений на итальянском</h3>
                   <p>Динамичные сценки с живыми диалогами и бытовой лексикой — хорошо для тренировки понимания на слух без напряжения.</p>
                 </div>
@@ -3126,7 +3294,7 @@
           <div class="vocab-combo-card">
             <section class="vocab-section" id="vocabTrainerCard">
               <div class="vocab-card-head">
-                <span class="vocab-card-icon">📚</span>
+                <span class="vocab-card-icon"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5" transform="rotate(-7 10.5 12)"/><rect x="6.5" y="4.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
                 <div class="vocab-card-head-text">
                   <span class="vocab-card-title">Словарный тренажёр</span>
                   <span class="vocab-card-status"><span class="vocab-status-dot"></span>Загрузка…</span>
@@ -3141,7 +3309,7 @@
 
             <section class="vocab-section vocab-section-idea2">
               <div class="vocab-card-head">
-                <span class="vocab-card-icon vocab-card-icon-muted">✨</span>
+                <span class="vocab-card-icon vocab-card-icon-muted"><span class="ico ico-sparkle"><svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 3C12.3 6.2 13.1 8.5 14.3 10C15.5 11.5 17.5 12.4 20.5 12.7C17.5 13 15.5 13.9 14.3 15.4C13.1 16.9 12.3 19.2 12 22.4C11.7 19.2 10.9 16.9 9.7 15.4C8.5 13.9 6.5 13 3.5 12.7C6.5 12.4 8.5 11.5 9.7 10C10.9 8.5 11.7 6.2 12 3Z"/></svg></span></span>
                 <div class="vocab-card-head-text">
                   <span class="vocab-card-title">Скоро: новый формат</span>
                   <span class="vocab-card-status vocab-card-status-soon"><span class="vocab-status-dot"></span>В разработке</span>
@@ -3158,7 +3326,7 @@
                     <span class="vocab-idea2-chip short"></span>
                     <span class="vocab-idea2-chip"></span>
                   </div>
-                  <div class="vocab-idea2-lock">🔒</div>
+                  <div class="vocab-idea2-lock"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="11" width="14" height="9.5" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 11V8.5C7.5 6 9.5 4 12 4C14.5 4 16.5 6 16.5 8.5V11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></svg></span></div>
                 </div>
               </div>
             </section>
@@ -3173,7 +3341,7 @@
   </main>
 
   <div class="hw-modal-overlay" id="hwModal">
-    <button class="hw-modal-close" id="hwModalCloseBtn" aria-label="Закрыть">✕</button>
+    <button class="hw-modal-close" id="hwModalCloseBtn" aria-label="Закрыть"><span class="ico" style="width:15px;height:15px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></button>
     <div class="hw-modal-panel" id="hwModalContent" role="dialog" aria-modal="true"></div>
   </div>
 
@@ -3405,7 +3573,7 @@ const LESSON_1_META = {
       </div>
 
       <div class="hw-vocab-recap">
-        <p class="hw-task-label">📚 Новые слова этого ДЗ — для повторения</p>
+        <p class="hw-task-label"><span class="hw-task-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19.5V6C4 5.4 4.4 5 5 5H10C11.1 5 12 5.9 12 7V19.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 19.5V7C12 5.9 12.9 5 14 5H19C19.6 5 20 5.4 20 6V19.5" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 19.5H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>Новые слова этого ДЗ — для повторения</p>
         <table class="hw-table">
           <tr><th>Итальянский</th><th>Русский</th></tr>
           <tr><td class="hw-it" data-word="famiglia">famiglia</td><td>семья</td></tr>
@@ -3476,7 +3644,7 @@ const LESSON_2_META = {
           <li><span class="hw-it">coraggioso</span> → <span class="hw-blank">_____</span></li>
         </ol>
         <div class="hw-task-box" style="margin-top:14px;">
-          <p class="hw-task-label">⭐ Бонус — если хочешь большего</p>
+          <p class="hw-task-label"><span class="hw-task-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L14.2 9L20.6 9.2L15.5 13.1L17.3 19.3L12 15.7L6.7 19.3L8.5 13.1L3.4 9.2L9.8 9L12 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></span>Бонус — если хочешь большего</p>
           <p>Выбери 3 антонимные пары и для каждой придумай по одному предложению, которое описывает реального человека из твоей жизни. Например: <span class="hw-it">Mio fratello è molto nervoso, ma io sono abbastanza calma.</span></p>
         </div>
       </div>
@@ -3496,7 +3664,7 @@ const LESSON_2_META = {
           <li>Mio nonno è <span class="hw-blank">_____</span>, ma a volte è anche un po' <span class="hw-blank">_____</span>. (serio / scherzoso)</li>
         </ol>
         <div class="hw-task-box" style="background:var(--terracotta-soft); margin-top:12px;">
-          <p class="hw-task-label" style="color:#8C3724;">⚠️ Ловушка</p>
+          <p class="hw-task-label" style="color:#8C3724;"><span class="hw-task-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4L21 19.5H3L12 4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 10V14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="16.7" r="0.9" fill="currentColor"/></svg></span>Ловушка</p>
           <p style="color:#5c2a1a;">Прилагательные на <span class="hw-it">-e</span> (gentile, paziente, intelligente) <strong>не меняются</strong> между мужским и женским родом в единственном числе — меняется только окончание во множественном (-i). Проверь свои ответы 1, 5, 6!</p>
         </div>
       </div>
@@ -3565,7 +3733,7 @@ const LESSON_2_META = {
       </div>
 
       <div class="hw-vocab-recap">
-        <p class="hw-task-label">☁️ Облако слов урока — для повторения</p>
+        <p class="hw-task-label"><span class="hw-task-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 17H17.5C19.4 17 21 15.4 21 13.5C21 11.7 19.6 10.2 17.8 10C17.4 7.2 15 5 12.1 5C9.5 5 7.3 6.7 6.6 9C4.5 9.2 3 11 3 13.1C3 15.3 4.8 17 7 17Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></span>Облако слов урока — для повторения</p>
         <p style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size:13.5px; color:#75695a; margin-bottom:12px;">Просматривай это облако каждый день в течение недели — пока все слова не будут «на кончике языка».</p>
         <div class="hw-vocab-cloud">
           <span style="font-size:18px; padding:7px 16px;">allegro</span>
@@ -3677,7 +3845,7 @@ function renderVocabTrainer() {
   if (!pool.length) {
     card.innerHTML = `
       <div class="vocab-card-head">
-        <span class="vocab-card-icon">📚</span>
+        <span class="vocab-card-icon"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5" transform="rotate(-7 10.5 12)"/><rect x="6.5" y="4.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
         <div class="vocab-card-head-text">
           <span class="vocab-card-title">Словарный тренажёр</span>
           <span class="vocab-card-status vocab-card-status-soon"><span class="vocab-status-dot"></span>Пока пусто</span>
@@ -3696,7 +3864,7 @@ function renderVocabTrainer() {
 
   card.innerHTML = `
     <div class="vocab-card-head">
-      <span class="vocab-card-icon">📚</span>
+      <span class="vocab-card-icon"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5" transform="rotate(-7 10.5 12)"/><rect x="6.5" y="4.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
       <div class="vocab-card-head-text">
         <span class="vocab-card-title">Словарный тренажёр</span>
         <span class="vocab-card-status"><span class="vocab-status-dot"></span>${pool.length} слов в копилке</span>
@@ -3745,6 +3913,18 @@ function renderVocabTrainer() {
 // Не случайная подстановка слов, а грамматический движок: согласование рода/числа
 // (allegro→allegra), правильные артикли (il/lo/la/l'/un/uno/una), спряжение essere,
 // конструкция c'è / ci sono. Сценарии открываются по мере прохождения уроков.
+
+// Иконки тем для блока «Истории» (заменяют эмодзи-стикеры) — должны быть объявлены
+// раньше STORY_SCENARIOS, который их использует в значениях icon.
+const ICON_STORY_BOOK_OPEN = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 6C10.2 4.7 7.7 4.3 5 4.7V17.3C7.7 16.9 10.2 17.3 12 18.6C13.8 17.3 16.3 16.9 19 17.3V4.7C16.3 4.3 13.8 4.7 12 6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 6V18.6" stroke="currentColor" stroke-width="1.3" opacity="0.5"/></svg>';
+const ICON_STORY_GREETING = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 6C4.5 4.9 5.4 4 6.5 4H17.5C18.6 4 19.5 4.9 19.5 6V14C19.5 15.1 18.6 16 17.5 16H10L6 19.5V16H6.5C5.4 16 4.5 15.1 4.5 14V6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.5 9.5C9.1 10.5 10.3 11.2 12 11.2C13.7 11.2 14.9 10.5 15.5 9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+const ICON_STORY_PERSON = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 19.5C5 15.9 8.1 13 12 13C15.9 13 19 15.9 19 19.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const ICON_STORY_FRIENDS = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="16.5" cy="9.3" r="2.5" stroke="currentColor" stroke-width="1.4" opacity="0.8"/><path d="M3.5 19.5C3.5 16.1 6 13.5 9 13.5C12 13.5 14.5 16.1 14.5 19.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5 19.5C14.6 16.8 16.3 14.8 18.4 14.8C20.4 14.8 21.9 16.6 21.9 19.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.8"/></svg>';
+const ICON_STORY_HOUSE = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 11.5L12 4.5L20.5 11.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="10" width="12" height="10" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="10" y="14" width="4" height="6" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+const ICON_STORY_SOFA = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.3 12V8.8C6.3 7.8 7.1 7 8.1 7H15.9C16.9 7 17.7 7.8 17.7 8.8V12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><rect x="3.7" y="12" width="16.6" height="5.3" rx="1.6" stroke="currentColor" stroke-width="1.5"/><path d="M5.3 17.3V19.3M18.7 17.3V19.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+const ICON_STORY_WINDOW = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.5" y="3.5" width="15" height="17" rx="1.8" stroke="currentColor" stroke-width="1.5"/><path d="M12 3.5V20.5M4.5 12H19.5" stroke="currentColor" stroke-width="1.3" opacity="0.6"/></svg>';
+const ICON_STORY_SELF = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="5" width="17" height="14" rx="2.2" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="10.8" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M6.2 15.5C6.7 13.9 7.7 13.1 9 13.1C10.3 13.1 11.3 13.9 11.8 15.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M14.5 9.3H18M14.5 12H18M14.5 14.7H16.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/></svg>';
+const ICON_STORY_HOME_COZY = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 11.5L12 4.5L20.5 11.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="10" width="12" height="10" rx="1.6" stroke="currentColor" stroke-width="1.6"/><rect x="10" y="14" width="4" height="6" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 17C12 17 10 15.8 10 14.6C10 13.8 10.6 13.2 11.3 13.2C11.7 13.2 12 13.4 12 13.7C12 13.4 12.3 13.2 12.7 13.2C13.4 13.2 14 13.8 14 14.6C14 15.8 12 17 12 17Z" fill="currentColor" opacity="0.7"/></svg>';
 
 // --- Словарная база с полными грамматическими данными ---
 const STORY_BANK = {
@@ -3848,7 +4028,7 @@ function amiciForm(g1, g2) { return (g1 === 'f' && g2 === 'f') ? 'amiche' : 'ami
 const STORY_SCENARIOS = [
   // L1: Знакомство
   {
-    theme: 'Знакомство', icon: '👋', lesson: 1,
+    theme: 'Знакомство', icon: ICON_STORY_GREETING, lesson: 1,
     build() {
       const p = pick(STORY_BANK.nomi);
       const naz = pick(STORY_BANK.nazioni.filter(n => n.lesson <= 1).length
@@ -3868,7 +4048,7 @@ const STORY_SCENARIOS = [
   },
   // L2: Характер человека
   {
-    theme: 'Характер', icon: '🧑', lesson: 2,
+    theme: 'Характер', icon: ICON_STORY_PERSON, lesson: 2,
     build() {
       const p = pick(STORY_BANK.nomi);
       const naz = pick(STORY_BANK.nazioni);
@@ -3887,7 +4067,7 @@ const STORY_SCENARIOS = [
   },
   // L2: Два друга (контраст)
   {
-    theme: 'Два друга', icon: '👥', lesson: 2,
+    theme: 'Два друга', icon: ICON_STORY_FRIENDS, lesson: 2,
     build() {
       const [p1, p2] = pickTwo(STORY_BANK.nomi);
       const [a1, a2] = pickTwo(STORY_BANK.caratteri);
@@ -3905,7 +4085,7 @@ const STORY_SCENARIOS = [
   },
   // L3: Моя квартира
   {
-    theme: 'Мой дом', icon: '🏠', lesson: 3,
+    theme: 'Мой дом', icon: ICON_STORY_HOUSE, lesson: 3,
     build() {
       const room = pick(STORY_BANK.stanze);
       const [m1, m2] = pickTwo(STORY_BANK.mobili);
@@ -3920,7 +4100,7 @@ const STORY_SCENARIOS = [
   },
   // L3: Описание комнаты с c'è / ci sono
   {
-    theme: 'Комната', icon: '🛋️', lesson: 3,
+    theme: 'Комната', icon: ICON_STORY_SOFA, lesson: 3,
     build() {
       const room = pick(STORY_BANK.stanze);
       const [m1, m2] = pickTwo(STORY_BANK.mobili);
@@ -3935,7 +4115,7 @@ const STORY_SCENARIOS = [
   },
   // L3: Человек и его дом (объединяет урок 2 + 3)
   {
-    theme: 'Человек и дом', icon: '🪟', lesson: 3,
+    theme: 'Человек и дом', icon: ICON_STORY_WINDOW, lesson: 3,
     build() {
       const p = pick(STORY_BANK.nomi);
       const car = pick(STORY_BANK.caratteri);
@@ -3956,7 +4136,7 @@ const STORY_SCENARIOS = [
 
   // L2: Автопортрет (большой)
   {
-    theme: 'Рассказ о себе', icon: '🙋', lesson: 2, big: true,
+    theme: 'Рассказ о себе', icon: ICON_STORY_SELF, lesson: 2, big: true,
     build() {
       const p = pick(STORY_BANK.nomi);
       const naz = pick(STORY_BANK.nazioni);
@@ -3983,7 +4163,7 @@ const STORY_SCENARIOS = [
 
   // L3: Экскурсия по квартире (большой)
   {
-    theme: 'Моя квартира', icon: '🏡', lesson: 3, big: true,
+    theme: 'Моя квартира', icon: ICON_STORY_HOME_COZY, lesson: 3, big: true,
     build() {
       const q1 = pick(STORY_BANK.qualita);
       const [r1, r2, r3] = pickN(STORY_BANK.stanze, 3);
@@ -4009,7 +4189,7 @@ const STORY_SCENARIOS = [
 
   // L3: Человек и его дом — расширенный (большой, объединяет урок 2 + 3)
   {
-    theme: 'Человек и его дом', icon: '🏠', lesson: 3, big: true,
+    theme: 'Человек и его дом', icon: ICON_STORY_HOUSE, lesson: 3, big: true,
     build() {
       const p = pick(STORY_BANK.nomi);
       const naz = pick(STORY_BANK.nazioni);
@@ -4085,16 +4265,21 @@ function ensureStoryStyles() {
   st.id = 'storyStyles';
   st.textContent = `
     .story-theme {
-      display: inline-flex; align-items: center; gap: 7px;
-      background: var(--terracotta-soft, #f6e6df);
+      display: inline-flex; align-items: center; gap: 10px;
+      background: linear-gradient(150deg, rgba(193,84,58,0.12), rgba(193,84,58,0.04));
+      border: 1px solid rgba(193,84,58,0.22);
+      backdrop-filter: blur(8px) saturate(110%);
       color: var(--terracotta, #c1543a);
-      font-size: 12px; font-weight: 700; letter-spacing: .2px;
-      padding: 5px 12px; border-radius: 100px; margin-bottom: 14px;
+      font-size: 13px; font-weight: 700; letter-spacing: .3px;
+      padding: 8px 16px; border-radius: 12px; margin-bottom: 14px;
+      box-shadow: 0 6px 18px -12px rgba(86,48,26,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
     }
     .story-theme .story-lesson {
-      font-weight: 600; opacity: .7; font-size: 11px;
-      padding-left: 8px; margin-left: 2px; border-left: 1px solid rgba(193,84,58,.3);
+      font-weight: 600; opacity: 0.8; font-size: 12px;
+      padding-left: 10px; margin-left: 4px; border-left: 1px solid rgba(193,84,58,0.2);
     }
+    .story-src { font-weight: 700; opacity: 0.75; font-size: 11px; }
+    .story-src.ai { color: #8B5CF6; }
     .story-text {
       position: relative;
       background: linear-gradient(180deg, #fffaf3 0%, #fdf4ea 100%);
@@ -4273,7 +4458,7 @@ async function fetchAIStory(allowed, topics, ruMap) {
     const lines = d.story.sentences.map(s => ({ it: s.it, ru: s.ru || '' }));
     const words = (d.story.focus || []).map(w => ({ it: w, ru: ruMap[String(w).toLowerCase()] || '' }));
     return {
-      theme: d.story.theme || 'История', icon: d.story.icon || '📖', title: d.story.title || '',
+      theme: d.story.theme || 'История', icon: d.story.icon || ICON_STORY_BOOK_OPEN, title: d.story.title || '',
       lines, words, source: 'ai', provider: d.provider || 'ai',
     };
   } finally {
@@ -4285,7 +4470,7 @@ async function fetchAIStory(allowed, topics, ruMap) {
 function renderStoryLoading(section) {
   section.innerHTML = `
     <div class="vocab-card-head">
-      <span class="vocab-card-icon">📖</span>
+      <span class="vocab-card-icon"><span class="ico">${ICON_STORY_BOOK_OPEN}</span></span>
       <div class="vocab-card-head-text">
         <span class="vocab-card-title">Истории</span>
         <span class="vocab-card-status"><span class="vocab-status-dot"></span>ИИ пишет историю…</span>
@@ -4312,7 +4497,7 @@ function renderStoryObject(s, section) {
 
   const isAI = s.source === 'ai';
   const srcLabel = isAI
-    ? `<span class="story-src ai">✨ ИИ</span>`
+    ? `<span class="story-src ai">${ICON_SPARKLE_HTML} ИИ</span>`
     : `<span class="story-src">грамматический генератор</span>`;
   const themeExtra = (!isAI && s.lesson) ? `<span class="story-lesson">урок ${s.lesson}</span>` : '';
   const statusText = isAI ? 'Сгенерировано ИИ из твоих уроков' : 'Из твоих уроков · правильная грамматика';
@@ -4320,19 +4505,19 @@ function renderStoryObject(s, section) {
 
   section.innerHTML = `
     <div class="vocab-card-head">
-      <span class="vocab-card-icon">📖</span>
+      <span class="vocab-card-icon"><span class="ico">${ICON_STORY_BOOK_OPEN}</span></span>
       <div class="vocab-card-head-text">
         <span class="vocab-card-title">Истории</span>
         <span class="vocab-card-status"><span class="vocab-status-dot"></span>${statusText}</span>
       </div>
     </div>
     <div class="vocab-card-body">
-      <span class="story-theme">${s.icon || '📖'} ${s.theme || 'История'}${themeExtra}${srcLabel}</span>
+      <span class="story-theme"><span class="story-theme-icon ico">${s.icon || ICON_STORY_BOOK_OPEN}</span> ${s.theme || 'История'}${themeExtra}${srcLabel}</span>
       ${titleHTML}
       <div class="story-text" id="storyText">${linesHTML}</div>
       <div class="story-words-row">${chipsHTML}</div>
       <div class="story-controls">
-        <button type="button" class="story-btn story-btn-primary" id="storyNewBtn">✨ Новая история</button>
+        <button type="button" class="story-btn story-btn-primary" id="storyNewBtn">${ICON_SPARKLE_HTML} Новая история</button>
         <button type="button" class="story-btn story-btn-ghost" id="storyTransBtn">Перевод</button>
       </div>
     </div>
@@ -4806,7 +4991,7 @@ function renderNav(activeId) {
     item.innerHTML = `
       <div class="nav-item-row">
         <span>Урок ${lesson.number}</span>
-        <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? '✓ ДЗ готово' : 'ДЗ не сдано'}</span>
+        <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + ' ДЗ готово' : 'ДЗ не сдано'}</span>
       </div>
       <span class="nav-sub">${lesson.title}</span>
     `;
@@ -4829,13 +5014,13 @@ function renderLessonGrid() {
   card.innerHTML = `
     <div class="nav-item-row" style="margin-bottom:12px;">
       <span class="lesson-card-num" style="margin-bottom:0;">Урок ${lesson.number}</span>
-      <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? '✓ ДЗ готово' : 'ДЗ не сдано'}</span>
+      <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + ' ДЗ готово' : 'ДЗ не сдано'}</span>
     </div>
     <h3>${lesson.title}</h3>
     <p>${lesson.subtitle}</p>
     <div class="lesson-card-meta"><span>⏱ ${lesson.time}</span></div>
     <div class="hw-toggle-card ${done ? 'is-done' : ''}" data-role="hw-toggle">
-      <span class="hw-checkbox ${done ? 'checked' : ''}">${done ? '✓' : ''}</span>
+      <span class="hw-checkbox ${done ? 'checked' : ''}">${done ? ICON_CHECK_HTML : ''}</span>
       <span class="hw-label ${done ? 'done-label' : ''}">${done ? 'Домашка сделана' : 'Отметить домашку сделанной'}</span>
     </div>
   `;
@@ -4855,7 +5040,7 @@ function renderLessonGrid() {
   futureCard.className = 'lesson-card lesson-card-future';
   futureCard.innerHTML = `
     <span class="lesson-card-num">Скоро</span>
-    <span class="lesson-card-future-icon">🔒</span>
+    <span class="lesson-card-future-icon">${ICON_LOCK_CLOSED_HTML}</span>
     <h3>Следующий урок</h3>
     <p>Появится здесь, когда будет готов</p>
   `;
@@ -4875,7 +5060,7 @@ function renderHwButton(lesson) {
   const done = isHwDone(lesson.id);
   return `
     <button class="hw-open-btn ${done ? 'done' : 'pending'}" data-role="open-hw-modal">
-      <span class="hw-open-btn-icon">${done ? '✓' : '📝'}</span>
+      <span class="hw-open-btn-icon">${done ? ICON_CHECK_HTML : ICON_NOTE_HTML}</span>
       <span class="hw-open-btn-text">
         <span class="hw-open-btn-title">Домашнее задание</span>
         <span class="hw-open-status">${done ? 'Готово' : 'Не сделано'}</span>
@@ -4890,11 +5075,11 @@ function renderHwModalContent(lesson) {
   const done = isHwDone(lesson.id);
   return `
     <div class="hw-modal-head">
-      <h2>📝 Домашнее задание</h2>
+      <h2>${ICON_NOTE_HTML} Домашнее задание</h2>
     </div>
     <p class="hw-modal-lesson-name">${lesson.title}</p>
     <div class="hw-status-banner ${done ? 'done' : 'pending'}" data-role="hw-banner-toggle">
-      <span class="hw-checkbox ${done ? 'checked' : ''}" style="background:${done ? 'var(--olive)' : 'transparent'}; border-color:${done ? 'var(--olive)' : '#C1543A'};">${done ? '✓' : ''}</span>
+      <span class="hw-checkbox ${done ? 'checked' : ''}" style="background:${done ? 'var(--olive)' : 'transparent'}; border-color:${done ? 'var(--olive)' : '#C1543A'};">${done ? ICON_CHECK_HTML : ''}</span>
       <span>${done ? 'Домашнее задание отмечено как сделанное' : 'Домашнее задание ещё не отмечено как сделанное — нажми, чтобы отметить'}</span>
     </div>
     <div class="hw-modal-body">
@@ -4905,7 +5090,7 @@ function renderHwModalContent(lesson) {
       ${lesson.homeworkHTML}
     </div>
     <div class="hw-status-banner ${done ? 'done' : 'pending'}" data-role="hw-banner-toggle-bottom" style="margin-top:24px;">
-      <span class="hw-checkbox ${done ? 'checked' : ''}" style="background:${done ? 'var(--olive)' : 'transparent'}; border-color:${done ? 'var(--olive)' : '#C1543A'};">${done ? '✓' : ''}</span>
+      <span class="hw-checkbox ${done ? 'checked' : ''}" style="background:${done ? 'var(--olive)' : 'transparent'}; border-color:${done ? 'var(--olive)' : '#C1543A'};">${done ? ICON_CHECK_HTML : ''}</span>
       <span>${done ? 'Домашнее задание отмечено как сделанное' : 'Всё сделано? Нажми, чтобы отметить домашку выполненной'}</span>
     </div>
   `;
@@ -5010,12 +5195,16 @@ function showLesson(id) {
   lessonScreen.classList.remove('hidden');
   lessonScreen.innerHTML = `
     <div class="header">
-      <h1 class="header-title">${lesson.title}</h1>
-      <p class="header-subtitle">${lesson.subtitle}</p>
-      <div class="header-divider"></div>
+      <div class="header-text">
+        <span class="header-lesson-badge">Урок ${lesson.number}</span>
+        <h1 class="header-title">${lesson.title}</h1>
+        <p class="header-subtitle">${lesson.subtitle}</p>
+      </div>
       <div class="header-meta">
-        <span class="meta-pill"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;opacity:0.85"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${lesson.time}</span>
-        <span class="meta-pill"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;opacity:0.85"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${lesson.level}</span>
+        <div class="header-meta-info">
+          <span class="meta-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>${lesson.time}</span>
+          <span class="meta-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 20.5v-1.8c0-2.6-2.4-4.7-5.3-4.7h-4.4c-2.9 0-5.3 2.1-5.3 4.7v1.8"/><circle cx="12" cy="7.8" r="3.8"/></svg>${lesson.level}</span>
+        </div>
         <span id="hwButtonHolder">${renderHwButton(lesson)}</span>
       </div>
     </div>
@@ -5158,6 +5347,12 @@ function statusIconSvg(innerPaths) {
   return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">${innerPaths}</svg>`;
 }
 
+const ICON_CHECK_HTML = '<span class="ico ico-check"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 12.5L9 17L19.5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+const ICON_LOCK_CLOSED_HTML = '<span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="11" width="14" height="9.5" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 11V8.5C7.5 6 9.5 4 12 4C14.5 4 16.5 6 16.5 8.5V11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></svg></span>';
+const ICON_LOCK_OPEN_HTML = '<span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="11" width="14" height="9.5" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 11V8.5C7.5 6 9.5 4 12 4C14 4 15.7 5.3 16.3 7.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></svg></span>';
+const ICON_NOTE_HTML = '<span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.5 4.5C17.4 3.6 18.8 3.6 19.6 4.5C20.5 5.3 20.5 6.7 19.6 7.6L9 18.2L4.5 19.5L5.8 15L16.5 4.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.5 6.5L17.5 9.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>';
+const ICON_SPARKLE_HTML = '<span class="ico ico-sparkle"><svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 3C12.3 6.2 13.1 8.5 14.3 10C15.5 11.5 17.5 12.4 20.5 12.7C17.5 13 15.5 13.9 14.3 15.4C13.1 16.9 12.3 19.2 12 22.4C11.7 19.2 10.9 16.9 9.7 15.4C8.5 13.9 6.5 13 3.5 12.7C6.5 12.4 8.5 11.5 9.7 10C10.9 8.5 11.7 6.2 12 3Z"/></svg></span>';
+
 const ICON_CITY = '<path d="M3 6.5L9 4L15 6.5L21 4V17.5L15 20L9 17.5L3 20V6.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="none"/><path d="M9 4V17.5M15 6.5V20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/><circle cx="12" cy="11" r="1.7" fill="currentColor" stroke="none"/>';
 const ICON_BOOK = '<path d="M12 4L22 8.5L12 13L2 8.5L12 4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/><path d="M6 10.3V14.6C6 14.6 8.4 16.6 12 16.6C15.6 16.6 18 14.6 18 14.6V10.3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"/><path d="M22 8.5V13.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="22" cy="13.8" r="0.8" fill="currentColor" stroke="none"/>';
 
@@ -5181,7 +5376,7 @@ function renderProgressScreen() {
       <div class="progress-city-card ${cls}">
         <div class="progress-city-card-num">Урок ${city.lesson}</div>
         <div class="progress-city-card-name">${isDone || isCurrent ? city.name : '???'}</div>
-        ${isDone ? '<div class="progress-city-card-lock">✓ открыт</div>' : (isCurrent ? '<div class="progress-city-card-lock">🔓 в пути</div>' : '<div class="progress-city-card-lock">🔒 закрыт</div>')}
+        ${isDone ? `<div class="progress-city-card-lock">${ICON_CHECK_HTML} открыт</div>` : (isCurrent ? `<div class="progress-city-card-lock">${ICON_LOCK_OPEN_HTML} в пути</div>` : `<div class="progress-city-card-lock">${ICON_LOCK_CLOSED_HTML} закрыт</div>`)}
       </div>
     `;
   }).join('');
@@ -5444,7 +5639,7 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
           </div>
           <div class="volume-card-meta">
             <p class="volume-card-name">Громкость произношения</p>
-            <p class="volume-card-desc">Кнопка 🔊 у слов в уроке и домашнем задании</p>
+            <p class="volume-card-desc">Кнопка-динамик у слов в уроке и домашнем задании</p>
           </div>
           <span class="volume-pct-pill" id="volumeValueBadge">250%</span>
         </div>
