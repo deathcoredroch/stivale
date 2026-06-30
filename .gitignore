@@ -1,0 +1,12 @@
+# Секреты — НИКОГДА не коммитим ключи ИИ
+server/.env
+.env
+
+# Зависимости и кэш
+node_modules/
+server/node_modules/
+audio/cache/
+
+# Системное
+.DS_Store
+Thumbs.db

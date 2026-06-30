@@ -1214,16 +1214,20 @@
     transform: scale(1.1);
   }
   .story-modal-close:active { transform: scale(0.95); }
+  /* Контейнер содержимого — НЕ скроллится сам: шапка/тулбар/кнопки закреплены,
+     скроллится только область чтения внутри (.story-reader-body). Так всё всегда
+     помещается в окне, а управляющие элементы никогда не уезжают. */
   .story-modal-scroll {
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
-    padding: 40px 48px 48px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
   }
   @media (max-width: 720px) {
     .story-modal-overlay { padding: 0; }
     .story-modal-panel { max-width: 100%; max-height: 100%; height: 100%; border-radius: 0; }
-    .story-modal-scroll { padding: 64px 22px 32px; }
   }
 
   /* СОДЕРЖИМОЕ ДОМАШКИ */
@@ -4506,21 +4510,183 @@ function maxAvailableLesson() {
 let currentStory = null;
 let lastStoryTheme = null;
 
-// Выбирает случайный сценарий (по доступным урокам), стараясь не повторять тему подряд
-function buildStory() {
-  const maxL = maxAvailableLesson();
-  let available = STORY_SCENARIOS.filter(s => s.lesson <= maxL);
-  if (!available.length) available = [STORY_SCENARIOS[0]];
-  // предпочитаем большие тексты, если они доступны (85% случаев)
-  const bigOnes = available.filter(s => s.big);
-  if (bigOnes.length && Math.random() < 0.85) available = bigOnes;
-  let pool = available.filter(s => s.theme !== lastStoryTheme);
-  if (!pool.length) pool = available;
-  const scenario = pick(pool);
-  lastStoryTheme = scenario.theme;
-  const built = scenario.build();
-  return { theme: scenario.theme, icon: scenario.icon, lesson: scenario.lesson, ...built };
+// Грамматический движок знает лексику уроков 1–3 (STORY_BANK). Слова уроков выше
+// этого номера движок корректно просклонять не может, поэтому показывает их отдельной
+// безопасной строкой-витриной (список в кавычках) — так новые уроки тоже попадают в текст.
+const BANK_MAX_LESSON = 3;
+
+// Слова из уроков НОВЕЕ грамматического движка (авто-детект из реально загруженных уроков).
+// Отсеиваем служебные слова и артикли, чтобы в витрину попадала только значимая лексика.
+function freshLessonWords(afterLesson) {
+  return buildVocabPool().filter(w => {
+    if ((w.lesson || 0) <= afterLesson) return false;
+    if (!w.it || !w.ru || w.it.length > 18 || /\d/.test(w.it)) return false;
+    const bare = storyStripArticle(w.it.toLowerCase().trim());
+    if (bare.length < 3) return false;
+    if (STORY_FUNC_WORDS.has(bare) || STORY_FUNC_WORDS.has(w.it.toLowerCase().trim())) return false;
+    return true;
+  });
 }
+
+// Фабрика добавления выделенных слов (без дублей)
+function storyAddWordFactory(words) {
+  return (it, ru) => { if (it && ru && !words.some(w => w.it === it)) words.push({ it, ru }); };
+}
+// Витрина слов из совсем новых уроков (за пределами движка) — авто-подхват новых уроков.
+// Добавляется к рассказам от 1-го лица.
+function appendFreshWordsLine(lines, addWord) {
+  const fresh = freshLessonWords(BANK_MAX_LESSON);
+  if (!fresh.length) return;
+  const picks = pickN(fresh, Math.min(3, fresh.length));
+  lines.push({
+    it: `Sto imparando anche parole nuove: ${picks.map(w => `«${w.it}»`).join(', ')}.`,
+    ru: `Ещё я учу новые слова: ${picks.map(w => w.ru).join(', ')}.`,
+  });
+  picks.forEach(w => addWord(w.it, w.ru));
+}
+
+// ── Структура 1: автопортрет (1-е лицо) ──
+function storyAutoportrait(maxL) {
+  const p = pick(STORY_BANK.nomi), g = p.g;
+  const lines = [], words = [], addWord = storyAddWordFactory(words);
+  const greet = pick(['Ciao', 'Buongiorno']);
+  lines.push({ it: `${greet}! Io sono ${p.it}.`, ru: `${greet === 'Ciao' ? 'Привет' : 'Добрый день'}! Я ${p.ru}.` });
+  const naz = pick(STORY_BANK.nazioni), nazIt = agreeAdj(naz, g);
+  const prof = g === 'f' ? 'studentessa' : 'studente', profRu = g === 'f' ? 'студентка' : 'студент';
+  lines.push({ it: `Sono ${nazIt} e sono ${prof}.`, ru: `Я ${adjRu(naz, g)}, я ${profRu}.` });
+  addWord(nazIt, adjRu(naz, g)); addWord(prof, profRu);
+  if (maxL >= 2) {
+    const [a1, a2, a3] = pickN(STORY_BANK.caratteri, 3);
+    const adv = pick(['molto', 'davvero', 'sempre']);
+    const advRu = { molto: 'очень', davvero: 'по-настоящему', sempre: 'всегда' }[adv];
+    lines.push({ it: `Sono una persona ${agreeAdj(a1, 'f')}, ${agreeAdj(a2, 'f')} e ${adv} ${agreeAdj(a3, 'f')}.`,
+      ru: `Я ${adjRu(a1, g)}, ${adjRu(a2, g)} и ${advRu} ${adjRu(a3, g)}.` });
+    addWord(agreeAdj(a1, 'f'), adjRu(a1, g)); addWord(agreeAdj(a2, 'f'), adjRu(a2, g)); addWord(agreeAdj(a3, 'f'), adjRu(a3, g));
+  }
+  if (maxL >= 3) {
+    const [q1, q2] = pickN(STORY_BANK.qualita, 2), room = pick(STORY_BANK.stanze), [m1, m2] = pickN(STORY_BANK.mobili, 2);
+    lines.push({ it: `${cap(STORY_HOME.poss)} ${STORY_HOME.it} è ${agreeAdj(q1, STORY_HOME.itG)} e ${agreeAdj(q2, STORY_HOME.itG)}.`,
+      ru: `Мой ${STORY_HOME.ru} ${qRu(q1, STORY_HOME.ruG)} и ${qRu(q2, STORY_HOME.ruG)}.` });
+    lines.push({ it: `${room.locIt} c'è ${m1.indef} ${m1.it} e ${m2.indef} ${m2.it}.`,
+      ru: `${room.locRu} есть ${m1.ru} и ${m2.ru}.` });
+    addWord(agreeAdj(q1, STORY_HOME.itG), qRu(q1, STORY_HOME.ruG)); addWord(m1.it, m1.ru); addWord(m2.it, m2.ru);
+  }
+  appendFreshWordsLine(lines, addWord);
+  lines.push({ it: `Mi piace molto studiare l'italiano!`, ru: `Мне очень нравится учить итальянский!` });
+  return { theme: pick(['Обо мне', 'Рассказ о себе']), icon: ICON_STORY_SELF, lines, words };
+}
+
+// ── Структура 2: портрет человека (3-е лицо) ──
+function storyThirdPerson(maxL) {
+  const p = pick(STORY_BANK.nomi), g = p.g;
+  const pron = g === 'f' ? 'Она' : 'Он', poss = g === 'f' ? 'Её' : 'Его';
+  const lines = [], words = [], addWord = storyAddWordFactory(words);
+  const naz = pick(STORY_BANK.nazioni), nazIt = agreeAdj(naz, g);
+  lines.push({ it: `${p.it} è ${nazIt}.`, ru: `${p.ru} — ${adjRu(naz, g)}.` });
+  addWord(nazIt, adjRu(naz, g));
+  if (maxL >= 2) {
+    const [a1, a2] = pickN(STORY_BANK.caratteri, 2);
+    lines.push({ it: `È una persona ${agreeAdj(a1, 'f')} e molto ${agreeAdj(a2, 'f')}.`,
+      ru: `${pron} ${adjRu(a1, g)} и очень ${adjRu(a2, g)}.` });
+    addWord(agreeAdj(a1, 'f'), adjRu(a1, g)); addWord(agreeAdj(a2, 'f'), adjRu(a2, g));
+  }
+  if (maxL >= 3) {
+    const q = pick(STORY_BANK.qualita), room = pick(STORY_BANK.stanze), [m1, m2] = pickN(STORY_BANK.mobili, 2);
+    lines.push({ it: `La sua ${STORY_HOME.it} è ${agreeAdj(q, STORY_HOME.itG)}.`,
+      ru: `${poss} ${STORY_HOME.ru} ${qRu(q, STORY_HOME.ruG)}.` });
+    lines.push({ it: `${room.locIt} c'è ${m1.indef} ${m1.it} e ${m2.indef} ${m2.it}.`,
+      ru: `${room.locRu} есть ${m1.ru} и ${m2.ru}.` });
+    addWord(agreeAdj(q, STORY_HOME.itG), qRu(q, STORY_HOME.ruG)); addWord(m1.it, m1.ru); addWord(m2.it, m2.ru);
+  }
+  lines.push({ it: `${p.it} è molto felice!`, ru: `${p.ru} очень счастлив${g === 'f' ? 'а' : ''}!` });
+  return { theme: pick(['Портрет', 'Человек']), icon: ICON_STORY_PERSON, lines, words };
+}
+
+// ── Структура 3: два друга (сравнение) ── (нужен урок 2)
+function storyTwoFriends(maxL) {
+  const [p1, p2] = pickTwo(STORY_BANK.nomi);
+  const lines = [], words = [], addWord = storyAddWordFactory(words);
+  const amici = amiciForm(p1.g, p2.g), amiciRu = amici === 'amiche' ? 'подруги' : 'друзья';
+  lines.push({ it: `${p1.it} e ${p2.it} sono ${amici}.`, ru: `${p1.ru} и ${p2.ru} — ${amiciRu}.` });
+  const [a1, a2] = pickTwo(STORY_BANK.caratteri);
+  lines.push({ it: `${p1.it} è ${agreeAdj(a1, p1.g)}, ma ${p2.it} è ${agreeAdj(a2, p2.g)}.`,
+    ru: `${p1.ru} ${adjRu(a1, p1.g)}, а ${p2.ru} ${adjRu(a2, p2.g)}.` });
+  addWord(agreeAdj(a1, p1.g), adjRu(a1, p1.g)); addWord(agreeAdj(a2, p2.g), adjRu(a2, p2.g));
+  const n1 = pick(STORY_BANK.nazioni), n2 = pick(STORY_BANK.nazioni);
+  lines.push({ it: `${p1.it} è ${agreeAdj(n1, p1.g)}, ${p2.it} è ${agreeAdj(n2, p2.g)}.`,
+    ru: `${p1.ru} ${adjRu(n1, p1.g)}, ${p2.ru} ${adjRu(n2, p2.g)}.` });
+  addWord(agreeAdj(n1, p1.g), adjRu(n1, p1.g));
+  if (maxL >= 3) {
+    const [q1, q2] = pickN(STORY_BANK.qualita, 2);
+    lines.push({ it: `La casa di ${p1.it} è ${agreeAdj(q1, 'f')}, la casa di ${p2.it} è ${agreeAdj(q2, 'f')}.`,
+      ru: `Дом ${p1.ru} ${qRu(q1, 'm')}, а дом ${p2.ru} ${qRu(q2, 'm')}.` });
+    addWord(agreeAdj(q1, 'f'), qRu(q1, 'm'));
+  }
+  return { theme: pick(['Два друга', 'Друзья']), icon: ICON_STORY_FRIENDS, lines, words };
+}
+
+// ── Структура 4: диалог (только essere / c'è) ──
+function storyDialogue(maxL) {
+  const p = pick(STORY_BANK.nomi), g = p.g;
+  const lines = [], words = [], addWord = storyAddWordFactory(words);
+  const naz = pick(STORY_BANK.nazioni), nazIt = agreeAdj(naz, g);
+  lines.push({ it: `– Ciao! Chi sei?`, ru: `– Привет! Ты кто?` });
+  lines.push({ it: `– Sono ${p.it}, sono ${nazIt}.`, ru: `– Я ${p.ru}, я ${adjRu(naz, g)}.` });
+  addWord(nazIt, adjRu(naz, g));
+  if (maxL >= 2) {
+    const [a1, a2] = pickN(STORY_BANK.caratteri, 2);
+    lines.push({ it: `– Come sei?`, ru: `– Какой ты?` });
+    lines.push({ it: `– Sono ${agreeAdj(a1, g)} e ${agreeAdj(a2, g)}.`, ru: `– Я ${adjRu(a1, g)} и ${adjRu(a2, g)}.` });
+    addWord(agreeAdj(a1, g), adjRu(a1, g)); addWord(agreeAdj(a2, g), adjRu(a2, g));
+  }
+  if (maxL >= 3) {
+    const room = pick(STORY_BANK.stanze), m1 = pick(STORY_BANK.mobili), q = pick(STORY_BANK.qualita);
+    lines.push({ it: `– Com'è la tua ${STORY_HOME.it}?`, ru: `– Какой у тебя ${STORY_HOME.ru}?` });
+    lines.push({ it: `– È ${agreeAdj(q, STORY_HOME.itG)}. ${room.locIt} c'è ${m1.indef} ${m1.it}.`,
+      ru: `– ${cap(qRu(q, STORY_HOME.ruG))}. ${room.locRu} есть ${m1.ru}.` });
+    addWord(agreeAdj(q, STORY_HOME.itG), qRu(q, STORY_HOME.ruG)); addWord(m1.it, m1.ru);
+  }
+  return { theme: pick(['Диалог', 'Разговор']), icon: ICON_STORY_GREETING, lines, words };
+}
+
+// ── Структура 5: экскурсия по дому ── (нужен урок 3)
+function storyHomeTour(maxL) {
+  const lines = [], words = [], addWord = storyAddWordFactory(words);
+  const [q1, q2] = pickN(STORY_BANK.qualita, 2);
+  const [r1, r2, r3] = pickN(STORY_BANK.stanze, 3);
+  const [m1, m2, m3, m4] = pickN(STORY_BANK.mobili, 4);
+  lines.push({ it: `Questa è ${STORY_HOME.poss} ${STORY_HOME.it}. È ${agreeAdj(q1, STORY_HOME.itG)} e ${agreeAdj(q2, STORY_HOME.itG)}.`,
+    ru: `Это мой ${STORY_HOME.ru}. Он ${qRu(q1, STORY_HOME.ruG)} и ${qRu(q2, STORY_HOME.ruG)}.` });
+  lines.push({ it: `${r1.locIt} c'è ${m1.indef} ${m1.it} e ${m2.indef} ${m2.it}.`, ru: `${r1.locRu} есть ${m1.ru} и ${m2.ru}.` });
+  lines.push({ it: `${r2.locIt} c'è ${m3.indef} ${m3.it}.`, ru: `${r2.locRu} есть ${m3.ru}.` });
+  lines.push({ it: `${r3.locIt} ci sono anche due ${m4.plur}.`, ru: `${r3.locRu} есть ещё ${m4.ruDue}.` });
+  addWord(agreeAdj(q1, STORY_HOME.itG), qRu(q1, STORY_HOME.ruG)); addWord(m1.it, m1.ru); addWord(m2.it, m2.ru); addWord(m3.it, m3.ru);
+  appendFreshWordsLine(lines, addWord);
+  lines.push({ it: `Mi piace molto ${STORY_HOME.poss} ${STORY_HOME.it}!`, ru: `Мне очень нравится мой ${STORY_HOME.ru}!` });
+  return { theme: pick(['Мой дом', 'Моя квартира', 'Экскурсия по дому']), icon: ICON_STORY_HOUSE, lines, words };
+}
+
+// Диспетчер: каждый раз выбираем РАЗНУЮ структуру (не повторяем предыдущую),
+// перемешивая лексику всех доступных уроков. Работает без сервера.
+let lastStoryStructure = null;
+function buildMixedStory() {
+  const maxL = maxAvailableLesson();
+  const builders = (maxL >= 3)
+    ? [storyAutoportrait, storyThirdPerson, storyTwoFriends, storyDialogue, storyHomeTour]
+    : (maxL >= 2)
+      ? [storyAutoportrait, storyThirdPerson, storyTwoFriends, storyDialogue]
+      : [storyAutoportrait];
+  let pool = builders.filter(b => b !== lastStoryStructure);
+  if (!pool.length) pool = builders;
+  const builder = pick(pool);
+  lastStoryStructure = builder;
+  const built = builder(maxL);
+  lastStoryTheme = built.theme;
+  return { theme: built.theme, icon: built.icon, lesson: maxL, lines: built.lines, words: built.words.slice(0, 9) };
+}
+
+// Точка входа оффлайн-генератора: всегда строим перемешанный связный рассказ
+function buildStory() { return buildMixedStory(); }
 
 // Подсвечивает выделенные слова прямо в итальянском тексте (кликабельны → озвучка)
 function highlightStoryLine(itText, words) {
@@ -4626,18 +4792,21 @@ function ensureStoryStyles() {
       border: 1px solid var(--line, #ece2d4);
       padding: 5px 11px; border-radius: 100px;
     }
-    /* ═══ Полноэкранный ридер истории ═══ */
-    .story-reader { display: flex; flex-direction: column; }
-    .story-reader-head { padding-right: 48px; margin-bottom: 18px; }
+    /* ═══ Полноэкранный ридер истории ═══
+       Каркас: шапка + тулбар закреплены сверху, кнопки — снизу, между ними
+       прокручивается только область чтения. Всё всегда помещается в окне. */
+    .story-reader { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+    .story-reader-head { flex: 0 0 auto; padding: 38px 56px 0 48px; margin-bottom: 16px; }
     .story-reader-head .story-theme { margin-bottom: 8px; }
     .story-reader .story-title {
       font-family: Georgia, 'Times New Roman', serif;
       font-size: 18px; font-style: italic; color: #75695a; margin: 6px 0 0;
     }
-    /* Панель инструментов чтения */
+    /* Панель инструментов чтения (закреплена) */
     .story-reader-toolbar {
+      flex: 0 0 auto;
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      padding-bottom: 18px; margin-bottom: 8px;
+      padding: 0 48px 16px; margin: 0;
       border-bottom: 1px solid var(--line, #ece2d4);
     }
     .story-tool-btn {
@@ -4665,37 +4834,44 @@ function ensureStoryStyles() {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 12.5px; color: #9a8f80;
     }
-    /* Тело: текст слева, словарь справа */
-    .story-reader-body { display: flex; gap: 28px; align-items: flex-start; margin-top: 22px; }
+    /* Тело: текст слева, словарь справа — ЕДИНСТВЕННАЯ прокручиваемая область */
+    .story-reader-body {
+      flex: 1 1 auto; min-height: 0; overflow-y: auto;
+      display: flex; gap: 32px; align-items: flex-start;
+      padding: 20px 48px; margin: 0;
+    }
     .story-reader-main { flex: 1 1 auto; min-width: 0; }
     .story-reader-aside { flex: 0 0 232px; }
-    /* Предложения */
+    /* Связный текст: единый абзац, предложения идут подряд (это ТЕКСТ, а не список) */
+    .story-prose {
+      margin: 0;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 20px; line-height: 1.85; color: var(--ink, #2e2a24);
+      letter-spacing: .1px;
+    }
     .story-sentence {
-      position: relative;
-      display: flex; gap: 12px; align-items: flex-start;
-      padding: 12px 14px; margin: 0 0 4px; border-radius: 12px;
-      transition: background .2s ease;
+      cursor: pointer; border-radius: 5px;
+      padding: 1px 2px; margin: 0 -1px;
+      transition: background .18s ease, box-shadow .18s ease;
+      -webkit-box-decoration-break: clone; box-decoration-break: clone;
     }
-    .story-sentence.is-active { background: linear-gradient(90deg, rgba(193,84,58,.10), rgba(193,84,58,.02)); }
-    .story-sentence.is-active::before {
-      content: ''; position: absolute; left: 0; top: 9px; bottom: 9px;
-      width: 3px; border-radius: 3px; background: var(--terracotta, #c1543a);
+    .story-sentence:hover { background: rgba(193,84,58,.07); }
+    .story-sentence.is-active { background: rgba(193,84,58,.14); box-shadow: 0 0 0 1px rgba(193,84,58,.12); }
+    /* Перевод — отдельным аккуратным блоком под текстом (а не построчно), читается как текст */
+    .story-prose-ru {
+      margin-top: 18px; padding: 16px 18px;
+      background: var(--cream, #f7f1e6); border: 1px solid var(--line, #ece2d4);
+      border-left: 3px solid var(--terracotta, #c1543a); border-radius: 12px;
+      animation: hwRevealFade .25s ease;
     }
-    .story-sentence-play {
-      flex-shrink: 0; margin-top: 3px;
-      width: 30px; height: 30px; border-radius: 50%;
-      border: 1px solid rgba(193,84,58,.25); background: rgba(193,84,58,.07);
-      color: var(--terracotta, #c1543a); cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: .15s ease;
+    .story-prose-ru[hidden] { display: none; }
+    .story-prose-ru-label {
+      display: block; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em;
+      color: #9a8f80; margin-bottom: 7px;
     }
-    .story-sentence-play:hover { background: var(--terracotta, #c1543a); color: #fff; transform: scale(1.08); }
-    .story-sentence-play svg { width: 11px; height: 11px; margin-left: 1px; }
-    .story-sentence-text { flex: 1 1 auto; min-width: 0; }
-    .story-reader-main .story-it { font-size: 19px; line-height: 1.6; color: var(--ink, #2e2a24); font-family: Georgia, 'Times New Roman', serif; }
-    .story-reader-main .story-ru { display: none; font-size: 14px; line-height: 1.45; color: #8a7d6e; margin-top: 5px; }
-    .story-reader-main.show-ru .story-ru { display: block; animation: hwRevealFade .25s ease; }
-    @keyframes hwRevealFade { from { opacity: 0; } to { opacity: 1; } }
+    .story-prose-ru p { margin: 0; font-size: 15px; line-height: 1.6; color: #6e6052; }
+    @keyframes hwRevealFade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
     .story-word.flash { background: var(--terracotta, #c1543a) !important; color: #fff !important; border-bottom-color: transparent !important; }
     /* Словарь */
     .story-aside-title {
@@ -4721,14 +4897,19 @@ function ensureStoryStyles() {
     .story-vocab-empty { font-size: 13px; color: #9a8f80; margin: 0; }
     /* Подвал */
     .story-reader-foot {
+      flex: 0 0 auto;
       display: flex; gap: 10px; flex-wrap: wrap;
-      margin-top: 26px; padding-top: 20px;
+      margin: 0; padding: 16px 48px 20px;
       border-top: 1px solid var(--line, #ece2d4);
+      background: var(--paper);
     }
     @media (max-width: 720px) {
-      .story-reader-body { flex-direction: column; gap: 20px; }
+      .story-reader-head { padding: 24px 56px 0 22px; }
+      .story-reader-toolbar { padding: 0 22px 14px; }
+      .story-reader-body { flex-direction: column; gap: 20px; padding: 16px 22px; }
       .story-reader-aside { flex: 1 1 auto; width: 100%; }
       .story-reader-progress { margin-left: 0; width: 100%; }
+      .story-reader-foot { padding: 14px 22px 18px; }
     }
     .story-text {
       position: relative;
@@ -4855,22 +5036,27 @@ function collectLessonWords() {
     if (st && st !== k && !(st in map)) { map[st] = ru || ''; list.push(st); }
   };
   (Array.isArray(lessons) ? lessons : []).forEach(les => {
-    if (!les.sectionsHTML) return;
-    const div = document.createElement('div');
-    div.innerHTML = les.sectionsHTML;
-    div.querySelectorAll('td[data-word], [data-word]').forEach(el => {
-      const w = (el.getAttribute('data-word') || '').trim();
-      if (!w) return;
-      let ru = '';
-      const nx = el.nextElementSibling;
-      if (el.tagName === 'TD' && nx && !nx.hasAttribute('data-word')) ru = nx.textContent.trim();
-      ru = ru.replace(/\s*\(.*?\)\s*/g, '').trim();
-      add(w, ru);
+    // читаем и тело урока, и ДЗ — так в общий словарь попадает вся лексика урока
+    [les.sectionsHTML, les.homeworkHTML].forEach(html => {
+      if (!html) return;
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      div.querySelectorAll('td[data-word], [data-word]').forEach(el => {
+        const w = (el.getAttribute('data-word') || '').trim();
+        if (!w) return;
+        let ru = '';
+        const nx = el.nextElementSibling;
+        if (el.tagName === 'TD' && nx && !nx.hasAttribute('data-word')) ru = nx.textContent.trim();
+        ru = ru.replace(/\s*\(.*?\)\s*/g, '').trim();
+        add(w, ru);
+      });
     });
   });
   return { map, list };
 }
-// Чистый список значимых слов для промпта (без артиклей и служебных, без дублей)
+// Чистый список значимых слов для промпта (без артиклей и служебных, без дублей).
+// Порядок ПЕРЕМЕШИВАЕТСЯ: иначе при срезе до 80 слов доминировали бы ранние уроки,
+// а нам нужно, чтобы ИИ мешал лексику из РАЗНЫХ уроков (в т.ч. недавно добавленных).
 function cleanAllowedWords(list) {
   const out = []; const seen = new Set();
   list.forEach(w => {
@@ -4881,6 +5067,11 @@ function cleanAllowedWords(list) {
     if (seen.has(s)) return;
     seen.add(s); out.push(s);
   });
+  // перемешивание (Fisher–Yates) для равномерного представительства всех уроков
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
   return out.slice(0, 80);
 }
 // Грамматические темы по доступным урокам — что именно закрепляем
@@ -4889,6 +5080,7 @@ function storyGrammarTopics(maxL) {
   if (maxL >= 1) t.push('il verbo essere', 'articoli il/la/un/una', 'maschile e femminile');
   if (maxL >= 2) t.push("accordo dell'aggettivo (genere e numero)", 'nazionalità', 'professioni', 'aggettivi di carattere');
   if (maxL >= 3) t.push("c'è / ci sono", 'preposizioni di luogo', 'la casa, le stanze e i mobili');
+  if (maxL > 3) t.push('il lessico delle lezioni recenti'); // новые уроки тоже учитываются
   return t.join(', ');
 }
 
@@ -5002,14 +5194,13 @@ function storyPlural(n, one, few, many) {
 // Полная разметка истории — премиальный ридер: панель чтения слева, словарь справа,
 // последовательное озвучивание с подсветкой, перевод по переключателю.
 function renderStoryFullHTML(s) {
-  const sentencesHTML = s.lines.map((ln, i) =>
-    `<div class="story-sentence" data-idx="${i}">
-       <button type="button" class="story-sentence-play" data-idx="${i}" aria-label="Прослушать предложение">${ICON_PLAY_SVG}</button>
-       <div class="story-sentence-text">
-         <div class="story-it">${highlightStoryLine(ln.it, s.words)}</div>
-         <div class="story-ru">${ln.ru || ''}</div>
-       </div>
-     </div>`).join('');
+  // Связный текст: предложения идут подряд внутри одного абзаца (как настоящая проза),
+  // а не отдельными карточками. Каждое предложение — кликабельный span (озвучка + подсветка).
+  const proseHTML = s.lines.map((ln, i) =>
+    `<span class="story-sentence" data-idx="${i}">${highlightStoryLine(ln.it, s.words)}</span>`
+  ).join(' ');
+
+  const ruText = s.lines.map(l => l.ru).filter(Boolean).join(' ');
 
   const vocabHTML = s.words.length
     ? s.words.map(w =>
@@ -5043,8 +5234,12 @@ function renderStoryFullHTML(s) {
       </div>
 
       <div class="story-reader-body">
-        <div class="story-reader-main" id="storyTextFull">
-          ${sentencesHTML}
+        <div class="story-reader-main">
+          <p class="story-prose" id="storyTextFull">${proseHTML}</p>
+          <div class="story-prose-ru" id="storyProseRu" hidden>
+            <span class="story-prose-ru-label">Перевод</span>
+            <p>${ruText}</p>
+          </div>
         </div>
         <aside class="story-reader-aside">
           <p class="story-aside-title">Слова истории</p>
@@ -5128,18 +5323,21 @@ function sayVocab(word, el) {
 }
 
 function bindStoryFullHandlers(container) {
+  // слово → озвучка слова (не даём всплыть до клика по предложению)
   container.querySelectorAll('.story-word').forEach(el =>
     el.addEventListener('click', (e) => { e.stopPropagation(); sayStory(el.dataset.word, el); }));
-  container.querySelectorAll('.story-sentence-play').forEach(btn =>
-    btn.addEventListener('click', () => playOneSentence(Number(btn.dataset.idx))));
+  // клик по предложению → озвучка этого предложения с подсветкой
+  container.querySelectorAll('.story-sentence').forEach(span =>
+    span.addEventListener('click', () => playOneSentence(Number(span.dataset.idx))));
   container.querySelectorAll('.story-vocab-item').forEach(el =>
     el.addEventListener('click', () => sayVocab(el.dataset.word, el)));
   const playAll = container.querySelector('#storyPlayAllBtn');
   if (playAll) playAll.addEventListener('click', playWholeStory);
   const transBtn = container.querySelector('#storyTransBtnFull');
   if (transBtn) transBtn.addEventListener('click', () => {
-    const box = container.querySelector('#storyTextFull');
-    const on = box.classList.toggle('show-ru');
+    const ru = container.querySelector('#storyProseRu');
+    const on = ru.hasAttribute('hidden');
+    if (on) ru.removeAttribute('hidden'); else ru.setAttribute('hidden', '');
     transBtn.classList.toggle('is-active', on);
     transBtn.querySelector('.story-tool-label').textContent = on ? 'Скрыть перевод' : 'Перевод';
   });
