@@ -250,6 +250,76 @@ app.get('/api/story', async (req, res) => {
   }
 });
 
+// ============================================================================
+//  РАЗБОР ГРАММАТИКИ  —  /api/explain
+//  Берёт предложения текста и объясняет грамматику ПО-РУССКИ, фраза за фразой,
+//  чтобы ученица поняла, ПОЧЕМУ каждая форма именно такая.
+// ============================================================================
+function buildExplainPrompt(sentences) {
+  const system =
+`Sei un'insegnante d'italiano madrelingua per una studentessa russofona di livello A1-A2.
+COMPITO: spiegare la GRAMMATICA del testo dato, frase per frase, in RUSSO semplice e chiaro, così che la studentessa capisca PERCHÉ ogni forma è esattamente così, senza altre domande.
+Per OGNI frase elenca i punti chiave, riferendoti alle parole concrete della frase:
+- forme del verbo essere (sono/sei/è/siamo/siete/sono) e a chi si riferiscono;
+- scelta dell'articolo: perché il/lo/la/l'/i/gli/le (determinativo) o un/uno/una (indeterminativo), in base a genere/numero/lettera iniziale;
+- accordo dell'aggettivo: perché finisce in -o/-a/-i/-e (genere e numero del sostantivo);
+- strutture c'è (singolare) / ci sono (plurale);
+- preposizioni (in, a, su, di, con, nel, sul...) e possessivi (la mia, il mio, la sua...);
+- plurali e numeri.
+Spiega in modo BREVE, concreto e SENZA gergo complicato. TUTTE le spiegazioni sono in RUSSO.
+Rispondi SOLO con un oggetto JSON valido, senza testo prima o dopo.`;
+
+  const user =
+`Testo da analizzare (una frase per riga):
+${sentences.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+Per ogni frase dai un blocco. Rispondi con questo JSON ESATTO:
+{"blocks":[{"title":"<la frase italiana esatta>","notes":[{"term":"<parola o forma dalla frase>","text":"<spiegazione in russo: что это и почему именно так>"}]}]}`;
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
+function parseExplain(raw) {
+  if (!raw) return null;
+  let t = String(raw).trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a >= 0 && b > a) t = t.slice(a, b + 1);
+  let d;
+  try { d = JSON.parse(t); } catch (e) { return null; }
+  if (!d || !Array.isArray(d.blocks)) return null;
+  const blocks = d.blocks.map((bl) => ({
+    title: String(bl.title || '').trim(),
+    notes: Array.isArray(bl.notes)
+      ? bl.notes.map((n) => ({ term: String(n.term || '').trim(), text: String(n.text || '').trim() })).filter((n) => n.text)
+      : [],
+  })).filter((bl) => bl.title && bl.notes.length);
+  return blocks.length ? blocks : null;
+}
+
+app.get('/api/explain', async (req, res) => {
+  try {
+    const text = String(req.query.text || '').trim();
+    const sentences = text.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 12);
+    if (!sentences.length) return res.status(400).json({ error: 'no text provided' });
+
+    console.log(`🔍 Explain: ${sentences.length} фраз · ${providerLabel()}`);
+    const { content, provider } = await callAI(buildExplainPrompt(sentences), 0.35); // низкая температура → точность
+    const blocks = parseExplain(content);
+    if (!blocks) {
+      console.error('✗ Explain: не удалось разобрать JSON ИИ');
+      return res.status(502).json({ error: 'bad AI output' });
+    }
+    console.log(`✓ Explain: ${blocks.length} блоков (${provider})`);
+    res.json({ breakdown: blocks, provider });
+  } catch (e) {
+    console.error('✗ Explain error:', e.message);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🎤 Сервер запущен на порту ${PORT}`);
   console.log(`📁 Кэш озвучки: ${CACHE_DIR}`);

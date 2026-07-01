@@ -1227,7 +1227,84 @@
   }
   @media (max-width: 720px) {
     .story-modal-overlay { padding: 0; }
-    .story-modal-panel { max-width: 100%; max-height: 100%; height: 100%; border-radius: 0; }
+    /* на мобильном — полноэкранно и БЕЗ scale-анимации (иначе scale .985 даёт зазоры по краям) */
+    .story-modal-panel { max-width: 100%; max-height: 100%; height: 100%; border-radius: 0; animation: none; }
+  }
+
+  /* ══ Окно словарного тренажёра (каркас .story-modal-*) ══ */
+  @keyframes vocabFade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .vocab-reader { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .vocab-reader-head { flex: 0 0 auto; display: flex; align-items: center; gap: 14px; padding: 34px 56px 16px 32px; }
+  .vocab-reader-titlewrap { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .vocab-reader-title { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; font-weight: 700; color: var(--ink); }
+  .vocab-reader-sub { font-size: 13px; color: #9a8f80; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .vocab-ring { flex-shrink: 0; }
+  .vocab-ring-pct { font-size: 11px; font-weight: 800; fill: var(--olive, #7a8a4e); font-family: -apple-system, sans-serif; }
+  .vocab-reader-toolbar { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 32px 16px; border-bottom: 1px solid var(--line); }
+  .vocab-tool-btn { display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 100px; cursor: pointer; border: 1px solid var(--line); background: var(--cream); color: var(--ink); transition: .15s ease; }
+  .vocab-tool-btn .ico { width: 15px; height: 15px; display: inline-flex; }
+  .vocab-tool-btn:hover { border-color: #c9bfae; }
+  .vocab-tool-btn.is-active { background: var(--terracotta-soft); border-color: rgba(193,84,58,.4); color: var(--terracotta); }
+  .vocab-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .vocab-chip { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 100px; cursor: pointer; border: 1px solid var(--line); background: var(--paper); color: #75695a; transition: .15s ease; }
+  .vocab-chip:hover { border-color: #c9bfae; }
+  .vocab-chip.is-active { background: var(--olive); border-color: var(--olive); color: #fff; }
+  .vocab-reader-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 24px 32px; }
+  /* Карточка */
+  .vocab-card-view { display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 460px; margin: 0 auto; }
+  .vocab-flashcard { position: relative; width: 100%; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 36px 26px; background: linear-gradient(165deg, #fffaf3 0%, #fdf3e8 100%); border: 1.5px solid var(--line); border-radius: 20px; cursor: pointer; box-shadow: 0 10px 30px rgba(35,25,15,.08); transition: transform .15s ease, box-shadow .15s ease; }
+  .vocab-flashcard:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(35,25,15,.12); }
+  .vocab-fc-speak { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(193,84,58,.25); background: rgba(193,84,58,.07); color: var(--terracotta); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: .15s ease; }
+  .vocab-fc-speak:hover { background: var(--terracotta); color: #fff; transform: scale(1.08); }
+  .vocab-fc-speak .cs { width: 18px; height: 18px; }
+  .vocab-fc-speak.speaking { background: var(--terracotta); color: #fff; }
+  .vocab-fc-word { font-family: Georgia, 'Times New Roman', serif; font-size: 30px; font-weight: 700; color: var(--ink); line-height: 1.2; }
+  .vocab-fc-back { display: none; flex-direction: column; align-items: center; gap: 10px; }
+  .vocab-flashcard.is-revealed .vocab-fc-back { display: flex; animation: vocabFade .25s ease; }
+  .vocab-fc-divider { width: 40px; height: 2px; background: var(--terracotta); opacity: .3; border-radius: 2px; }
+  .vocab-fc-answer { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 20px; font-weight: 600; color: var(--terracotta); }
+  .vocab-flashcard.is-revealed .vocab-fc-hint { display: none; }
+  .vocab-fc-hint { font-size: 12px; color: #b8af9f; font-family: -apple-system, sans-serif; }
+  .vocab-card-actions { display: flex; gap: 10px; width: 100%; }
+  .vocab-card-actions.is-hidden { display: none; }
+  .vocab-act { flex: 1; font: inherit; font-size: 14px; font-weight: 600; padding: 13px 10px; border-radius: 12px; cursor: pointer; border: 1.5px solid var(--line); background: var(--paper); color: #75695a; transition: .15s ease; }
+  .vocab-act:hover { border-color: #c9bfae; }
+  .vocab-act-known { background: var(--olive); border-color: var(--olive); color: #fff; }
+  .vocab-act-known:hover { background: #5c7a3a; }
+  .vocab-kbd-hint { font-size: 11.5px; color: #b8af9f; text-align: center; margin: 0; font-family: -apple-system, sans-serif; }
+  /* Список слов */
+  .vocab-list { display: flex; flex-direction: column; gap: 7px; max-width: 560px; margin: 0 auto; }
+  .vocab-list-row { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; padding: 11px 14px; border-radius: 12px; cursor: pointer; font: inherit; background: var(--cream); border: 1px solid var(--line); transition: .15s ease; }
+  .vocab-list-row:hover { border-color: rgba(193,84,58,.35); background: #fbf4ea; }
+  .vocab-list-row.speaking { background: var(--terracotta-soft); }
+  .vocab-list-dot { flex-shrink: 0; width: 9px; height: 9px; border-radius: 50%; }
+  .vocab-list-dot.new { background: #c9bfae; }
+  .vocab-list-dot.learning { background: #d9a441; }
+  .vocab-list-dot.learned { background: var(--olive); }
+  .vocab-list-it { font-weight: 700; color: var(--ink); font-size: 15px; }
+  .vocab-list-ru { flex: 1 1 auto; color: #9a8f80; font-size: 13.5px; }
+  .vocab-list-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 3px 9px; border-radius: 100px; flex-shrink: 0; }
+  .vocab-list-badge.new { background: var(--cream); color: #b8af9f; }
+  .vocab-list-badge.learning { background: #fbeccd; color: #b07d1e; }
+  .vocab-list-badge.learned { background: var(--olive-soft); color: #5c7a3a; }
+  .vocab-empty-note { font-size: 14px; color: #9a8f80; text-align: center; padding: 30px 0; }
+  /* Подвал */
+  .vocab-reader-foot { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 32px 18px; border-top: 1px solid var(--line); background: var(--paper); }
+  .vocab-foot-stat { font-size: 12.5px; color: #9a8f80; font-family: -apple-system, sans-serif; }
+  .vocab-reset-btn { margin-left: auto; font: inherit; font-size: 12.5px; font-weight: 600; padding: 8px 14px; border-radius: 100px; cursor: pointer; border: 1px solid var(--line); background: var(--paper); color: #9a8f80; transition: .15s ease; }
+  .vocab-reset-btn:hover { border-color: #d98a6a; color: var(--terracotta); }
+  /* Кнопка «Открыть тренажёр» в компактной карточке */
+  .vocab-open-btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; margin-top: 12px; padding: 10px; border-radius: 10px; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600; border: 1.5px solid var(--line); background: var(--paper); color: var(--terracotta); transition: .15s ease; }
+  .vocab-open-btn .ico { width: 15px; height: 15px; display: inline-flex; }
+  .vocab-open-btn:hover { background: var(--terracotta); border-color: var(--terracotta); color: #fff; }
+  @media (max-width: 720px) {
+    .vocab-reader-head { padding: 22px 56px 14px 20px; }
+    .vocab-reader-toolbar { padding: 0 20px 14px; }
+    .vocab-reader-body { padding: 18px 20px; }
+    .vocab-reader-foot { padding: 12px 20px 16px; }
+    .vocab-chips { margin-left: 0; width: 100%; }
+    .vocab-fc-word { font-size: 26px; }
+    .vocab-reader-title { font-size: 19px; }
   }
 
   /* СОДЕРЖИМОЕ ДОМАШКИ */
@@ -1433,6 +1510,55 @@
     .hw-answers, .hw-translation { animation: none; }
     .hw-reveal-btn, .hw-reveal-caret { transition: none; }
   }
+
+  /* ══ Раскрывающиеся ответы/перевод в уроках — нативный <details class="reveal answer|translation">.
+     Стиль применяется САМ, без JS. Автору урока достаточно написать такой блок. ══ */
+  details.reveal { margin: 12px 0 0; }
+  details.reveal + details.reveal { margin-top: 8px; }
+  details.reveal > summary {
+    list-style: none; -webkit-appearance: none;
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer; user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px; font-weight: 600;
+    color: var(--terracotta); background: var(--terracotta-soft);
+    border: 1px solid rgba(193,84,58,0.25);
+    padding: 9px 16px; border-radius: 100px;
+    transition: 0.15s ease;
+  }
+  details.reveal > summary::-webkit-details-marker { display: none; }
+  details.reveal > summary::before {
+    content: ''; width: 15px; height: 15px; flex-shrink: 0;
+    background: currentColor;
+    -webkit-mask: var(--reveal-ico) center/contain no-repeat;
+            mask: var(--reveal-ico) center/contain no-repeat;
+  }
+  details.reveal.answer > summary {
+    --reveal-ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><circle cx='8' cy='8' r='4.3'/><path d='M11.2 11.2 19.5 19.5M16.5 16.5 18.5 14.5M19.5 19.5 21 18'/></svg>");
+  }
+  details.reveal.translation > summary {
+    --reveal-ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='M3.5 5.5H11M7.2 5.5V4M9 5.5C9 9 6.5 12 3.5 13.5M5 9.5C6.2 11.2 8.3 12.4 10 12.8'/><path d='M13 20 16.5 11.5 20 20M14.2 17.2H18.8'/></svg>");
+  }
+  details.reveal > summary::after {
+    content: ''; width: 8px; height: 8px; margin-left: 1px;
+    border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translate(-1px,-2px); transition: transform 0.2s ease; opacity: 0.75;
+  }
+  details.reveal[open] > summary::after { transform: rotate(-135deg) translate(-1px,1px); }
+  details.reveal > summary:hover,
+  details.reveal[open] > summary { background: var(--terracotta); color: #fff; border-color: var(--terracotta); }
+  /* содержимое (любой блок сразу после summary) */
+  details.reveal > summary ~ * {
+    margin-top: 10px; padding: 12px 16px; border-radius: 12px;
+    font-size: 14px; line-height: 1.7;
+    background: var(--olive-soft); color: #4a5536;
+    border: 1px solid rgba(122,138,78,0.25);
+    animation: hwRevealIn 0.25s ease;
+  }
+  details.reveal.translation > summary ~ * {
+    background: #fbf3ec; color: #6b5344; border-color: rgba(193,84,58,0.18);
+  }
+  details.reveal em { color: inherit; opacity: 0.85; }
 
   .hw-table {
     width: 100%;
@@ -1694,25 +1820,54 @@
   #vocabTrainerCard { flex: 0 0 auto; }
   .vocab-section-idea2 { flex: 1 1 auto; min-height: 0; }
   .vocab-section-idea2 > .vocab-card-body { flex: 1 1 auto; min-height: 0; }
-  .vocab-section-divider { height: 1px; background: var(--line); flex-shrink: 0; }
+  /* Утопленный «шов» между двумя панелями одной карточки — сразу видно, что это 2 секции */
+  .vocab-section-divider {
+    height: 9px; flex-shrink: 0;
+    background: var(--cream);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    box-shadow: inset 0 2px 4px -2px rgba(35,25,15,0.12), inset 0 -2px 4px -2px rgba(35,25,15,0.06);
+  }
   .vocab-card-head {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 16px 18px;
-    border-bottom: 1.5px solid var(--line);
-    background: linear-gradient(180deg, rgba(193,84,58,0.04), rgba(193,84,58,0));
+    padding: 15px 18px 15px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  /* цветная вертикальная полоска-акцент слева у каждой секции */
+  .vocab-card-head::before {
+    content: '';
+    position: absolute; left: 0; top: 11px; bottom: 11px;
+    width: 3px; border-radius: 0 3px 3px 0;
+    background: var(--line);
   }
   .vocab-card-icon {
     flex-shrink: 0;
-    width: 36px; height: 36px;
+    width: 38px; height: 38px;
     border-radius: 11px;
     display: flex; align-items: center; justify-content: center;
     font-size: 17px;
     background: var(--olive-soft);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+    color: #566f33;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 6px rgba(35,25,15,0.06);
   }
-  .vocab-card-icon-muted { background: var(--cream); opacity: 0.8; }
+  .vocab-card-icon-muted { background: var(--cream); }
+
+  /* ── Тренажёр: оливковый акцент ── */
+  #vocabTrainerCard .vocab-card-head { background: linear-gradient(180deg, rgba(122,138,78,0.12), rgba(122,138,78,0.015)); }
+  #vocabTrainerCard .vocab-card-head::before { background: var(--olive); }
+  #vocabTrainerCard .vocab-card-icon { background: linear-gradient(150deg, rgba(122,138,78,0.24), rgba(122,138,78,0.10)); color: #566f33; }
+  #vocabTrainerCard .vocab-card-status { color: #5c7a3a; }
+  #vocabTrainerCard .vocab-status-dot { background: var(--olive); box-shadow: 0 0 0 3px var(--olive-soft); }
+
+  /* ── Истории: терракотовый акцент ── */
+  .vocab-section-idea2 .vocab-card-head { background: linear-gradient(180deg, rgba(193,84,58,0.10), rgba(193,84,58,0.015)); }
+  .vocab-section-idea2 .vocab-card-head::before { background: var(--terracotta); }
+  .vocab-section-idea2 .vocab-card-icon { background: linear-gradient(150deg, rgba(193,84,58,0.20), rgba(193,84,58,0.08)); color: var(--terracotta); opacity: 1; }
+  .vocab-section-idea2 .vocab-card-status { color: var(--terracotta); }
+  .vocab-section-idea2 .vocab-status-dot { background: var(--terracotta); box-shadow: 0 0 0 3px var(--terracotta-soft); }
   .vocab-card-head-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .vocab-card-title {
     font-family: Georgia, serif;
@@ -2830,6 +2985,37 @@
     h3 { font-size: 15px; }
     p, li { font-size: 14.5px; }
   }
+
+  /* ══ Адаптив секции лексики (тренажёр + истории): масштаб под планшет/телефон.
+     Размещено ПОСЛЕ базовых стилей, чтобы переопределять их при совпадении медиа. ══ */
+  @media (max-width: 960px) {
+    .vocab-card-head { padding: 14px 16px; }
+    .vocab-card-body { padding: 16px; }
+    .vocab-flip-area { padding: 18px 12px; min-height: 88px; }
+    .vocab-flip-area .hw-vocab-cloud span { font-size: 16px; }
+  }
+  @media (max-width: 600px) {
+    .welcome-content { padding: 22px 12px 36px; gap: 18px; }
+    .vocab-card-head { padding: 12px 14px; gap: 10px; }
+    .vocab-card-icon { width: 32px; height: 32px; border-radius: 9px; }
+    .vocab-card-title { font-size: 13.5px; }
+    .vocab-card-status { font-size: 11px; }
+    .vocab-card-body { padding: 14px; }
+    .vocab-trainer-sub { font-size: 11.5px; margin-bottom: 12px; }
+    .vocab-flip-area { padding: 16px 10px; min-height: 78px; gap: 10px; }
+    .vocab-flip-area .hw-vocab-cloud span { font-size: 15px; padding: 6px 14px; }
+    .vocab-translation-text { font-size: 14px; }
+    .vocab-action-btn { font-size: 11.5px; padding: 9px 6px; }
+    .vocab-reveal-btn { font-size: 12px; padding: 8px 16px; }
+    .vocab-open-btn { font-size: 12px; padding: 9px; margin-top: 10px; }
+    .vocab-progress-label { font-size: 10.5px; }
+    /* превью историй масштабируется в ensureStoryStyles (инжектируемый стиль) */
+  }
+  @media (max-width: 380px) {
+    .vocab-flip-area .hw-vocab-cloud span { font-size: 14px; }
+    .vocab-card-title { font-size: 13px; }
+  }
+
   @media (min-width: 961px) {
     /* Весь экран прогресса — жёсткая колонка 100vh, без скролла */
     #progressScreen {
@@ -3476,6 +3662,14 @@
     </div>
   </div>
 
+  <!-- Полноэкранное окно словарного тренажёра (см. openVocabModal/closeVocabModal). -->
+  <div class="hw-modal-overlay story-modal-overlay" id="vocabModal">
+    <div class="story-modal-panel" role="dialog" aria-modal="true">
+      <button class="story-modal-close" id="vocabModalCloseBtn" aria-label="Закрыть"><span class="ico" style="width:15px;height:15px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></button>
+      <div class="story-modal-scroll" id="vocabModalContent"></div>
+    </div>
+  </div>
+
   <canvas id="confettiCanvas"></canvas>
 
 </div>
@@ -4079,6 +4273,9 @@ function extractVocabFromHTML(html, lessonNumber) {
   return out;
 }
 
+// Служебный «мусор» из таблиц (артикли, союзы), который не нужен как слово для практики
+const VOCAB_SKIP = new Set(['i', 'gli', 'le', 'il', 'lo', 'la', "l'", 'un', 'uno', 'una', "un'", 'e', 'è', 'o', 'a', 'di', 'da']);
+
 function buildVocabPool() {
   const pool = [];
   const seen = new Set();
@@ -4088,6 +4285,7 @@ function buildVocabPool() {
       extractVocabFromHTML(html, lesson.number).forEach(item => {
         const key = item.it.toLowerCase();
         if (seen.has(key)) return;
+        if (key.length < 2 || VOCAB_SKIP.has(key)) return; // пропускаем артикли/однобуквенные
         seen.add(key);
         pool.push(item);
       });
@@ -4115,6 +4313,13 @@ function pickVocabWord(pool, excludeWord) {
 }
 
 let currentVocabItem = null;
+
+// Иконки тренажёра
+const ICON_TRAINER_OPEN = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="5" width="12" height="15" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 5V3.8C8 3.4 8.3 3 8.8 3H19c.5 0 1 .4 1 1v13c0 .5-.5 1-1 1h-1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const ICON_VOCAB_SWAP = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_VOCAB_CARDS = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6" width="17" height="12" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 10h17" stroke="currentColor" stroke-width="1.5"/></svg>';
+const ICON_VOCAB_LIST = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+const ICON_VOCAB_SPEAK = '<svg class="cs" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 
 function renderVocabTrainer() {
   const card = document.getElementById('vocabTrainerCard');
@@ -4165,6 +4370,7 @@ function renderVocabTrainer() {
       </div>
       <div class="vocab-progress-bar-track"><div class="vocab-progress-bar-fill" style="width:${Math.round(knownCount / pool.length * 100)}%"></div></div>
       <p class="vocab-progress-label">${knownCount} из ${pool.length} уже закрепила</p>
+      <button class="vocab-open-btn" id="vocabOpenBtn" type="button"><span class="ico">${ICON_TRAINER_OPEN}</span>Открыть тренажёр</button>
     </div>
   `;
 
@@ -4179,11 +4385,225 @@ function renderVocabTrainer() {
     btn.addEventListener('click', () => {
       const map = getVocabProgress();
       const key = currentVocabItem.it.toLowerCase();
-      const box = map[key] ?? 0;
-      map[key] = btn.dataset.action === 'known' ? Math.min(box + 1, 2) : 0;
+      // «Запомнила» сразу отмечает слово выученным (box 2) → счётчик прогресса реагирует;
+      // «Повторить» сбрасывает в 0. (Раньше known давал box+1, и до «закреплено» почти не доходило.)
+      map[key] = btn.dataset.action === 'known' ? 2 : 0;
       setVocabProgress(map);
       renderVocabTrainer();
     });
+  });
+
+  const openBtn = document.getElementById('vocabOpenBtn');
+  if (openBtn) openBtn.addEventListener('click', openVocabModal);
+}
+
+// ============ МОДАЛКА СЛОВАРНОГО ТРЕНАЖЁРА ============
+// Удобное окно: карточки с переворотом, озвучка, направление IT⇄RU,
+// фильтр по урокам, список всех слов со статусами, кольцо прогресса, клавиши.
+const vocabModalState = {
+  filterLesson: 'all', direction: 'it-ru', view: 'card',
+  current: null, revealed: false, sessionSeen: 0, sessionKnown: 0,
+};
+
+function vocabBoxOf(itWord) { return getVocabProgress()[itWord.toLowerCase()] ?? 0; }
+function vocabFilteredPool() {
+  const pool = buildVocabPool();
+  return vocabModalState.filterLesson === 'all' ? pool : pool.filter(w => w.lesson === vocabModalState.filterLesson);
+}
+function vocabLessonsAvailable() {
+  return [...new Set(buildVocabPool().map(w => w.lesson))].sort((a, b) => a - b);
+}
+function vocabPickNext() {
+  const pool = vocabFilteredPool();
+  vocabModalState.current = pickVocabWord(pool, vocabModalState.current ? vocabModalState.current.it : null);
+  vocabModalState.revealed = false;
+}
+
+function renderVocabRing(learned, total) {
+  const pct = total ? learned / total : 0;
+  const R = 20, C = 2 * Math.PI * R, off = C * (1 - pct);
+  return `<svg class="vocab-ring" viewBox="0 0 48 48" width="48" height="48">
+    <circle cx="24" cy="24" r="${R}" fill="none" stroke="var(--line,#ece2d4)" stroke-width="5"/>
+    <circle cx="24" cy="24" r="${R}" fill="none" stroke="var(--olive,#7a8a4e)" stroke-width="5"
+      stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 24 24)"/>
+    <text x="24" y="25" text-anchor="middle" dominant-baseline="middle" class="vocab-ring-pct">${Math.round(pct * 100)}%</text>
+  </svg>`;
+}
+
+function renderVocabCardHTML() {
+  const s = vocabModalState;
+  const pool = vocabFilteredPool();
+  if (!pool.length) return `<p class="vocab-empty-note">Нет слов для этого фильтра.</p>`;
+  if (!s.current || !pool.some(w => w.it === s.current.it)) vocabPickNext();
+  const w = s.current;
+  const front = s.direction === 'it-ru' ? w.it : w.ru;
+  const back = s.direction === 'it-ru' ? w.ru : w.it;
+  return `
+    <div class="vocab-card-view">
+      <div class="vocab-flashcard${s.revealed ? ' is-revealed' : ''}" id="vocabFlashcard">
+        <button class="vocab-fc-speak" id="vocabSpeakBtn" type="button" aria-label="Произнести">${ICON_VOCAB_SPEAK}</button>
+        <span class="vocab-fc-word">${front}</span>
+        <div class="vocab-fc-back">
+          <span class="vocab-fc-divider"></span>
+          <span class="vocab-fc-answer">${back}</span>
+          <span class="vocab-lesson-tag">Урок ${w.lesson}</span>
+        </div>
+        <span class="vocab-fc-hint">нажми, чтобы увидеть перевод</span>
+      </div>
+      <div class="vocab-card-actions${s.revealed ? '' : ' is-hidden'}">
+        <button class="vocab-act vocab-act-retry" data-action="retry" type="button">Повторить</button>
+        <button class="vocab-act vocab-act-known" data-action="known" type="button">Запомнила!</button>
+      </div>
+      <p class="vocab-kbd-hint">Пробел — перевернуть · ← повторить · → запомнила</p>
+    </div>`;
+}
+
+function renderVocabListHTML() {
+  const pool = vocabFilteredPool();
+  if (!pool.length) return `<p class="vocab-empty-note">Нет слов для этого фильтра.</p>`;
+  const rows = pool.map(w => {
+    const box = vocabBoxOf(w.it);
+    const st = box === 2 ? 'learned' : (box === 1 ? 'learning' : 'new');
+    const lab = box === 2 ? 'выучено' : (box === 1 ? 'учу' : 'новое');
+    return `<button class="vocab-list-row" data-it="${w.it}" type="button">
+      <span class="vocab-list-dot ${st}"></span>
+      <span class="vocab-list-it">${w.it}</span>
+      <span class="vocab-list-ru">${w.ru}</span>
+      <span class="vocab-list-badge ${st}">${lab}</span>
+    </button>`;
+  }).join('');
+  return `<div class="vocab-list">${rows}</div>`;
+}
+
+function renderVocabModalContent() {
+  const content = document.getElementById('vocabModalContent');
+  if (!content) return;
+  const fullPool = buildVocabPool();
+  const total = fullPool.length;
+  const learned = fullPool.filter(w => vocabBoxOf(w.it) === 2).length;
+  const s = vocabModalState;
+  const chips = ['all', ...vocabLessonsAvailable()].map(l => {
+    const active = (s.filterLesson === l) ? ' is-active' : '';
+    return `<button class="vocab-chip${active}" data-lesson="${l}" type="button">${l === 'all' ? 'Все' : 'Урок ' + l}</button>`;
+  }).join('');
+  const dirLabel = s.direction === 'it-ru' ? 'IT → RU' : 'RU → IT';
+  const body = s.view === 'list' ? renderVocabListHTML() : renderVocabCardHTML();
+
+  content.innerHTML = `
+    <div class="vocab-reader">
+      <header class="vocab-reader-head">
+        <div class="vocab-reader-titlewrap">
+          <span class="vocab-reader-title">Словарный тренажёр</span>
+          <span class="vocab-reader-sub">${learned} из ${total} слов выучено</span>
+        </div>
+        ${renderVocabRing(learned, total)}
+      </header>
+      <div class="vocab-reader-toolbar">
+        <button class="vocab-tool-btn" id="vocabDirBtn" type="button"><span class="ico">${ICON_VOCAB_SWAP}</span>${dirLabel}</button>
+        <button class="vocab-tool-btn${s.view === 'list' ? ' is-active' : ''}" id="vocabViewBtn" type="button"><span class="ico">${s.view === 'list' ? ICON_VOCAB_CARDS : ICON_VOCAB_LIST}</span>${s.view === 'list' ? 'Карточки' : 'Список'}</button>
+        <div class="vocab-chips">${chips}</div>
+      </div>
+      <div class="vocab-reader-body">${body}</div>
+      <footer class="vocab-reader-foot">
+        <span class="vocab-foot-stat">За сессию: показано ${s.sessionSeen} · запомнила ${s.sessionKnown}</span>
+        <button class="vocab-reset-btn" id="vocabResetBtn" type="button">Сбросить прогресс</button>
+      </footer>
+    </div>`;
+  bindVocabModalContent();
+}
+
+function bindVocabModalContent() {
+  const content = document.getElementById('vocabModalContent');
+  if (!content) return;
+  const dirBtn = content.querySelector('#vocabDirBtn');
+  if (dirBtn) dirBtn.addEventListener('click', () => {
+    vocabModalState.direction = vocabModalState.direction === 'it-ru' ? 'ru-it' : 'it-ru';
+    vocabModalState.revealed = false; renderVocabModalContent();
+  });
+  const viewBtn = content.querySelector('#vocabViewBtn');
+  if (viewBtn) viewBtn.addEventListener('click', () => {
+    vocabModalState.view = vocabModalState.view === 'list' ? 'card' : 'list'; renderVocabModalContent();
+  });
+  content.querySelectorAll('.vocab-chip').forEach(chip => chip.addEventListener('click', () => {
+    const l = chip.dataset.lesson;
+    vocabModalState.filterLesson = (l === 'all') ? 'all' : Number(l);
+    vocabModalState.current = null; vocabModalState.revealed = false; renderVocabModalContent();
+  }));
+  const fc = content.querySelector('#vocabFlashcard');
+  if (fc) fc.addEventListener('click', () => {
+    if (!vocabModalState.revealed) { vocabModalState.revealed = true; vocabModalState.sessionSeen++; renderVocabModalContent(); }
+  });
+  const speakBtn = content.querySelector('#vocabSpeakBtn');
+  if (speakBtn) speakBtn.addEventListener('click', (e) => { e.stopPropagation(); vocabSpeakCurrent(e.currentTarget); });
+  content.querySelectorAll('.vocab-act').forEach(btn => btn.addEventListener('click', () => vocabMark(btn.dataset.action)));
+  content.querySelectorAll('.vocab-list-row').forEach(row => row.addEventListener('click', () => {
+    row.classList.add('speaking');
+    const p = window.speakIt ? window.speakIt(row.dataset.it) : Promise.resolve();
+    if (p && p.then) p.then(() => row.classList.remove('speaking')); else setTimeout(() => row.classList.remove('speaking'), 600);
+  }));
+  const resetBtn = content.querySelector('#vocabResetBtn');
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    if (confirm('Сбросить весь прогресс изучения слов?')) {
+      setVocabProgress({});
+      vocabModalState.sessionSeen = 0; vocabModalState.sessionKnown = 0;
+      renderVocabModalContent(); renderVocabTrainer();
+    }
+  });
+}
+
+function vocabSpeakCurrent(btn) {
+  const w = vocabModalState.current; if (!w) return;
+  if (btn) btn.classList.add('speaking');
+  const p = window.speakIt ? window.speakIt(w.it) : Promise.resolve();
+  if (p && p.then) p.then(() => btn && btn.classList.remove('speaking')); else setTimeout(() => btn && btn.classList.remove('speaking'), 600);
+}
+
+function vocabMark(action) {
+  const w = vocabModalState.current; if (!w) return;
+  const map = getVocabProgress();
+  map[w.it.toLowerCase()] = action === 'known' ? 2 : 0;   // known → выучено сразу, retry → сброс
+  setVocabProgress(map);
+  if (action === 'known') vocabModalState.sessionKnown++;
+  vocabPickNext();
+  renderVocabModalContent();
+  renderVocabTrainer(); // синхронизируем компактную карточку
+}
+
+function openVocabModal() {
+  const modal = document.getElementById('vocabModal');
+  if (!modal) return;
+  vocabModalState.current = null; vocabModalState.revealed = false;
+  vocabPickNext();
+  renderVocabModalContent();
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('vocabModalCloseBtn').onclick = closeVocabModal;
+  modal.onclick = (e) => { if (e.target === modal) closeVocabModal(); };
+  const panel = modal.querySelector('.story-modal-panel');
+  if (panel) { panel.setAttribute('tabindex', '-1'); panel.focus({ preventScroll: true }); }
+}
+
+function closeVocabModal() {
+  if (window.stopSpeaking) window.stopSpeaking();
+  const modal = document.getElementById('vocabModal');
+  if (modal) modal.classList.remove('open');
+  const hw = document.getElementById('hwModal'), st = document.getElementById('storyModal');
+  if (!(hw && hw.classList.contains('open')) && !(st && st.classList.contains('open'))) document.body.style.overflow = '';
+}
+
+// Клавиши в окне тренажёра (регистрируем один раз)
+if (!window.__vocabKeyBound) {
+  window.__vocabKeyBound = true;
+  document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('vocabModal');
+    if (!modal || !modal.classList.contains('open')) return;
+    if (e.key === 'Escape') { closeVocabModal(); return; }
+    if (vocabModalState.view !== 'card') return;
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      if (!vocabModalState.revealed && vocabModalState.current) { vocabModalState.revealed = true; vocabModalState.sessionSeen++; renderVocabModalContent(); }
+    } else if (vocabModalState.revealed && e.key === 'ArrowRight') { vocabMark('known'); }
+    else if (vocabModalState.revealed && e.key === 'ArrowLeft') { vocabMark('retry'); }
   });
 }
 
@@ -4873,6 +5293,37 @@ function ensureStoryStyles() {
     .story-prose-ru p { margin: 0; font-size: 15px; line-height: 1.6; color: #6e6052; }
     @keyframes hwRevealFade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
     .story-word.flash { background: var(--terracotta, #c1543a) !important; color: #fff !important; border-bottom-color: transparent !important; }
+    /* Разбор грамматики */
+    .story-tool-icon { display: inline-flex; width: 15px; height: 15px; }
+    .story-tool-icon svg { width: 15px; height: 15px; }
+    .story-breakdown {
+      margin-top: 18px; padding: 16px 18px;
+      background: linear-gradient(180deg, #fbf7f0 0%, #f9f2e8 100%);
+      border: 1px solid var(--line, #ece2d4); border-left: 3px solid #7a8a4e;
+      border-radius: 12px; animation: hwRevealFade .25s ease;
+    }
+    .story-breakdown[hidden] { display: none; }
+    .story-breakdown > .story-prose-ru-label { color: #6f7d44; }
+    .story-bd-block { padding: 12px 0; border-bottom: 1px dashed var(--line, #ece2d4); }
+    .story-bd-block:last-child { border-bottom: none; padding-bottom: 2px; }
+    .story-bd-block:first-of-type { padding-top: 4px; }
+    .story-bd-title {
+      margin: 0 0 7px; font-family: Georgia, 'Times New Roman', serif;
+      font-size: 15.5px; font-weight: 700; color: var(--ink, #2e2a24);
+    }
+    .story-bd-notes { margin: 0; padding-left: 18px; list-style: none; }
+    .story-bd-notes li {
+      position: relative; margin: 0 0 6px; font-size: 14px; line-height: 1.5; color: #5f5446;
+    }
+    .story-bd-notes li::before {
+      content: ''; position: absolute; left: -14px; top: 8px;
+      width: 5px; height: 5px; border-radius: 50%; background: #9fae6b;
+    }
+    .story-bd-notes li b { color: var(--terracotta, #c1543a); font-weight: 700; }
+    .story-bd-loading {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 14px; color: #8a7d6e; padding: 6px 0;
+    }
     /* Словарь */
     .story-aside-title {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -4996,6 +5447,17 @@ function ensureStoryStyles() {
     .story-title {
       font-family: Georgia, serif; font-size: 13px; font-style: italic;
       color: #9a8f80; margin: 0 0 10px;
+    }
+    /* Адаптив компактного превью историй (масштаб под телефон) */
+    @media (max-width: 600px) {
+      .story-theme-name { font-size: 15px; }
+      .story-preview-quote { padding: 22px 16px 20px; }
+      .story-preview-quote-text { font-size: 16px; -webkit-line-clamp: 3; }
+      .story-btn { font-size: 12px; padding: 9px 14px; }
+      .story-preview-stat { font-size: 11px; }
+    }
+    @media (max-width: 380px) {
+      .story-preview-quote-text { font-size: 15px; }
     }
   `;
   document.head.appendChild(st);
@@ -5182,6 +5644,8 @@ function renderStoryObject(s, section) {
 // Иконки управления чтением
 const ICON_PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M7 5.2L19 12L7 18.8V5.2Z"/></svg>';
 const ICON_STOP_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="6.5" y="6.5" width="11" height="11" rx="2.2"/></svg>';
+// Иконка «разбор грамматики» (лупа над строками)
+const ICON_GRAMMAR_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h10M4 10h7M4 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="15.5" cy="15.5" r="3.5" stroke="currentColor" stroke-width="1.7"/><path d="M18.2 18.2L21 21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 
 // Русская плюрализация (1 слово / 2 слова / 5 слов)
 function storyPlural(n, one, few, many) {
@@ -5230,6 +5694,10 @@ function renderStoryFullHTML(s) {
         <button type="button" class="story-tool-btn" id="storyTransBtnFull">
           <span class="story-tool-label">Перевод</span>
         </button>
+        <button type="button" class="story-tool-btn" id="storyExplainBtn">
+          <span class="story-tool-icon">${ICON_GRAMMAR_SVG}</span>
+          <span class="story-tool-label">Разбор</span>
+        </button>
         <span class="story-reader-progress">${progress}</span>
       </div>
 
@@ -5240,6 +5708,7 @@ function renderStoryFullHTML(s) {
             <span class="story-prose-ru-label">Перевод</span>
             <p>${ruText}</p>
           </div>
+          <div class="story-breakdown" id="storyBreakdown" hidden></div>
         </div>
         <aside class="story-reader-aside">
           <p class="story-aside-title">Слова истории</p>
@@ -5253,6 +5722,126 @@ function renderStoryFullHTML(s) {
       </footer>
     </div>
   `;
+}
+
+// ── РАЗБОР ГРАММАТИКИ (кнопка «Разбор») ───────────────────────────────────
+// Запрос разбора у ИИ (низкая температура на сервере → точность)
+async function fetchAIBreakdown(story) {
+  const text = story.lines.map(l => l.it).join('\n');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 28000);
+  try {
+    const url = `http://localhost:3002/api/explain?text=${encodeURIComponent(text)}&n=${Date.now()}`;
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) throw new Error('server ' + r.status);
+    const d = await r.json();
+    if (!Array.isArray(d.breakdown) || !d.breakdown.length) throw new Error('empty breakdown');
+    return { blocks: d.breakdown, source: 'ai' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Оффлайн-разбор: определяем грамматические темы ПО ТЕКСТУ (по словам-якорям:
+// артикли, essere, c'è, предлоги) и объясняем правилами. Работает без сервера.
+function buildOfflineBreakdown(story) {
+  const text = story.lines.map(l => l.it).join(' ');
+  const blocks = [];
+  const firstMatch = (re) => { const m = text.match(new RegExp(re, 'i')); return m ? m[0].trim() : ''; };
+
+  // Глагол essere
+  const essere = [];
+  if (/\bsono\b/i.test(text)) essere.push({ term: 'sono', text: 'форма «быть» для Я и для ОНИ (io sono — я; loro sono — они)' });
+  if (/\bsei\b/i.test(text)) essere.push({ term: 'sei', text: 'форма «быть» для ТЫ' });
+  if (/(^|\s)[èÈ](\s|$)/.test(text)) essere.push({ term: 'è', text: 'форма «быть» для ОН/ОНА/ЭТО. Пишется с акцентом è — это глагол, а не союз «и» (e)' });
+  if (/\bsiamo\b/i.test(text)) essere.push({ term: 'siamo', text: 'форма «быть» для МЫ' });
+  if (essere.length) blocks.push({ title: 'Глагол essere (быть)', notes: essere });
+
+  // c'è / ci sono
+  const ce = [];
+  if (/c'è/i.test(text)) { const ex = firstMatch("c'è\\s+\\S+\\s+\\S+"); ce.push({ term: "c'è", text: 'есть / находится (ОДИН предмет, ед. число)' + (ex ? '. Пример: «' + ex + '»' : '') }); }
+  if (/ci sono/i.test(text)) ce.push({ term: 'ci sono', text: 'есть / находятся (НЕСКОЛЬКО предметов, мн. число)' });
+  if (ce.length) blocks.push({ title: "Конструкция c'è / ci sono", notes: ce });
+
+  // Артикли
+  const art = [];
+  if (/\b(un|uno|una)\s/i.test(text)) { const ex = firstMatch('\\b(un|uno|una)\\s+\\S+'); art.push({ term: 'un / uno / una', text: 'неопределённый артикль «один/одна»: un (м.р.), una (ж.р.), uno (м.р. перед s+согл., z)' + (ex ? '. Пример: «' + ex + '»' : '') }); }
+  if (/\b(il|lo|la|i|gli|le)\s/i.test(text) || /\bl'/i.test(text)) art.push({ term: "il / la / l' / i / le", text: "определённый артикль (этот, конкретный): il (м.р.), la (ж.р.), l' (перед гласной), i/gli/le (мн. число)" });
+  if (art.length) blocks.push({ title: 'Артикли', notes: art });
+
+  // Согласование прилагательных (общее правило — всегда полезно)
+  blocks.push({ title: 'Согласование прилагательных', notes: [
+    { term: '-o / -a', text: 'окончание зависит от рода существительного: -o (муж.р.), -a (жен.р.). Напр. italiano (он) → italiana (она)' },
+    { term: '-e', text: 'прилагательные на -e (gentile, grande) одинаковы для муж. и жен. рода' },
+    { term: 'мн. число', text: 'во множественном: -i (муж.р.), -e (жен.р.)' },
+  ]});
+
+  // Предлоги места
+  const prepEx = firstMatch('\\b(in|nel|nella|sul|sulla|su)\\s+\\S+');
+  if (prepEx) blocks.push({ title: 'Предлоги места', notes: [
+    { term: 'in / nel / sul', text: 'в / на: «In cucina» — на кухне, «sul balcone» — на балконе, «nel corridoio» — в коридоре. Пример: «' + prepEx + '»' },
+  ]});
+
+  // Притяжательные
+  if (/\b(la mia|il mio|la sua|il suo|i miei|le mie)\b/i.test(text)) blocks.push({ title: 'Притяжательные (мой / его / её)', notes: [
+    { term: 'la mia / il mio', text: 'моя / мой — с артиклем и по роду: la mia casa (ж.р.), il mio letto (м.р.)' },
+    { term: 'la sua / il suo', text: 'его/её — выбирается по роду ПРЕДМЕТА, а не владельца' },
+  ]});
+
+  // Множественное число
+  if (/\bdue\b/i.test(text)) blocks.push({ title: 'Множественное число', notes: [
+    { term: 'due + …i / …e', text: 'после «due» (два) — множественное число: letto → letti, sedia → sedie' },
+  ]});
+
+  return { blocks, source: 'offline' };
+}
+
+function renderBreakdownHTML(blocks, source) {
+  const label = source === 'ai' ? 'Разбор грамматики · ИИ' : 'Разбор грамматики';
+  const blocksHTML = blocks.map(b => `
+    <div class="story-bd-block">
+      <p class="story-bd-title">${b.title}</p>
+      <ul class="story-bd-notes">
+        ${b.notes.map(n => `<li>${n.term ? `<b>${n.term}</b> — ` : ''}${n.text}</li>`).join('')}
+      </ul>
+    </div>`).join('');
+  return `<span class="story-prose-ru-label">${label}</span>${blocksHTML}`;
+}
+
+// Кнопка «Разбор»: переключает панель; при первом открытии грузит разбор
+// (ИИ → оффлайн-фолбэк) и кэширует на объекте истории.
+async function toggleBreakdown(container) {
+  const box = container.querySelector('#storyBreakdown');
+  const btn = container.querySelector('#storyExplainBtn');
+  if (!box || !btn) return;
+  const setLabel = (t) => { const el = btn.querySelector('.story-tool-label'); if (el) el.textContent = t; };
+
+  if (!box.hasAttribute('hidden')) {          // уже открыт → скрыть
+    box.setAttribute('hidden', '');
+    btn.classList.remove('is-active');
+    setLabel('Разбор');
+    return;
+  }
+  box.removeAttribute('hidden');
+  btn.classList.add('is-active');
+  setLabel('Скрыть разбор');
+
+  if (currentStory && currentStory._breakdown) {  // уже загружено для этой истории
+    box.innerHTML = renderBreakdownHTML(currentStory._breakdown.blocks, currentStory._breakdown.source);
+    return;
+  }
+  box.innerHTML = `<div class="story-bd-loading"><span class="story-spinner"></span>ИИ разбирает грамматику…</div>`;
+  const target = currentStory;
+  let result = null;
+  try { result = await fetchAIBreakdown(target); }
+  catch (e) { result = null; }
+  if (!result || !result.blocks || !result.blocks.length) result = buildOfflineBreakdown(target);
+  if (target) target._breakdown = result;
+  // окно могло смениться/закрыться, пока шла загрузка — проверяем актуальность
+  const liveBox = document.querySelector('#storyBreakdown');
+  if (liveBox && !liveBox.hasAttribute('hidden') && currentStory === target) {
+    liveBox.innerHTML = renderBreakdownHTML(result.blocks, result.source);
+  }
 }
 
 // ── Движок последовательного чтения истории (с подсветкой предложений) ──
@@ -5341,6 +5930,8 @@ function bindStoryFullHandlers(container) {
     transBtn.classList.toggle('is-active', on);
     transBtn.querySelector('.story-tool-label').textContent = on ? 'Скрыть перевод' : 'Перевод';
   });
+  const explainBtn = container.querySelector('#storyExplainBtn');
+  if (explainBtn) explainBtn.addEventListener('click', () => toggleBreakdown(container));
   container.querySelector('#storyNewBtnFull').addEventListener('click', () => loadStory(true));
   const closeFoot = container.querySelector('#storyCloseFootBtn');
   if (closeFoot) closeFoot.addEventListener('click', closeStoryModal);
@@ -5937,37 +6528,12 @@ const ICON_CARET_SVG = '<svg class="hw-reveal-caret" viewBox="0 0 24 24" fill="n
 // .hw-answers и/или .hw-translation, генерируем кнопки «Ответы» / «Перевод» и
 // делаем блоки раскрывающимися. Любой будущий урок получает это БЕЗ правок кода —
 // достаточно вложить такие блоки в секцию задания (см. комментарий-инструкцию выше).
-function enhanceHomeworkReveals(root) {
-  if (!root) return;
-  const defs = [
-    { sel: '.hw-answers',     label: 'Ответы',  icon: ICON_KEY_SVG },
-    { sel: '.hw-translation', label: 'Перевод', icon: ICON_TRANSLATE_SVG },
-  ];
-  root.querySelectorAll('.hw-section').forEach(section => {
-    const found = [];
-    defs.forEach(d => {
-      const panel = section.querySelector(':scope > ' + d.sel);
-      if (panel && !panel.dataset.enhanced) found.push({ d, panel });
-    });
-    if (!found.length) return;
-    const row = document.createElement('div');
-    row.className = 'hw-reveal-row';
-    found.forEach(({ d, panel }) => {
-      panel.dataset.enhanced = '1';
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'hw-reveal-btn';
-      btn.innerHTML = d.icon + '<span>' + d.label + '</span>' + ICON_CARET_SVG;
-      btn.addEventListener('click', () => {
-        const open = panel.classList.toggle('is-open');
-        btn.classList.toggle('is-open', open);
-      });
-      row.appendChild(btn);
-    });
-    // строка кнопок встаёт сразу после контента задания, перед раскрывающимися блоками
-    section.insertBefore(row, found[0].panel);
-  });
-}
+// Превращает один блок-ответ/перевод в кнопку-переключатель + сворачиваемую панель
+// Кнопки «Ответы» / «Перевод» больше НЕ генерируются JS. Уроки содержат готовые
+// раскрывающиеся блоки <details class="reveal answer|translation">, стиль им даёт CSS
+// автоматически (нативное раскрытие, без скриптов). Заглушки — на случай старых вызовов.
+function enhanceReveals() {}
+function enhanceHomeworkReveals() {}
 
 // Домашнее задание — часть того же файла урока (lesson.homeworkHTML заполняется при
 // подключении файла в discoverLessons), поэтому рендер модалки полностью синхронный.
@@ -6006,7 +6572,6 @@ function openHwModal(lessonId) {
   modalContent.scrollTop = 0;
   document.body.style.overflow = 'hidden';
   wrapResponsiveTables(modalContent);
-  enhanceHomeworkReveals(modalContent);
 
   document.getElementById('hwModalCloseBtn').onclick = closeHwModal;
 
@@ -6118,7 +6683,8 @@ function showLesson(id) {
   renderNav(id);
   document.querySelector(".main").scrollTo(0, 0);
   attachHwButtonListener(id);
-  wrapResponsiveTables(lessonScreen.querySelector('.content'));
+  const contentEl = lessonScreen.querySelector('.content');
+  wrapResponsiveTables(contentEl);
 }
 
 // ============ ДНЕВНИК ПРОГРЕССА ============
