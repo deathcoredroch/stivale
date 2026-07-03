@@ -86,7 +86,8 @@
       "Bash(kill -9 34780)",
       "Bash(killall -9 node.exe)",
       "Bash(PORT=3002 npm start)",
-      "Bash(curl -s \"http://localhost:3002/api/speak?text=hello\")"
+      "Bash(curl -s \"http://localhost:3002/api/speak?text=hello\")",
+      "mcp__Claude_in_Chrome__navigate"
     ]
   }
 }
