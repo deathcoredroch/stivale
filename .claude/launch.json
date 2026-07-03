@@ -4,8 +4,9 @@
     {
       "name": "web-server",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8000"],
-      "port": 8000
+      "runtimeArgs": ["-m", "http.server"],
+      "port": 8000,
+      "autoPort": true
     }
   ]
 }

@@ -1547,7 +1547,7 @@
   details.reveal em { color: inherit; opacity: .85; }
   /* В модалке ДЗ есть правила .hw-modal-body details{...} / details summary{...} — переопределяем их
      с достаточной специфичностью, чтобы reveal вёл себя как в теле урока (блок + open-подсветка). */
-  .hw-modal-body details.reveal { display: block; margin-left: 0; }
+  .hw-modal-body details.reveal { display: inline-flex; }
   .hw-modal-body details.reveal > summary { display: inline-flex; font-size: 13px; color: var(--terracotta); }
   .hw-modal-body details.reveal > summary:hover,
   .hw-modal-body details.reveal[open] > summary { background: var(--terracotta); color: #fff; border-color: var(--terracotta); }
