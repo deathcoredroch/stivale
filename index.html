@@ -7902,7 +7902,10 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
   function speakViaWebSpeech(word) {
     return new Promise((resolve) => {
       if (!window.speechSynthesis) return resolve();
-      if (!voicesReady || !bestItVoice) refreshVoices();
+      if (!voicesReady) refreshVoices();
+      // Итальянского голоса в системе нет (типично для Firefox) — молчим, а не
+      // читаем итальянский текст английским голосом: для изучения языка это хуже.
+      if (!bestItVoice) { refreshVoices(); if (!bestItVoice) return resolve(); }
       speechSynthesis.cancel();
       const utt = new SpeechSynthesisUtterance(word);
       currentUtterance = utt;
@@ -7925,29 +7928,12 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
     if (!word || typeof word !== 'string') return Promise.resolve();
     stopSpeaking(); // не накладываем звуки друг на друга
 
-    // 1) Локальный TTS-сервер, если запущен (самое высокое качество на этой машине)
-    const apiUrl = `http://localhost:3002/api/speak?text=${encodeURIComponent(word)}&lang=it_IT`;
-
-    return fetch(apiUrl)
-      .then(res => res.json())
-      .then(data => {
-        if (!data.audio) throw new Error('No audio data');
-        return new Promise((resolve) => {
-          const audio = new Audio();
-          currentAudio = audio;
-          audio.volume = Math.min(speakGain, 1.0);
-          const done = () => { if (currentAudio === audio) currentAudio = null; resolve(); };
-          audio.onended = done;
-          audio.onerror = done;
-          audio.onpause = done; // остановка извне (stopSpeaking) тоже разблокирует ожидание
-          audio.src = data.audio; // data: URL с base64
-          audio.play().catch(done);
-        });
-      })
-      // 2) Google Translate TTS — одинаково живой итальянский на всех устройствах
-      .catch(() => speakViaGoogle(word))
-      // 3) Голоса ОС (Web Speech API) — только если сети нет совсем
-      .catch(() => speakViaWebSpeech(word));
+    // Google TTS запускаем СРАЗУ, в рамках жеста пользователя (клика). Если сначала
+    // сделать асинхронный запрос (напр. к локальному серверу), Firefox посчитает
+    // жест «просроченным» и заблокирует автовоспроизведение — звука не будет.
+    // 1) Google Translate TTS — одинаково живой итальянский на всех устройствах
+    // 2) Голоса ОС (Web Speech API) — только если сети нет совсем
+    return speakViaGoogle(word).catch(() => speakViaWebSpeech(word));
   }
   window.speakIt = speak;            // доступ к озвучке из генератора историй
   window.stopSpeaking = stopSpeaking; // остановка воспроизведения
