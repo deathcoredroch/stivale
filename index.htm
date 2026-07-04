@@ -7007,7 +7007,9 @@ function buildItalyMapSVG() {
 
 // ============ УРОВЕНЬ ВЛАДЕНИЯ CEFR ============
 // 41 урок покрывает путь от нуля до уверенного A2.
-// Пороги: A0 (0), A0+ (3), A1 (8), A1+ (16), A2- (26), A2 (35), A2+ (41)
+// Пороги привязаны к реальному плану курса (43 занятия, LESSON_STAGES/LESSON_SPECIAL):
+// A0 (0), A0+ (3), A1 (8, к концу этапа 1 занятие 15 — аттестация А1), A1+ (16, старт этапа 2),
+// A2- (26), A2 (35), A2+ (43 — курс полностью пройден, включая оба экзамена 42-43).
 function getCEFRLevel(doneCount) {
   const levels = [
     { min: 0,  code: 'A0',  label: 'Начинающий',          nextAt: 3,  desc: 'Первые слова итальянского' },
@@ -7015,8 +7017,8 @@ function getCEFRLevel(doneCount) {
     { min: 8,  code: 'A1',  label: 'Элементарный',        nextAt: 16, desc: 'Могу представиться и говорить о себе' },
     { min: 16, code: 'A1+', label: 'Элементарный+',       nextAt: 26, desc: 'Понимаю простые тексты и диалоги' },
     { min: 26, code: 'A2−', label: 'Ниже среднего',       nextAt: 35, desc: 'Справляюсь в повседневных ситуациях' },
-    { min: 35, code: 'A2',  label: 'Ниже среднего',       nextAt: 41, desc: 'Уверенно общаюсь на базовые темы' },
-    { min: 41, code: 'A2+', label: 'На пути к B1',        nextAt: null, desc: 'Курс пройден — открыт уровень B1!' },
+    { min: 35, code: 'A2',  label: 'Ниже среднего',       nextAt: 43, desc: 'Уверенно общаюсь на базовые темы' },
+    { min: 43, code: 'A2+', label: 'На пути к B1',        nextAt: null, desc: 'Курс пройден — открыт уровень B1!' },
   ];
   let current = levels[0];
   for (const lvl of levels) {
@@ -7114,13 +7116,19 @@ function renderProgressScreen() {
   const streakData = getStreakData();
   const cefrLevel = getCEFRLevel(doneCount);
   const title = getProgressTitle(doneCount);
-  const coursePct = Math.round((doneCount / PV_TOTAL_STOPS) * 100);
+  const coursePct = Math.min(100, Math.round((doneCount / PV_TOTAL_STOPS) * 100));
 
-  const hereCity = maxDone > 0 ? italyCities[maxDone - 1] : null;
+  // Карта — это 41 реальный регион Италии, а курс идёт до 43 занятий (два финальных
+  // экзамена 42-43 идут уже без новых регионов). Все обращения к italyCities/маршруту
+  // используют mapProgress — maxDone, прижатый к границам карты, — иначе на последних
+  // двух уроках индекс вылетает за массив и панель откатывается на «Начало пути».
+  const mapProgress = Math.min(maxDone, PV_TOTAL_STOPS);
+  const hereCity = mapProgress > 0 ? italyCities[mapProgress - 1] : null;
   const nextCity = maxDone < PV_TOTAL_STOPS ? italyCities[maxDone] : null;
 
-  // — Маршрут: окно из 5 остановок вокруг текущей позиции —
-  const from = Math.max(0, maxDone - 2);
+  // — Маршрут: окно из 5 остановок. У начала — первые 5, у конца — прижимается
+  // к последним 5, чтобы не схлопнуться в пустой список на завершающих занятиях —
+  const from = Math.max(0, Math.min(mapProgress - 2, PV_TOTAL_STOPS - 5));
   const to = Math.min(PV_TOTAL_STOPS, from + 5);
   const stops = [];
   for (let i = from; i < to; i++) {
@@ -7128,7 +7136,7 @@ function renderProgressScreen() {
     // «ты здесь» — последний открытый город (совпадает с маркером на карте);
     // «следующая» — ближайший неоткрытый; остальное — пройдено / впереди.
     let st;
-    if (maxDone > 0 && c.lesson === maxDone) st = 'here';
+    if (mapProgress > 0 && c.lesson === mapProgress) st = 'here';
     else if (completedSet.has(c.lesson)) st = 'done';
     else if (c.lesson === maxDone + 1) st = 'next';
     else st = 'ahead';
@@ -7262,7 +7270,10 @@ function pvMountMap() {
   const completed = getCompletedLessonNumbers();
   const maxDone = completed.length ? Math.max(...completed) : 0;
   // Маркер стоит на последнем открытом городе («ты здесь»); до старта — на первом.
-  const targetZone = maxDone >= 1 ? maxDone : 1;
+  // Карта — 41 регион, а курс идёт до 43 занятий (финальные экзамены без новых
+  // регионов), поэтому прижимаем к границе карты — иначе на уроках 42-43 маркер
+  // ищет несуществующую зону и просто не рисуется.
+  const targetZone = maxDone >= 1 ? Math.min(maxDone, PV_TOTAL_STOPS) : 1;
   pvPlaceMarker(svg, targetZone, size);
 }
 
@@ -7332,21 +7343,28 @@ function pvCelebrate(lessonNumber) {
   const svg = progressScreen.querySelector('.pv-map-svg');
   if (!svg) return;
 
-  // 1) Свежеоткрытый регион: мягкое «прорастание» золота
-  const freshPath = svg.querySelector(`.pv-zone[data-zone="${lessonNumber}"]`);
-  if (freshPath) freshPath.classList.add('pv-zone-bloom');
+  // Карта — 41 регион; занятия 42-43 (финальные экзамены) идут уже без новых
+  // регионов, поэтому для них пропускаем «прорастание»/переезд маркера и ниже
+  // показываем отдельное поздравление вместо «Регион открыт».
+  const hasRegion = lessonNumber <= PV_TOTAL_STOPS;
 
-  // 2) Маркер переезжает с прежнего города на только что открытый («ты здесь»)
-  const layer = svg.querySelector('#pvMarkerLayer');
-  const fromC = pvZoneCenter(svg, Math.max(lessonNumber - 1, 1));
-  const toC = pvZoneCenter(svg, lessonNumber);
-  if (layer && fromC && toC) {
-    layer.style.transition = 'none';
-    layer.style.transform = `translate(${fromC.x}px, ${fromC.y}px)`;
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      layer.style.transition = 'transform 1.1s cubic-bezier(0.22, 0.61, 0.36, 1)';
-      layer.style.transform = `translate(${toC.x}px, ${toC.y}px)`;
-    }));
+  if (hasRegion) {
+    // 1) Свежеоткрытый регион: мягкое «прорастание» золота
+    const freshPath = svg.querySelector(`.pv-zone[data-zone="${lessonNumber}"]`);
+    if (freshPath) freshPath.classList.add('pv-zone-bloom');
+
+    // 2) Маркер переезжает с прежнего города на только что открытый («ты здесь»)
+    const layer = svg.querySelector('#pvMarkerLayer');
+    const fromC = pvZoneCenter(svg, Math.max(lessonNumber - 1, 1));
+    const toC = pvZoneCenter(svg, lessonNumber);
+    if (layer && fromC && toC) {
+      layer.style.transition = 'none';
+      layer.style.transform = `translate(${fromC.x}px, ${fromC.y}px)`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        layer.style.transition = 'transform 1.1s cubic-bezier(0.22, 0.61, 0.36, 1)';
+        layer.style.transform = `translate(${toC.x}px, ${toC.y}px)`;
+      }));
+    }
   }
 
   // 3) Вспышка пламени серии
@@ -7356,13 +7374,25 @@ function pvCelebrate(lessonNumber) {
     setTimeout(() => streakCard.classList.remove('pv-streak-flare'), 1800);
   }
 
-  // 4) Сообщение о новом регионе
-  const city = italyCities[lessonNumber - 1];
+  // 4) Сообщение — о новом регионе, либо (для финальных экзаменов 42-43,
+  // у которых нет региона на карте) отдельное поздравление с курсом
   const pvRoot = progressScreen.querySelector('.pv');
-  if (city && pvRoot) {
+  const city = hasRegion ? italyCities[lessonNumber - 1] : null;
+  let toastCap = null, toastBody = null;
+  if (city) {
+    toastCap = 'Регион открыт';
+    toastBody = city.name;
+  } else if (lessonNumber === PV_TOTAL_STOPS + 1) {
+    toastCap = 'Экзамен сдан';
+    toastBody = 'Ещё один шаг до финиша';
+  } else if (lessonNumber >= MAX_LESSON_SLOTS) {
+    toastCap = 'Курс пройден!';
+    toastBody = 'Уровень А2 покорён';
+  }
+  if (toastCap && pvRoot) {
     const toast = document.createElement('div');
     toast.className = 'pv-toast';
-    toast.innerHTML = `<span class="pv-toast-cap">Регион открыт</span><span class="pv-toast-city">${city.name}</span>`;
+    toast.innerHTML = `<span class="pv-toast-cap">${toastCap}</span><span class="pv-toast-city">${toastBody}</span>`;
     pvRoot.appendChild(toast);
     setTimeout(() => toast.classList.add('pv-toast-out'), 2300);
     setTimeout(() => toast.remove(), 2900);
