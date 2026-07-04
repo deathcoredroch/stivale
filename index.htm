@@ -2443,15 +2443,76 @@
     100% { opacity: 0;    transform: translate(var(--sx), -13px)  scale(0.25); }
   }
 
-  /* погасший огонёк: тёплый, но приглушённый уголёк (двигается медленно) */
-  .streak-pill.is-zero .streak-flame,
-  .status-stat.is-zero .streak-flame {
-    filter: saturate(0.6) brightness(0.92);
-    opacity: 0.7;
+  /* ── Тиры огонька: свечение усиливается и меняет цвет вслед за длиной пути ──
+     Цвет самого пламени задаётся в SVG (flameSvgMarkup), здесь — ореол-свечение. */
+  .flame-tier-1 .streak-flame { filter: drop-shadow(0 0 4px rgba(255,106,42,0.45)); }
+  .flame-tier-2 .streak-flame { filter: drop-shadow(0 0 6px rgba(255,138,30,0.50)); }
+  .flame-tier-3 .streak-flame { filter: drop-shadow(0 0 9px rgba(255,179,32,0.60)); }
+  .flame-tier-4 .streak-flame { filter: drop-shadow(0 0 12px rgba(76,166,240,0.65)); }
+  .flame-tier-5 .streak-flame { filter: drop-shadow(0 0 13px rgba(166,92,230,0.70)); }
+  .flame-tier-6 .streak-flame { filter: drop-shadow(0 0 15px rgba(70,224,176,0.72)); }
+
+  /* Огонёк растёт в размере с тиром (в сайдбаре) */
+  .sidebar-streak-badge.flame-tier-3 .streak-flame { width: 16px; height: 16px; }
+  .sidebar-streak-badge.flame-tier-4 .streak-flame { width: 17px; height: 17px; }
+  .sidebar-streak-badge.flame-tier-5 .streak-flame { width: 18px; height: 18px; }
+  .sidebar-streak-badge.flame-tier-6 .streak-flame { width: 19px; height: 19px; }
+  .pv-streak.flame-tier-4 .pv-streak-flame,
+  .pv-streak.flame-tier-5 .pv-streak-flame { transform: scale(1.05); }
+  .pv-streak.flame-tier-6 .pv-streak-flame { transform: scale(1.12); }
+
+  /* ── Спящий (серый) огонёк: сегодня ещё не заходил — путь не прервался,
+     но пламя ждёт, пока ты вернёшься. Размещён ПОСЛЕ тир-правил, чтобы перебивать их. ── */
+  .flame-dormant .streak-flame { filter: grayscale(1) brightness(0.72); opacity: 0.5; }
+  .flame-dormant .flame-glow,
+  .flame-dormant .flame-spark { opacity: 0 !important; animation-play-state: paused; }
+
+  /* ── Розжиг: серый уголёк вспыхивает и разгорается (новый день) ── */
+  .flame-ignite .streak-flame { animation: flame-ignite 0.95s var(--ease-spring) both; }
+  @keyframes flame-ignite {
+    0%   { filter: grayscale(1) brightness(0.72); transform: scale(0.86); opacity: 0.5; }
+    40%  { filter: grayscale(0) brightness(1.18); transform: scale(1.3);  opacity: 1;   }
+    70%  { transform: scale(0.96); }
+    100% { filter: none; transform: scale(1); opacity: 1; }
   }
-  .streak-pill.is-zero .flame-glow,
-  .status-stat.is-zero .flame-glow {
-    opacity: 0.16;
+
+  /* ── Уведомление «огонёк разгорелся» (раз в новый день, поверх всего) ── */
+  .flame-toast {
+    position: fixed;
+    top: 18px; left: 50%;
+    transform: translateX(-50%) translateY(-18px);
+    z-index: 200;
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 22px 11px 14px;
+    background: linear-gradient(150deg, rgba(46,34,24,0.95), rgba(30,21,14,0.97));
+    border: 1px solid rgba(255,205,130,0.30);
+    border-radius: 100px;
+    box-shadow: var(--shadow-xl), 0 0 34px -10px rgba(226,180,87,0.5);
+    backdrop-filter: blur(10px) saturate(1.1);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+    opacity: 0;
+    transition: opacity 0.5s var(--ease-out), transform 0.55s var(--ease-spring);
+    pointer-events: none;
+  }
+  .flame-toast-in  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .flame-toast-out { opacity: 0; transform: translateX(-50%) translateY(-18px); }
+  .flame-toast-flame { width: 30px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .flame-toast-flame .streak-flame { width: 100%; height: 100%; }
+  .flame-toast-text { display: flex; flex-direction: column; line-height: 1.2; }
+  .flame-toast-text b { font-family: var(--font-serif); font-size: 15px; color: #FFF3E2; font-weight: 700; }
+  .flame-toast-sub { font-family: var(--font-sans); font-size: 11.5px; color: rgba(255,226,190,0.72); font-weight: 600; margin-top: 1px; }
+  .flame-toast-num { font-style: normal; color: #FFD98A; font-weight: 800; }
+  /* Живой огонёк внутри уведомления */
+  .flame-toast .flame-glow  { animation: flame-glow-pulse 2.4s ease-in-out infinite; }
+  .flame-toast .flame-outer { animation: flame-sway 2.4s ease-in-out infinite; }
+  .flame-toast .flame-inner { animation: flame-sway-inner 1.9s ease-in-out infinite; }
+  .flame-toast .flame-core  { animation: flame-flicker-core 1.1s ease-in-out infinite; }
+  .flame-toast .flame-spark { animation: flame-spark-rise 2s ease-in infinite; }
+  .flame-toast .flame-spark-2 { animation-delay: 0.6s; }
+  .flame-toast .flame-spark-3 { animation-delay: 1.1s; }
+  @media (max-width: 640px) {
+    .flame-toast { max-width: 90vw; top: 14px; padding: 10px 18px 10px 12px; }
+    .flame-toast-text b { font-size: 14px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -2459,9 +2520,16 @@
     .streak-flame .flame-outer,
     .streak-flame .flame-inner,
     .streak-flame .flame-core,
-    .streak-flame .flame-spark {
+    .streak-flame .flame-spark,
+    .flame-ignite .streak-flame,
+    .flame-toast .flame-glow,
+    .flame-toast .flame-outer,
+    .flame-toast .flame-inner,
+    .flame-toast .flame-core,
+    .flame-toast .flame-spark {
       animation: none !important;
     }
+    .flame-toast { transition: opacity 0.3s linear; }
   }
 
   /* CONFETTI */
@@ -3399,16 +3467,8 @@
   .pv-streak .flame-spark-2 { animation-delay: 0.65s; }
   .pv-streak .flame-spark-3 { animation-delay: 1.2s; }
 
-  /* Ступени «жара»: чем длиннее серия — тем ярче огонь и сильнее свечение */
-  .pv-streak[data-heat="0"] .streak-flame { filter: grayscale(0.55) brightness(0.75); opacity: 0.55; }
-  .pv-streak[data-heat="0"] .flame-glow,
-  .pv-streak[data-heat="0"] .flame-spark { opacity: 0; animation: none; }
-  .pv-streak[data-heat="1"] .streak-flame { filter: drop-shadow(0 0 6px rgba(255, 150, 50, 0.35)); }
-  .pv-streak[data-heat="2"] .streak-flame { filter: drop-shadow(0 0 10px rgba(255, 155, 55, 0.55)); }
-  .pv-streak[data-heat="2"] .flame-spark { animation-duration: 1.7s; }
-  .pv-streak[data-heat="3"] .streak-flame { filter: drop-shadow(0 0 15px rgba(255, 165, 60, 0.8)) saturate(1.15); }
-  .pv-streak[data-heat="3"] .flame-spark { animation-duration: 1.3s; }
-  .pv-streak[data-heat="3"]::before { animation-duration: 2.4s; }
+  /* На тёмной карточке серии свечение чуть сильнее (задаётся тир-классами ниже) */
+  .pv-streak.flame-tier-6::before { animation-duration: 2.4s; }
 
   /* Вспышка пламени при завершении урока */
   .pv-streak-flare .pv-streak-flame { animation: pv-flare 1.1s var(--ease-spring); }
@@ -6213,109 +6273,143 @@ function toggleHwDone(lessonId) {
 
 // ============ УДАРНЫЙ РЕЖИМ (STREAK) И КАЛЕНДАРЬ ЗАНЯТИЙ ============
 const STREAK_STORAGE_KEY = 'streak';
-const STREAK_BREAK_HOURS = 48; // если пропуск больше этого — серия гаснет
-
-function getStreakData() {
-  const data = storageGet(STREAK_STORAGE_KEY) || { count: 0, lastDate: null, studyDays: [] };
-  if (!Array.isArray(data.studyDays)) data.studyDays = [];
-  return data;
-}
-
-function saveStreakData(data) {
-  storageSet(STREAK_STORAGE_KEY, data);
-}
+const COURSE_START_DATE = '2026-06-22'; // день, когда начали учить итальянский
 
 function dateOnly(d) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
-
 function dateKey(d) {
   const x = dateOnly(d);
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 }
-
-function hoursBetween(a, b) {
-  return Math.abs(b - a) / (1000 * 60 * 60);
+// Все календарные дни от startKey (YYYY-MM-DD) до endDate включительно.
+// Дату строим из локальных компонентов, а не из строки, — иначе часовой пояс
+// сдвигает полночь на сутки (в браузере пользователя и превью TZ разные).
+function datesFromTo(startKey, endDate) {
+  const out = [];
+  const [y, m, d] = startKey.split('-').map(Number);
+  const cur = new Date(y, m - 1, d);
+  const end = dateOnly(endDate);
+  let guard = 0;
+  while (cur <= end && guard++ < 4000) {
+    out.push(dateKey(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
 }
 
-// Вызывается каждый раз при загрузке страницы: проверяет, не "сгорела" ли серия
-// от долгого отсутствия (не меняет сам счётчик, только гасит его при необходимости)
-function refreshStreakOnLoad() {
-  const data = getStreakData();
-  if (!data.lastDate) return data;
-  const last = new Date(data.lastDate);
-  const now = new Date();
-  if (hoursBetween(last, now) > STREAK_BREAK_HOURS) {
-    data.count = 0;
-    saveStreakData(data);
+// ── Огонёк = «дни в пути»: сколько РАЗНЫХ дней ты заходил на сайт.
+// Растёт на +1 в первый заход каждого нового дня. НИКОГДА не сбрасывается:
+// пропустил день — огонёк не вырос и стал серым, но накопленное число сохранилось.
+function getStreakData() {
+  const data = storageGet(STREAK_STORAGE_KEY) || {};
+  if (!Array.isArray(data.studyDays)) data.studyDays = [];
+  if (!Array.isArray(data.visitDays)) {
+    // Миграция: путь идёт с 22 июня, поэтому засеваем все дни от старта до сегодня —
+    // так огонёк сразу отражает пройденный путь. Дальше он растёт только по заходам.
+    const seed = new Set(datesFromTo(COURSE_START_DATE, new Date()));
+    data.studyDays.forEach(d => seed.add(d));
+    data.visitDays = [...seed];
   }
+  data.visitDays = [...new Set(data.visitDays)].filter(Boolean).sort();
   return data;
 }
 
-// Вызывается, когда ученица отмечает домашку выполненной — это и есть "день занятия"
-function registerStudyDay() {
+function saveStreakData(data) { storageSet(STREAK_STORAGE_KEY, data); }
+
+// Длина огонька (число дней в пути)
+function getFlameCount() { return getStreakData().visitDays.length; }
+function getCurrentStreak() { return getFlameCount(); } // совместимость с остальным кодом
+
+// Горит ли огонёк сегодня (был заход) — иначе он «серый»
+function visitedToday() { return getStreakData().visitDays.includes(dateKey(new Date())); }
+
+// Регистрирует сегодняшний заход. Возвращает { count, grewToday, prevCount }.
+function registerVisit() {
   const data = getStreakData();
-  const now = new Date();
-  const todayKey = dateKey(now);
-
-  if (!data.studyDays.includes(todayKey)) {
-    data.studyDays.push(todayKey);
-    // храним только последние 120 дней, чтобы не разрастаться бесконечно
-    if (data.studyDays.length > 120) data.studyDays = data.studyDays.slice(-120);
-  }
-
-  if (!data.lastDate) {
-    data.count = 1;
-  } else {
-    const last = new Date(data.lastDate);
-    const sameDay = dateOnly(last).getTime() === dateOnly(now).getTime();
-    if (sameDay) {
-      saveStreakData({ ...data, lastDate: now.toISOString() });
-      return data.count;
-    }
-    if (hoursBetween(last, now) <= STREAK_BREAK_HOURS) {
-      data.count += 1; // занятие в течение 48 часов — серия растёт
-    } else {
-      data.count = 1; // слишком большой перерыв — серия начинается заново
-    }
-  }
-  data.lastDate = now.toISOString();
+  const todayKey = dateKey(new Date());
+  const prevCount = data.visitDays.length;
+  const grewToday = !data.visitDays.includes(todayKey);
+  if (grewToday) data.visitDays.push(todayKey);
+  data.visitDays = [...new Set(data.visitDays)].sort();
+  data.count = data.visitDays.length;
+  data.lastDate = new Date().toISOString();
   saveStreakData(data);
-  return data.count;
+  return { count: data.count, grewToday, prevCount };
 }
 
-function getCurrentStreak() {
-  return refreshStreakOnLoad().count || 0;
+// Отметка ДЗ тоже засчитывается как заход этого дня
+function registerStudyDay() {
+  const data = getStreakData();
+  const todayKey = dateKey(new Date());
+  if (!data.studyDays.includes(todayKey)) {
+    data.studyDays.push(todayKey);
+    if (data.studyDays.length > 500) data.studyDays = data.studyDays.slice(-500);
+  }
+  saveStreakData(data);
+  return registerVisit().count;
+}
+
+// ── Тиры огонька: чем длиннее путь, тем «горячее» и другого цвета пламя.
+// Логика настоящего огня: чем жарче, тем цвет уходит от красного к синему и дальше.
+const FLAME_TIERS = {
+  1: { name: 'Искра',             hot: '#FFCB6B', mid: '#F5872E', base: '#C43A12', glow: '#FF6A2A', spark: '#FFB25A' },
+  2: { name: 'Пламя',             hot: '#FFE27A', mid: '#FF9E2C', base: '#E4550F', glow: '#FF8A1E', spark: '#FFC23E' },
+  3: { name: 'Золотой огонь',     hot: '#FFF3B0', mid: '#FFC740', base: '#F0850C', glow: '#FFB320', spark: '#FFE07A' },
+  4: { name: 'Лазурное пламя',    hot: '#EAF6FF', mid: '#66B8F0', base: '#2A6FD0', glow: '#4CA6F0', spark: '#BFE4FF' },
+  5: { name: 'Аметистовое пламя', hot: '#F6E6FF', mid: '#B57BE8', base: '#6C33B0', glow: '#A65CE6', spark: '#E0BBFF' },
+  6: { name: 'Аврора',            hot: '#E8FFF4', mid: '#4FD6A6', base: '#1E8F73', glow: '#46E0B0', spark: '#BFFFE8' },
+};
+function getFlameTier(count) {
+  if (count >= 60) return 6;
+  if (count >= 30) return 5;
+  if (count >= 14) return 4;
+  if (count >= 7)  return 3;
+  if (count >= 3)  return 2;
+  return 1;
+}
+
+// Плавный счётчик (rAF, меняет только textContent — без layout-трэшинга)
+function countUpEl(el, from, to, dur = 900) {
+  if (!el) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || from === to) { el.textContent = to; return; }
+  const t0 = performance.now();
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur);
+    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 // Многослойный SVG-огонёк: внешнее свечение, внешний язык пламени (терракотовый),
 // внутренний язык (золотой) и яркое ядро — каждый слой анимируется отдельно через CSS
-function flameSvgMarkup() {
+function flameSvgMarkup(tier = 2) {
+  const t = FLAME_TIERS[tier] || FLAME_TIERS[2];
   const id = 'fl' + Math.floor(Math.random()*99999);
   return `
     <svg class="streak-flame" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
         <radialGradient id="${id}g" cx="50%" cy="66%" r="60%">
-          <stop offset="0%"   stop-color="#FFCB5E" stop-opacity="0.8"/>
-          <stop offset="45%"  stop-color="#FF8A1E" stop-opacity="0.38"/>
-          <stop offset="100%" stop-color="#FF4D10" stop-opacity="0"/>
+          <stop offset="0%"   stop-color="${t.glow}" stop-opacity="0.8"/>
+          <stop offset="45%"  stop-color="${t.glow}" stop-opacity="0.34"/>
+          <stop offset="100%" stop-color="${t.base}" stop-opacity="0"/>
         </radialGradient>
         <linearGradient id="${id}o" x1="14" y1="2" x2="14" y2="33" gradientUnits="userSpaceOnUse">
-          <stop offset="0%"   stop-color="#FFE684"/>
-          <stop offset="20%"  stop-color="#FFB330"/>
-          <stop offset="52%"  stop-color="#FF6E18"/>
-          <stop offset="80%"  stop-color="#EF3A10"/>
-          <stop offset="100%" stop-color="#C2280A"/>
+          <stop offset="0%"   stop-color="${t.hot}"/>
+          <stop offset="24%"  stop-color="${t.mid}"/>
+          <stop offset="62%"  stop-color="${t.base}"/>
+          <stop offset="100%" stop-color="${t.base}"/>
         </linearGradient>
         <linearGradient id="${id}m" x1="14" y1="10" x2="14" y2="30" gradientUnits="userSpaceOnUse">
-          <stop offset="0%"   stop-color="#FFF8C8"/>
-          <stop offset="42%"  stop-color="#FFD850"/>
-          <stop offset="100%" stop-color="#FF8C22"/>
+          <stop offset="0%"   stop-color="#FFFDF4"/>
+          <stop offset="45%"  stop-color="${t.hot}"/>
+          <stop offset="100%" stop-color="${t.mid}"/>
         </linearGradient>
         <radialGradient id="${id}c" cx="50%" cy="60%" r="58%">
           <stop offset="0%"   stop-color="#FFFFFF"/>
-          <stop offset="42%"  stop-color="#FFFCE6"/>
-          <stop offset="100%" stop-color="#FFE58C"/>
+          <stop offset="45%"  stop-color="#FFFFFF"/>
+          <stop offset="100%" stop-color="${t.hot}"/>
         </radialGradient>
       </defs>
 
@@ -6353,23 +6447,62 @@ function flameSvgMarkup() {
       <ellipse class="flame-core" cx="14" cy="24.6" rx="2.7" ry="3.7" fill="url(#${id}c)"/>
 
       <!-- rising sparks -->
-      <circle class="flame-spark flame-spark-1" cx="9.5" cy="15" r="1"    fill="#FFD45A"/>
-      <circle class="flame-spark flame-spark-2" cx="18.5" cy="13" r="0.8" fill="#FFC23E"/>
-      <circle class="flame-spark flame-spark-3" cx="14" cy="10" r="0.7"   fill="#FFEFA0"/>
+      <circle class="flame-spark flame-spark-1" cx="9.5" cy="15" r="1"    fill="${t.spark}"/>
+      <circle class="flame-spark flame-spark-2" cx="18.5" cy="13" r="0.8" fill="${t.spark}"/>
+      <circle class="flame-spark flame-spark-3" cx="14" cy="10" r="0.7"   fill="#FFFFFF"/>
     </svg>
   `;
 }
 
-function updateSidebarStreakBadge() {
+function updateSidebarStreakBadge(opts = {}) {
   const badge = document.getElementById('sidebarStreakBadge');
   if (!badge) return;
-  const count = getCurrentStreak();
-  if (count > 0) {
-    badge.innerHTML = `${flameSvgMarkup()}<span class="sidebar-streak-count">${count}</span>`;
-    badge.classList.add('show', 'is-active');
-  } else {
-    badge.classList.remove('show', 'is-active');
+  const count = getFlameCount();
+  if (count <= 0) { badge.className = 'sidebar-streak-badge'; badge.innerHTML = ''; return; }
+  const tier = getFlameTier(count);
+  const lit = visitedToday();
+  badge.className = 'sidebar-streak-badge show is-active flame-tier-' + tier + (lit && !opts.grew ? '' : ' flame-dormant');
+  badge.innerHTML = `${flameSvgMarkup(tier)}<span class="sidebar-streak-count">${count}</span>`;
+
+  if (opts.grew) {
+    // Розжиг нового дня: серый уголёк → разгорается + число тикает вверх
+    const countEl = badge.querySelector('.sidebar-streak-count');
+    countEl.textContent = opts.prevCount;
+    setTimeout(() => {
+      badge.classList.remove('flame-dormant');
+      badge.classList.add('flame-ignite');
+      countUpEl(countEl, opts.prevCount, count, 900);
+      setTimeout(() => badge.classList.remove('flame-ignite'), 1100);
+    }, 450);
   }
+}
+
+// Единая точка входа при загрузке: регистрирует заход и, если это новый день,
+// красиво разжигает огонёк в сайдбаре и показывает уведомление на любом экране.
+function initStreakFlame() {
+  const { count, grewToday, prevCount } = registerVisit();
+  updateSidebarStreakBadge({ grew: grewToday, prevCount });
+  if (grewToday && count > 1) setTimeout(() => showFlameToast(count, prevCount), 750);
+}
+
+function showFlameToast(count, prevCount) {
+  const tier = getFlameTier(count);
+  const word = count === 1 ? 'день' : (count % 10 >= 2 && count % 10 <= 4 && (count < 10 || count > 20) ? 'дня' : 'дней');
+  const el = document.createElement('div');
+  el.className = 'flame-toast flame-tier-' + tier;
+  el.innerHTML = `
+    <span class="flame-toast-flame">${flameSvgMarkup(tier)}</span>
+    <span class="flame-toast-text">
+      <b>Огонёк разгорелся</b>
+      <span class="flame-toast-sub"><em class="flame-toast-num">${prevCount}</em> ${word} в пути · ${FLAME_TIERS[tier].name}</span>
+    </span>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => {
+    el.classList.add('flame-toast-in');
+    countUpEl(el.querySelector('.flame-toast-num'), prevCount, count, 900);
+  });
+  setTimeout(() => { el.classList.remove('flame-toast-in'); el.classList.add('flame-toast-out'); }, 4200);
+  setTimeout(() => el.remove(), 4900);
 }
 
 // ============ КОНФЕТТИ ============
@@ -6963,13 +7096,6 @@ function pvGrammarTopicsCount(completedSet) {
 }
 
 // Ступень «жара» серии — управляет яркостью пламени и количеством искр (CSS)
-function pvStreakHeat(streak) {
-  if (streak >= 7) return 3;
-  if (streak >= 3) return 2;
-  if (streak >= 1) return 1;
-  return 0;
-}
-
 function renderProgressScreen() {
   const completed = getCompletedLessonNumbers();
   const completedSet = new Set(completed);
@@ -7012,8 +7138,9 @@ function renderProgressScreen() {
   const topics = pvGrammarTopicsCount(completedSet);
   const hours = pvEstimateHours(doneCount);
   const studyDaysN = (streakData.studyDays || []).length;
-  const heat = pvStreakHeat(streak);
-  const streakWord = streak === 1 ? 'день подряд' : (streak >= 2 && streak <= 4 ? 'дня подряд' : 'дней подряд');
+  const flameTier = getFlameTier(streak);
+  const flameLit = visitedToday();
+  const streakWord = streak === 1 ? 'день в пути' : (streak % 10 >= 2 && streak % 10 <= 4 && (streak < 10 || streak > 20) ? 'дня в пути' : 'дней в пути');
 
   const statTile = (icon, value, label, sub) => `
     <div class="pv-stat">
@@ -7087,12 +7214,11 @@ function renderProgressScreen() {
           ${statTile(ICO_TIME, hours, 'часов обучения', studyDaysN ? studyDaysN + ' дн. занятий' : '')}
         </div>
 
-        <div class="pv-card pv-streak" data-heat="${heat}">
-          <span class="pv-streak-flame">${flameSvgMarkup()}</span>
+        <div class="pv-card pv-streak flame-tier-${flameTier}${flameLit ? '' : ' flame-dormant'}">
+          <span class="pv-streak-flame">${flameSvgMarkup(flameTier)}</span>
           <div class="pv-streak-text">
-            ${streak > 0
-              ? `<span class="pv-streak-value"><b data-count="${streak}">0</b> ${streakWord}</span><span class="pv-streak-label">серия занятий не прервана</span>`
-              : `<span class="pv-streak-value">Серия не начата</span><span class="pv-streak-label">выполни домашнее задание сегодня</span>`}
+            <span class="pv-streak-value"><b data-count="${streak}">0</b> ${streakWord}</span>
+            <span class="pv-streak-label">${FLAME_TIERS[flameTier].name}${flameLit ? '' : ' · сегодня ещё не горел'}</span>
           </div>
         </div>
       </aside>
@@ -7271,7 +7397,7 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
 
   renderLessonGrid();
   renderNav(null);
-  updateSidebarStreakBadge();
+  initStreakFlame();
   renderVocabTrainer();
   renderVocabIdea2();
 })();
