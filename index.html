@@ -2761,7 +2761,10 @@
     pointer-events: none;
   }
   @media (max-width: 960px) { .main::after { left: 0; } }
-  .main > * { position: relative; z-index: 1; }
+  /* :not(.topbar) — топбар фиксирован к вьюпорту (мобильная шапка); эта строка
+     нужна только экранам-контейнерам (welcome/lesson/progress), чтобы они
+     стояли выше декоративных ::before/::after подложек .main */
+  .main > *:not(.topbar) { position: relative; z-index: 1; }
 
   /* — Сайдбар: матовая тёплая поверхность с внутренним светом — */
   .sidebar {
