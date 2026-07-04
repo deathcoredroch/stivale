@@ -305,11 +305,23 @@
     width: 100%;
     max-width: 440px;
     padding: 0;
-    box-shadow: 0 8px 48px rgba(30,24,20,0.22);
+    box-shadow: 0 20px 60px rgba(30,24,20,0.28), 0 2px 10px rgba(30,24,20,0.1);
     position: relative;
     animation: settings-pop-in 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) both;
     max-height: 90vh;
     overflow-y: auto;
+    overflow-x: hidden;
+  }
+  /* Тёплая декоративная лента вверху панели — задаёт премиальный тон с первого взгляда */
+  .settings-modal-band {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 86px;
+    background:
+      radial-gradient(120% 140% at 12% -20%, rgba(255,238,205,0.55) 0%, rgba(255,238,205,0) 55%),
+      linear-gradient(135deg, rgba(193,84,58,0.14) 0%, rgba(193,84,58,0) 65%);
+    border-radius: 22px 22px 0 0;
+    pointer-events: none;
   }
   @keyframes settings-slide-up {
     from { transform: translateY(100%); opacity: 0.5; }
@@ -329,7 +341,21 @@
     justify-content: space-between;
     padding: 20px 24px 0;
     margin-bottom: 6px;
+    position: relative;
   }
+  .settings-modal-head-left { display: flex; align-items: center; gap: 11px; }
+  .settings-modal-icon {
+    width: 34px; height: 34px;
+    border-radius: 11px;
+    background: linear-gradient(150deg, var(--terracotta) 0%, #a8422c 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 3px 10px rgba(193,84,58,0.35);
+  }
+  .settings-modal-icon svg { width: 18px; height: 18px; }
   .settings-modal-title {
     font-size: 19px;
     font-weight: 700;
@@ -370,8 +396,11 @@
     letter-spacing: 0.12em;
     color: rgba(43,37,32,0.35);
     margin: 16px 0 10px;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
+  .settings-section-label svg { width: 13px; height: 13px; flex-shrink: 0; }
 
   /* ── КАРТОЧКА ГРОМКОСТИ ── */
   .volume-card {
@@ -396,11 +425,27 @@
     justify-content: center;
     flex-shrink: 0;
     color: var(--terracotta);
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.2s;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
   }
-  .volume-card-icon svg { width: 22px; height: 22px; transition: opacity 0.2s; }
+  .volume-card-icon svg { width: 22px; height: 22px; transition: opacity 0.2s; position: relative; z-index: 1; }
+  .volume-card-icon-ring {
+    position: absolute;
+    inset: -5px;
+    border-radius: 16px;
+    border: 1.5px solid var(--terracotta);
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  .volume-card-icon.is-playing { transform: scale(1.05); }
+  .volume-card-icon.is-playing .volume-card-icon-ring {
+    animation: volume-ring-pulse 1s ease-out infinite;
+  }
+  @keyframes volume-ring-pulse {
+    0%   { opacity: 0.65; transform: scale(0.85); }
+    100% { opacity: 0;    transform: scale(1.25); }
+  }
   .volume-card-meta { flex: 1; min-width: 0; }
   .volume-card-name {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -438,6 +483,13 @@
   .volume-pct-pill.boosted {
     background: linear-gradient(135deg, #F0DCD3 0%, #FFF3D0 100%);
     color: #9a3a24;
+    box-shadow: 0 2px 8px rgba(154,58,36,0.18);
+  }
+  .volume-pct-pill.is-bumped { animation: volume-pill-pop 0.22s ease; }
+  @keyframes volume-pill-pop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.14); }
+    100% { transform: scale(1); }
   }
 
   /* Слайдер */
@@ -453,18 +505,19 @@
     -webkit-appearance: none;
     appearance: none;
     flex: 1;
-    height: 6px;
+    height: 7px;
     border-radius: 4px;
     background: var(--line);
     outline: none;
     cursor: pointer;
+    transition: background 0.1s;
   }
   .volume-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     width: 22px; height: 22px;
     border-radius: 50%;
-    background: #fff;
+    background: radial-gradient(circle at 50% 42%, #fff 0%, #fff 38%, var(--terracotta) 40%, var(--terracotta) 44%, #fff 46%, #fff 100%);
     border: 2.5px solid var(--terracotta);
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(193,84,58,0.35), 0 0 0 0 rgba(193,84,58,0);
@@ -496,10 +549,71 @@
     font-size: 10px;
     color: rgba(43,37,32,0.28);
     letter-spacing: 0.02em;
+    transition: color 0.15s, font-weight 0.15s;
   }
   .volume-marker.active-marker {
     color: var(--terracotta);
     font-weight: 700;
+  }
+  .volume-marker.active-marker::before {
+    content: '';
+    display: inline-block;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--terracotta);
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  /* ── Кнопка «Проверить звук» ── */
+  .volume-test-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: var(--cream);
+    color: var(--ink);
+    font: inherit;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  }
+  .volume-test-btn:hover { border-color: var(--terracotta); background: var(--terracotta-soft); }
+  .volume-test-btn:active { transform: scale(0.98); }
+  .volume-test-ico {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--terracotta);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .volume-test-ico svg { width: 11px; height: 11px; margin-left: 1px; }
+  .volume-test-label { flex: 1; text-align: left; }
+  .volume-test-wave { display: flex; align-items: center; gap: 2.5px; height: 14px; opacity: 0; transition: opacity 0.15s; }
+  .volume-test-btn.is-playing .volume-test-wave { opacity: 1; }
+  .volume-test-btn.is-playing .volume-test-label { color: var(--terracotta); }
+  .volume-test-wave i {
+    display: block;
+    width: 2.5px;
+    border-radius: 2px;
+    background: var(--terracotta);
+    animation: volume-wave-bounce 0.9s ease-in-out infinite;
+  }
+  .volume-test-wave i:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .volume-test-wave i:nth-child(2) { height: 14px; animation-delay: 0.15s; }
+  .volume-test-wave i:nth-child(3) { height: 9px; animation-delay: 0.3s; }
+  @keyframes volume-wave-bounce {
+    0%, 100% { transform: scaleY(0.4); }
+    50%      { transform: scaleY(1); }
   }
 
   /* Старые классы — оставим пустыми чтоб не сломать JS */
@@ -7584,8 +7698,17 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
 <div class="settings-modal-overlay" id="settingsModal">
   <div class="settings-modal-panel">
     <div class="settings-drag-handle"></div>
+    <div class="settings-modal-band"></div>
     <div class="settings-modal-head">
-      <h2 class="settings-modal-title">Настройки</h2>
+      <div class="settings-modal-head-left">
+        <span class="settings-modal-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M19.4 13.5c.1-.5.1-1 0-1.5l1.6-1.2-1.5-2.6-1.9.6a7.4 7.4 0 0 0-1.3-.8l-.3-2H10l-.3 2a7.4 7.4 0 0 0-1.3.8l-1.9-.6-1.5 2.6L6.6 12c-.1.5-.1 1 0 1.5L5 14.7l1.5 2.6 1.9-.6c.4.3.8.6 1.3.8l.3 2h4l.3-2c.5-.2.9-.5 1.3-.8l1.9.6 1.5-2.6-1.6-1.2Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <h2 class="settings-modal-title">Настройки</h2>
+      </div>
       <button class="settings-modal-close" id="settingsModalClose" aria-label="Закрыть">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
@@ -7594,11 +7717,18 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
     </div>
 
     <div class="settings-body">
-      <span class="settings-section-label">Звук</span>
+      <span class="settings-section-label">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        Звук
+      </span>
 
       <div class="volume-card">
         <div class="volume-card-top">
           <div class="volume-card-icon" id="volumeCardIcon">
+            <span class="volume-card-icon-ring"></span>
             <!-- иконка динамика меняется через JS -->
             <svg id="volIconSvg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 5L6 9H2v6h4l5 4V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
@@ -7610,7 +7740,7 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
             <p class="volume-card-name">Громкость произношения</p>
             <p class="volume-card-desc">Кнопка-динамик у слов в уроке и домашнем задании</p>
           </div>
-          <span class="volume-pct-pill" id="volumeValueBadge">250%</span>
+          <span class="volume-pct-pill" id="volumeValueBadge">100%</span>
         </div>
 
         <div class="volume-slider-row">
@@ -7630,10 +7760,22 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
         </div>
 
         <div class="volume-markers">
-          <span class="volume-marker">Тихо</span>
-          <span class="volume-marker">50%</span>
-          <span class="volume-marker">100%</span>
+          <span class="volume-marker" data-value="0">Тихо</span>
+          <span class="volume-marker" data-value="50">50%</span>
+          <span class="volume-marker" data-value="100">100%</span>
         </div>
+
+        <button class="volume-test-btn" id="volumeTestBtn" type="button">
+          <span class="volume-test-ico">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 5.5v13l11-6.5-11-6.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="volume-test-label">Проверить звук</span>
+          <span class="volume-test-wave">
+            <i></i><i></i><i></i>
+          </span>
+        </button>
       </div>
     </div>
   </div>
@@ -7866,6 +8008,8 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`,
     };
 
+    let prevVal = parseInt(volumeSlider.value);
+
     function updateVolUI(val) {
       const pct = val; // 0–100, slider max is 100
       volumeSlider.style.background =
@@ -7886,12 +8030,34 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
         if (icon) icon.innerHTML = ICONS.low;
         if (card) card.style.background = '';
         if (card) card.style.color = '';
-      } else {
+      } else if (val < 90) {
         pill.className = 'volume-pct-pill';
         if (icon) icon.innerHTML = ICONS.full;
         if (card) card.style.background = '';
         if (card) card.style.color = '';
+      } else {
+        pill.className = 'volume-pct-pill boosted';
+        if (icon) icon.innerHTML = ICONS.full;
+        if (card) card.style.background = '';
+        if (card) card.style.color = '';
       }
+
+      // Подсвечиваем ближайший к текущему значению маркер («Тихо / 50% / 100%»)
+      const markers = document.querySelectorAll('.volume-marker');
+      let closest = null, closestDist = Infinity;
+      markers.forEach(m => {
+        const dist = Math.abs(parseInt(m.dataset.value, 10) - val);
+        if (dist < closestDist) { closestDist = dist; closest = m; }
+      });
+      markers.forEach(m => m.classList.toggle('active-marker', m === closest));
+
+      // Лёгкий «поп» на пилюле процента, когда значение реально меняется
+      if (val !== prevVal) {
+        pill.classList.remove('is-bumped');
+        void pill.offsetWidth; // форсируем reflow, чтобы анимация перезапустилась
+        pill.classList.add('is-bumped');
+      }
+      prevVal = val;
     }
 
     updateVolUI(parseInt(volumeSlider.value));
@@ -7902,6 +8068,21 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
       localStorage.setItem('stivale_volume', speakGain.toString());
       updateVolUI(val);
     });
+
+    // ── Кнопка «Проверить звук» — озвучивает фразу на текущей громкости ──
+    const testBtn = document.getElementById('volumeTestBtn');
+    if (testBtn) {
+      testBtn.addEventListener('click', () => {
+        if (testBtn.classList.contains('is-playing')) return;
+        const card = document.getElementById('volumeCardIcon');
+        testBtn.classList.add('is-playing');
+        if (card) card.classList.add('is-playing');
+        speak('Buongiorno! Come stai?').finally(() => {
+          testBtn.classList.remove('is-playing');
+          if (card) card.classList.remove('is-playing');
+        });
+      });
+    }
   }
 
   // ── Открытие / закрытие настроек ───────────────────────────────────────────
