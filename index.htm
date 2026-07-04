@@ -536,6 +536,69 @@
   }
   .nav-item.active .nav-sub { opacity: 0.8; }
 
+  /* ── Авто-оглавление: заголовки этапов ── */
+  .nav-stage {
+    padding: 15px 16px 8px;
+    margin: 4px 10px 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border-top: 1px solid var(--line);
+  }
+  .nav-stage:first-child { border-top: none; padding-top: 8px; }
+  .nav-stage-num {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--terracotta);
+  }
+  .nav-stage-title {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.25;
+    margin-top: 1px;
+  }
+  .nav-stage-level {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ink-mute);
+  }
+
+  /* ── Спец-занятия: звезда + метка (практика · аттестация · экзамен) ── */
+  .nav-item-lesson { display: inline-flex; align-items: center; gap: 6px; }
+  .nav-star {
+    width: 13px; height: 13px;
+    flex-shrink: 0;
+    display: inline-flex;
+    color: var(--gold);
+    filter: drop-shadow(0 1px 2px rgba(201,154,61,0.4));
+  }
+  .nav-star svg { width: 100%; height: 100%; fill: currentColor; }
+  .nav-item-exam .nav-star { color: var(--terracotta); filter: drop-shadow(0 1px 3px rgba(193,84,58,0.45)); }
+  .nav-type {
+    display: inline-block;
+    margin-top: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 100px;
+  }
+  .nav-type-practice { background: rgba(107,122,77,0.20); color: var(--olive-deep); }
+  .nav-type-assessment { background: rgba(201,154,61,0.22); color: #9a7112; }
+  .nav-type-exam {
+    background: linear-gradient(135deg, rgba(193,84,58,0.92), rgba(168,68,46,0.92));
+    color: #FFF3EA;
+    box-shadow: 0 3px 8px -3px rgba(193,84,58,0.6);
+  }
+
   /* ДЗ СТАТУС */
   .nav-item-row {
     display: flex;
@@ -3665,8 +3728,37 @@
 // все, которые существуют, — без единой правки в коде. id урока всегда `lesson-{N}`, поэтому
 // статус ДЗ, стрик и карта прогресса (ключ — lesson.id, число — lesson.number) продолжают
 // работать без изменений.
-const MAX_LESSON_SLOTS = 41;
+const MAX_LESSON_SLOTS = 43;
 let lessons = []; // заполняется асинхронно в discoverLessons() при старте приложения
+
+// ============ ПЛАН ОБУЧЕНИЯ (для авто-оглавления в сайдбаре) ============
+// Как только добавлен файл lessons/lesson-N.html, урок автоматически попадает
+// в сайдбар ПОД нужный этап и получает звезду/метку (практика · аттестация · экзамен)
+// по этому плану. Меняешь план здесь — оглавление перестраивается само, без правок в renderNav.
+const LESSON_STAGES = [
+  { n: 1, from: 1,  to: 15, title: 'Базовое выживание + Presente', level: 'A0 → A1' },
+  { n: 2, from: 16, to: 28, title: 'Повседневная жизнь и Passato', level: 'A1+' },
+  { n: 3, from: 29, to: 43, title: 'Прокачка до A2',               level: 'A1+ → A2' },
+];
+
+// Спец-занятия со звездой. Тип определяет метку и её цвет.
+const LESSON_SPECIAL = {
+  14: 'practice',  15: 'assessment',
+  27: 'practice',  28: 'practice',
+  39: 'practice',  40: 'practice',  41: 'practice',
+  42: 'exam',      43: 'exam',
+};
+const SPECIAL_META = {
+  practice:   { label: 'Практика' },
+  assessment: { label: 'Аттестация' },
+  exam:       { label: 'Экзамен' },
+};
+
+function getLessonStage(number)  { return LESSON_STAGES.find(s => number >= s.from && number <= s.to) || null; }
+function getLessonSpecial(number){ const k = LESSON_SPECIAL[number]; return k ? { key: k, ...SPECIAL_META[k] } : null; }
+
+// Гербовая звезда для спец-занятий (единый стиль иконок, заливка золотом через CSS)
+const NAV_STAR_SVG = '<span class="nav-star"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.6 6.3 6.8.5-5.2 4.4 1.6 6.6L12 17.3l-5.8 3.7 1.6-6.6-5.2-4.4 6.8-.5z"/></svg></span>';
 
 // Достаёт метаданные и два маркированных блока (sections/homework) из текста файла урока.
 function parseLessonFragment(html) {
@@ -6403,16 +6495,33 @@ document.addEventListener('keydown', (e) => {
 
 function renderNav(activeId) {
   navList.innerHTML = '';
+  let lastStageNum = null;
   lessons.forEach(lesson => {
+    // Заголовок этапа печатается один раз перед первым его уроком — это и есть авто-оглавление
+    const stage = getLessonStage(lesson.number);
+    if (stage && stage.n !== lastStageNum) {
+      const head = document.createElement('div');
+      head.className = 'nav-stage';
+      head.innerHTML = `
+        <span class="nav-stage-num">Этап ${stage.n}</span>
+        <span class="nav-stage-title">${stage.title}</span>
+        <span class="nav-stage-level">${stage.level}</span>
+      `;
+      navList.appendChild(head);
+      lastStageNum = stage.n;
+    }
+
     const done = isHwDone(lesson.id);
+    const special = getLessonSpecial(lesson.number);
     const item = document.createElement('div');
-    item.className = 'nav-item' + (lesson.id === activeId ? ' active' : '');
+    item.className = 'nav-item' + (lesson.id === activeId ? ' active' : '') + (special ? ' nav-item-' + special.key : '');
     item.innerHTML = `
       <div class="nav-item-row">
-        <span>Урок ${lesson.number}</span>
+        <span class="nav-item-lesson">${special ? NAV_STAR_SVG : ''}Урок ${lesson.number}</span>
         <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + ' ДЗ готово' : 'ДЗ не сдано'}</span>
       </div>
       <span class="nav-sub">${lesson.title}</span>
+      ${special ? `<span class="nav-type nav-type-${special.key}">${special.label}</span>` : ''}
     `;
     item.addEventListener('click', () => {
       showLesson(lesson.id);
