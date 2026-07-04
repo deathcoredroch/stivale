@@ -1,0 +1,35 @@
+# Автоматика «положил урок — сайт перестроился»:
+# при каждом пуше, задевающем lessons/*.html, пересобирает lessons/manifest.json
+# и коммитит его, если список уроков изменился. Руками манифест не трогаем.
+name: Rebuild lessons manifest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lessons/**.html'
+      - '.github/workflows/lessons-manifest.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate lessons/manifest.json
+        run: |
+          cd lessons
+          ls lesson-*.html 2>/dev/null | sort -V | \
+            python3 -c 'import json,sys; files=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps({"lessons": files}, ensure_ascii=False, indent=2))' \
+            > manifest.json
+          cat manifest.json
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lessons/manifest.json
+          git diff --cached --quiet || { git commit -m "chore: rebuild lessons manifest [skip ci]"; git push; }
