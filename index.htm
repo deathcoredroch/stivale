@@ -3765,6 +3765,15 @@
 
 </div>
 
+<!-- ============ СИНХРОНИЗАЦИЯ ПРОГРЕССА МЕЖДУ УСТРОЙСТВАМИ (Firebase) ============
+     Подключаем "compat"-сборку — она даёт старый простой API (firebase.xxx()) без
+     сборщиков и import'ов, вписывается в остальной ванильный код без переделок.
+     Если ключи ниже не заполнены, весь блок молча выключается и сайт работает
+     ровно как раньше — только на localStorage/cookie этого браузера. -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
 <script>
 // ============ УРОКИ: АВТОМАТИЧЕСКОЕ ПОДКЛЮЧЕНИЕ ИЗ ФАЙЛОВ ============
 // Архитектура рассчитана на 41 урок (столько же городов в italyCities ниже) без необходимости
@@ -6258,10 +6267,76 @@ function isHwDone(lessonId) {
   return !!status[lessonId];
 }
 
+// ============ ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ ДЗ МЕЖДУ УСТРОЙСТВАМИ (Firebase) ============
+// localStorage/cookie живут только в одном браузере, поэтому статус ДЗ дополнительно
+// зеркалится в Firebase Realtime Database — так отметка на телефоне сразу видна на
+// компьютере и наоборот. Входа/пароля не нужно: используется анонимная авторизация
+// Firebase, которая один раз "запоминает" устройство и дальше работает сама.
+//
+// Чтобы включить: завести бесплатный проект на https://console.firebase.google.com,
+// открыть Project settings → SDK setup and configuration → Config и вписать 4 строки
+// ниже. Пока apiKey не заполнен, блок сам себя выключает — сайт работает как раньше,
+// только в этом браузере.
+const FIREBASE_CONFIG = {
+  apiKey: "ВСТАВЬ_СЮДА",
+  authDomain: "ВСТАВЬ_СЮДА.firebaseapp.com",
+  databaseURL: "https://ВСТАВЬ_СЮДА-default-rtdb.firebaseio.com",
+  projectId: "ВСТАВЬ_СЮДА",
+};
+
+let hwCloudRef = null; // ссылка на узел в Realtime Database — назначается после входа
+
+function hwCloudEnabled() {
+  return typeof firebase !== 'undefined' && FIREBASE_CONFIG.apiKey.indexOf('ВСТАВЬ') === -1;
+}
+
+// Ни одно устройство никогда не "отменяет" готовое ДЗ само по себе — если урок отмечен
+// сданным хоть где-то (локально или в облаке), он остаётся сданным после слияния.
+function mergeHwStatus(a, b) {
+  const merged = { ...(a || {}), ...(b || {}) };
+  Object.keys(a || {}).forEach(k => { if (a[k]) merged[k] = true; });
+  Object.keys(b || {}).forEach(k => { if (b[k]) merged[k] = true; });
+  return merged;
+}
+
+function refreshHwUIAfterSync() {
+  try {
+    renderNav(currentOpenLessonId);
+    if (currentOpenLessonId) {
+      const holder = document.getElementById('hwButtonHolder');
+      const lesson = lessons.find(l => l.id === currentOpenLessonId);
+      if (holder && lesson) { holder.innerHTML = renderHwButton(lesson); attachHwButtonListener(lesson.id); }
+    }
+    if (progressScreen && !progressScreen.classList.contains('hidden')) {
+      renderProgressScreen(); pvMountMap(); pvAnimateCounters();
+    }
+  } catch (e) {}
+}
+
+if (hwCloudEnabled()) {
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    firebase.auth().onAuthStateChanged((user) => {
+      if (!user) { firebase.auth().signInAnonymously().catch(() => {}); return; }
+      hwCloudRef = firebase.database().ref('stivale_hw/' + user.uid);
+      hwCloudRef.on('value', (snap) => {
+        const cloud = snap.val();
+        const local = getHwStatus();
+        const merged = mergeHwStatus(local, cloud);
+        const localHadEverything = JSON.stringify(merged) === JSON.stringify(local);
+        const cloudHadEverything = JSON.stringify(merged) === JSON.stringify(cloud || {});
+        if (!localHadEverything) { storageSet(HW_STORAGE_KEY, merged); refreshHwUIAfterSync(); }
+        if (!cloudHadEverything) hwCloudRef.set(merged).catch(() => {}); // долить недостающее и в облако
+      });
+    });
+  } catch (e) { /* неверный конфиг — работаем локально, как раньше */ }
+}
+
 function toggleHwDone(lessonId) {
   const status = getHwStatus();
   status[lessonId] = !status[lessonId];
   storageSet(HW_STORAGE_KEY, status);
+  if (hwCloudRef) hwCloudRef.set(status).catch(() => {});
   if (status[lessonId]) {
     launchConfetti();
     registerStudyDay();
@@ -6718,6 +6793,7 @@ function renderLessonGrid() {
 }
 
 function showWelcome() {
+  currentOpenLessonId = null;
   welcomeScreen.classList.remove('hidden');
   lessonScreen.classList.add('hidden');
   progressScreen.classList.add('hidden');
@@ -6873,9 +6949,13 @@ async function loadLessonFragment(url) {
   return html;
 }
 
+let currentOpenLessonId = null; // какой урок открыт сейчас — нужно только чтобы после
+                                 // фоновой облачной синхронизации ДЗ восстановить подсветку в сайдбаре
+
 function showLesson(id) {
   const lesson = lessons.find(l => l.id === id);
   if (!lesson) return;
+  currentOpenLessonId = id;
   welcomeScreen.classList.add('hidden');
   progressScreen.classList.add('hidden');
   document.getElementById('progressNavBtn').classList.remove('active');
@@ -7323,6 +7403,7 @@ function pvAnimateCounters(rootEl) {
 }
 
 function showProgress() {
+  currentOpenLessonId = null;
   welcomeScreen.classList.add('hidden');
   lessonScreen.classList.add('hidden');
   progressScreen.classList.remove('hidden');
