@@ -7842,11 +7842,90 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
   // Озвучивает текст и ВОЗВРАЩАЕТ Promise, который резолвится по окончании
   // воспроизведения (или сразу — при ошибке/пустом вводе). Это позволяет читать
   // историю последовательно, предложение за предложением, с подсветкой.
+  // Разбивает длинный текст на фрагменты ≤ ~180 символов по границам слов:
+  // у Google Translate TTS ограничение на длину одного запроса (~200 символов).
+  function splitForTts(text, max = 180) {
+    const clean = text.replace(/\s+/g, ' ').trim();
+    if (clean.length <= max) return clean ? [clean] : [];
+    const parts = [];
+    let cur = '';
+    for (const w of clean.split(' ')) {
+      if (cur && (cur + ' ' + w).length > max) { parts.push(cur); cur = w; }
+      else cur = cur ? cur + ' ' + w : w;
+    }
+    if (cur) parts.push(cur);
+    return parts;
+  }
+
+  function googleTtsUrl(chunk) {
+    return 'https://translate.google.com/translate_tts?ie=UTF-8&tl=it&client=tw-ob&q='
+      + encodeURIComponent(chunk);
+  }
+
+  // Последовательно проигрывает фрагменты через Google Translate TTS.
+  // Один и тот же живой итальянский голос на ВСЕХ устройствах — не зависит от
+  // системных голосов ОС (именно офлайновый голос Windows делал озвучку на
+  // компьютере механической, тогда как на телефонах голос сети звучал хорошо).
+  // resolve() — успех/остановка; reject() — чтобы откатиться на Web Speech.
+  function speakViaGoogle(text) {
+    const chunks = splitForTts(text);
+    if (!chunks.length) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      let i = 0, started = false;
+      const playNext = () => {
+        if (i >= chunks.length) return resolve();
+        const audio = new Audio();
+        currentAudio = audio;
+        audio.volume = Math.min(speakGain, 1.0);
+        let advanced = false;
+        const advance = () => { if (advanced) return; advanced = true; i++; playNext(); };
+        audio.onended = advance;
+        audio.onpause = () => { // остановка извне (stopSpeaking)
+          if (currentAudio !== audio && !advanced) { advanced = true; resolve(); }
+        };
+        audio.onerror = () => {
+          if (advanced) return;
+          advanced = true;
+          // Первый фрагмент не пошёл — сеть/доступ недоступны, откатываемся на Web Speech.
+          // Если уже что-то прозвучало — просто завершаем, не начиная озвучку заново.
+          started ? resolve() : reject(new Error('google tts unavailable'));
+        };
+        audio.src = googleTtsUrl(chunks[i]);
+        audio.play().then(() => { started = true; })
+          .catch(() => { if (!advanced) { advanced = true; reject(new Error('play blocked')); } });
+      };
+      playNext();
+    });
+  }
+
+  // Крайний fallback: голоса самой ОС (Web Speech API), если сети нет вовсе.
+  function speakViaWebSpeech(word) {
+    return new Promise((resolve) => {
+      if (!window.speechSynthesis) return resolve();
+      if (!voicesReady || !bestItVoice) refreshVoices();
+      speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(word);
+      currentUtterance = utt;
+      utt.lang = 'it-IT';
+      utt.rate = 0.88;
+      utt.volume = Math.min(speakGain, 1.0);
+      if (bestItVoice) utt.voice = bestItVoice;
+      const done = () => { if (currentUtterance === utt) currentUtterance = null; resolve(); };
+      utt.onend = done;
+      utt.onerror = done;
+      speechSynthesis.speak(utt);
+      // Страховка: в некоторых средах onend/onerror у Web Speech не срабатывают.
+      // Резолвим по оценке длительности (≈ как реальная речь), чтобы цикл чтения
+      // не зависал. Если речь идёт нормально — onend сработает раньше.
+      setTimeout(done, Math.max(1800, word.length * 80 + 500));
+    });
+  }
+
   function speak(word) {
     if (!word || typeof word !== 'string') return Promise.resolve();
     stopSpeaking(); // не накладываем звуки друг на друга
 
-    // Сначала пробуем локальный TTS-сервер (качественнее), иначе — Web Speech API
+    // 1) Локальный TTS-сервер, если запущен (самое высокое качество на этой машине)
     const apiUrl = `http://localhost:3002/api/speak?text=${encodeURIComponent(word)}&lang=it_IT`;
 
     return fetch(apiUrl)
@@ -7865,28 +7944,10 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
           audio.play().catch(done);
         });
       })
-      .catch(() => {
-        // Fallback на Web Speech API, если сервер недоступен
-        return new Promise((resolve) => {
-          if (!window.speechSynthesis) return resolve();
-          if (!voicesReady || !bestItVoice) refreshVoices();
-          speechSynthesis.cancel();
-          const utt = new SpeechSynthesisUtterance(word);
-          currentUtterance = utt;
-          utt.lang = 'it-IT';
-          utt.rate = 0.88;
-          utt.volume = Math.min(speakGain, 1.0);
-          if (bestItVoice) utt.voice = bestItVoice;
-          const done = () => { if (currentUtterance === utt) currentUtterance = null; resolve(); };
-          utt.onend = done;
-          utt.onerror = done;
-          speechSynthesis.speak(utt);
-          // Страховка: в некоторых средах onend/onerror у Web Speech не срабатывают.
-          // Резолвим по оценке длительности (≈ как реальная речь), чтобы цикл чтения
-          // не зависал. Если речь идёт нормально — onend сработает раньше.
-          setTimeout(done, Math.max(1800, word.length * 80 + 500));
-        });
-      });
+      // 2) Google Translate TTS — одинаково живой итальянский на всех устройствах
+      .catch(() => speakViaGoogle(word))
+      // 3) Голоса ОС (Web Speech API) — только если сети нет совсем
+      .catch(() => speakViaWebSpeech(word));
   }
   window.speakIt = speak;            // доступ к озвучке из генератора историй
   window.stopSpeaking = stopSpeaking; // остановка воспроизведения
