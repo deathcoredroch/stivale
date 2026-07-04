@@ -3330,6 +3330,14 @@
     background: rgba(255,255,255,0.85);
     border: 2px dashed rgba(150, 130, 100, 0.5);
   }
+  /* следующая остановка — цель: золотое кольцо */
+  .pv-stop-next .pv-stop-dot {
+    background: #FFFDF6;
+    border: 2px solid var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,154,61,0.16);
+  }
+  .pv-stop-next .pv-stop-name { color: var(--ink-soft); font-weight: 700; }
+  .pv-stop-next .pv-stop-meta { color: #9a7112; font-weight: 700; }
   .pv-stop-name {
     font-size: clamp(12.5px, 1.05vw, 14.5px);
     font-weight: 600;
@@ -7116,7 +7124,13 @@ function renderProgressScreen() {
   const stops = [];
   for (let i = from; i < to; i++) {
     const c = italyCities[i];
-    const st = completedSet.has(c.lesson) ? 'done' : (c.lesson === maxDone + 1 ? 'here' : 'ahead');
+    // «ты здесь» — последний открытый город (совпадает с маркером на карте);
+    // «следующая» — ближайший неоткрытый; остальное — пройдено / впереди.
+    let st;
+    if (maxDone > 0 && c.lesson === maxDone) st = 'here';
+    else if (completedSet.has(c.lesson)) st = 'done';
+    else if (c.lesson === maxDone + 1) st = 'next';
+    else st = 'ahead';
     stops.push({ ...c, st });
   }
   const restCount = PV_TOTAL_STOPS - to;
@@ -7126,7 +7140,7 @@ function renderProgressScreen() {
     if (st === 'here') return '<span class="pv-stop-dot"><i class="pv-stop-pulse"></i></span>';
     return '<span class="pv-stop-dot"></span>';
   };
-  const stopMeta = { done: 'пройден', here: 'ты здесь', ahead: 'впереди' };
+  const stopMeta = { done: 'пройден', here: 'ты здесь', next: 'следующая', ahead: 'впереди' };
   const routeItems = stops.map(s => `
     <li class="pv-stop pv-stop-${s.st}">
       ${stopDot(s.st)}
@@ -7246,7 +7260,8 @@ function pvMountMap() {
 
   const completed = getCompletedLessonNumbers();
   const maxDone = completed.length ? Math.max(...completed) : 0;
-  const targetZone = Math.min(maxDone + 1, PV_TOTAL_STOPS);
+  // Маркер стоит на последнем открытом городе («ты здесь»); до старта — на первом.
+  const targetZone = maxDone >= 1 ? maxDone : 1;
   pvPlaceMarker(svg, targetZone, size);
 }
 
@@ -7320,10 +7335,10 @@ function pvCelebrate(lessonNumber) {
   const freshPath = svg.querySelector(`.pv-zone[data-zone="${lessonNumber}"]`);
   if (freshPath) freshPath.classList.add('pv-zone-bloom');
 
-  // 2) Маркер стартует с только что открытого региона и плавно едет к следующему
+  // 2) Маркер переезжает с прежнего города на только что открытый («ты здесь»)
   const layer = svg.querySelector('#pvMarkerLayer');
-  const fromC = pvZoneCenter(svg, lessonNumber);
-  const toC = pvZoneCenter(svg, Math.min(lessonNumber + 1, PV_TOTAL_STOPS));
+  const fromC = pvZoneCenter(svg, Math.max(lessonNumber - 1, 1));
+  const toC = pvZoneCenter(svg, lessonNumber);
   if (layer && fromC && toC) {
     layer.style.transition = 'none';
     layer.style.transform = `translate(${fromC.x}px, ${fromC.y}px)`;
