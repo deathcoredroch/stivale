@@ -6277,12 +6277,9 @@ function isHwDone(lessonId) {
 // открыть Project settings → SDK setup and configuration → Config и вписать 4 строки
 // ниже. Пока apiKey не заполнен, блок сам себя выключает — сайт работает как раньше,
 // только в этом браузере.
-const FIREBASE_CONFIG = {
-  apiKey: "ВСТАВЬ_СЮДА",
-  authDomain: "ВСТАВЬ_СЮДА.firebaseapp.com",
-  databaseURL: "https://ВСТАВЬ_СЮДА-default-rtdb.firebaseio.com",
-  projectId: "ВСТАВЬ_СЮДА",
-};
+// Конфиг Firebase хранится в config.json (не коммитится в git для безопасности).
+// Загружаем его через fetch перед инициализацией.
+let FIREBASE_CONFIG = {};
 
 let hwCloudRef = null; // ссылка на узел в Realtime Database — назначается после входа
 
@@ -6313,8 +6310,18 @@ function refreshHwUIAfterSync() {
   } catch (e) {}
 }
 
-if (hwCloudEnabled()) {
+// ── Асинхронная инициализация Firebase ──
+// Загружаем конфиг из config.json (не коммитится в git). Если файл отсутствует
+// или неверный — блок молча отключается и сайт работает локально, как раньше.
+(async function initCloudSync() {
   try {
+    if (typeof firebase === 'undefined') return; // SDK не загружен
+    const res = await fetch('./config.json');
+    if (!res.ok) return; // нет файла — работаем локально
+    const { firebase: cfg } = await res.json();
+    if (!cfg || !cfg.apiKey) return; // неверный конфиг
+    FIREBASE_CONFIG = cfg;
+
     firebase.initializeApp(FIREBASE_CONFIG);
     firebase.auth().onAuthStateChanged((user) => {
       if (!user) { firebase.auth().signInAnonymously().catch(() => {}); return; }
@@ -6329,8 +6336,8 @@ if (hwCloudEnabled()) {
         if (!cloudHadEverything) hwCloudRef.set(merged).catch(() => {}); // долить недостающее и в облако
       });
     });
-  } catch (e) { /* неверный конфиг — работаем локально, как раньше */ }
-}
+  } catch (e) { /* конфиг не найден или ошибка при загрузке — работаем локально */ }
+})();
 
 function toggleHwDone(lessonId) {
   const status = getHwStatus();
