@@ -9,9 +9,10 @@
 //
 // Всё остальное происходит само, без правок index.html / app.js:
 //  • урок попадает в сайдбар под свой этап (LESSON_STAGES) и в карточку на главной;
-//  • блоки <div class="hw-answers"> / <div class="hw-translation"> в ДЗ автоматически
-//    превращаются в раскрывающиеся кнопки «Ответы» / «Перевод» (details.reveal) —
-//    можно писать и сразу <details class="reveal answer|translation">, оба формата работают;
+//  • блоки <div class="hw-answers"> / <div class="hw-translation"> / <div class="hw-hint">
+//    автоматически превращаются в раскрывающиеся кнопки «Ответы» / «Перевод» / «Подсказка»
+//    (details.reveal) — можно писать и сразу <details class="reveal answer|translation">,
+//    и просто <details> с <summary> — все форматы приводятся к одному фирменному виду;
 //  • количество заданий и время ДЗ для шапки модалки считаются из содержимого файла;
 //  • дневник прогресса, карта Италии, словарный тренажёр (td[data-word]) и истории
 //    пересчитываются сами по загруженным урокам.
@@ -57,13 +58,14 @@ const NAV_STAR_SVG = '<span class="nav-star"><svg viewBox="0 0 24 24" aria-hidde
 // они превращаются в нативные details.reveal (CSS стилит их сам). Кнопки «Ответы» /
 // «Перевод» появляются без единой строки JS в уроке и без ручной регистрации.
 function upgradeRevealBlocks(rootEl) {
-  rootEl.querySelectorAll('.hw-answers, .hw-translation').forEach(div => {
-    const isAnswers = div.classList.contains('hw-answers');
+  rootEl.querySelectorAll('.hw-answers, .hw-translation, .hw-hint').forEach(div => {
+    const isTranslation = div.classList.contains('hw-translation');
+    const isHint = div.classList.contains('hw-hint');
     const det = document.createElement('details');
-    det.className = 'reveal ' + (isAnswers ? 'answer' : 'translation');
+    det.className = 'reveal ' + (isTranslation ? 'translation' : 'answer');
     const summary = document.createElement('summary');
     const titleEl = div.querySelector('.hw-rev-title');
-    summary.textContent = (titleEl ? titleEl.textContent.trim() : '') || (isAnswers ? 'Ответы' : 'Перевод');
+    summary.textContent = (titleEl ? titleEl.textContent.trim() : '') || (isHint ? 'Подсказка' : isTranslation ? 'Перевод' : 'Ответы');
     if (titleEl) titleEl.remove();
     const body = document.createElement('div');
     body.className = 'reveal-body';

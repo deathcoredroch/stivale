@@ -1611,11 +1611,13 @@
     margin: 0 2px;
   }
 
-  .hw-modal-body details {
+  /* Мелкие инлайн-спойлеры (.hw-answer-чипы). Фирменные details.reveal исключены —
+     им нужен block, иначе раскрытые «Ответы» и «Перевод» встают в одну строку. */
+  .hw-modal-body details:not(.reveal) {
     display: inline-block;
     margin-left: 6px;
   }
-  .hw-modal-body details summary {
+  .hw-modal-body details:not(.reveal) summary {
     cursor: pointer;
     color: var(--terracotta);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
