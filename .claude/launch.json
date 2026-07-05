@@ -5,7 +5,8 @@
       "name": "web-server-2",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8017"],
-      "port": 8017
+      "port": 8017,
+      "autoPort": true
     }
   ]
 }

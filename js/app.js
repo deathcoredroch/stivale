@@ -3371,24 +3371,34 @@ function pvCelebrate(lessonNumber) {
   // у которых нет региона на карте) отдельное поздравление с курсом
   const pvRoot = progressScreen.querySelector('.pv');
   const city = hasRegion ? italyCities[lessonNumber - 1] : null;
-  let toastCap = null, toastBody = null;
+  let toastCap = null, toastBody = null, toastIco = null;
+  // Контекстные иконки для «achievement»-плашки (штрих, наследуют золотой цвет)
+  const ICO_PIN = '<path d="M12 21s6.5-5.4 6.5-10.5a6.5 6.5 0 1 0-13 0C5.5 15.6 12 21 12 21Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10.2" r="2.4" stroke="currentColor" stroke-width="1.7"/>';
+  const ICO_BADGE = '<circle cx="12" cy="12" r="8.4" stroke="currentColor" stroke-width="1.7"/><path d="M8.4 12.2l2.5 2.5 4.7-4.9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>';
+  const ICO_STAR = '<path d="M12 3.2l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 21.9 6.8 19.1 8 13.3 3.6 9.3l5.9-.7L12 3.2Z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>';
   if (city) {
     toastCap = 'Регион открыт';
     toastBody = city.name;
+    toastIco = ICO_PIN;
   } else if (lessonNumber === PV_TOTAL_STOPS + 1) {
     toastCap = 'Экзамен сдан';
     toastBody = 'Ещё один шаг до финиша';
+    toastIco = ICO_BADGE;
   } else if (lessonNumber >= PLANNED_TOTAL) {
     toastCap = 'Курс пройден!';
     toastBody = 'Уровень А2 покорён';
+    toastIco = ICO_STAR;
   }
   if (toastCap && pvRoot) {
     const toast = document.createElement('div');
     toast.className = 'pv-toast';
-    toast.innerHTML = `<span class="pv-toast-cap">${toastCap}</span><span class="pv-toast-city">${toastBody}</span>`;
+    toast.innerHTML = `
+      <span class="pv-toast-ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">${toastIco}</svg></span>
+      <span class="pv-toast-cap">${toastCap}</span>
+      <span class="pv-toast-city">${toastBody}</span>`;
     pvRoot.appendChild(toast);
-    setTimeout(() => toast.classList.add('pv-toast-out'), 2300);
-    setTimeout(() => toast.remove(), 2900);
+    setTimeout(() => toast.classList.add('pv-toast-out'), 3000);
+    setTimeout(() => toast.remove(), 3600);
   }
 }
 
