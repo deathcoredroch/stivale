@@ -1,0 +1,13 @@
+{
+  "//": "Правила Firebase Realtime Database для синхронизации прогресса Stivale.",
+  "//1": "Модель 'автоматически, общий': один узел stivale_shared на всех, доступ требует",
+  "//2": "лишь анонимного входа (auth != null). Вставь этот объект целиком в Firebase Console →",
+  "//3": "Realtime Database → вкладка Rules → Publish. И включи Authentication → Sign-in method →",
+  "//4": "Anonymous → Enable (без него устройства не смогут читать/писать базу).",
+  "rules": {
+    "stivale_shared": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

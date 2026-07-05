@@ -253,7 +253,7 @@ function buildVocabPool() {
 }
 
 function getVocabProgress() { return storageGet(VOCAB_PROGRESS_KEY) || {}; }
-function setVocabProgress(map) { storageSet(VOCAB_PROGRESS_KEY, map); }
+function setVocabProgress(map) { storageSet(VOCAB_PROGRESS_KEY, map); cloudPush(VOCAB_PROGRESS_KEY); }
 
 // Слова, которые ещё "не закрепились" (box 0), показываются заметно чаще, чем те,
 // что уже отмечены как известные (box 2) — простой аналог интервального повторения.
@@ -2111,8 +2111,6 @@ function isHwDone(lessonId) {
 // Загружаем его через fetch перед инициализацией.
 let FIREBASE_CONFIG = {};
 
-let hwCloudRef = null; // ссылка на узел в Realtime Database — назначается после входа
-
 // Ни одно устройство никогда не "отменяет" готовое ДЗ само по себе — если урок отмечен
 // сданным хоть где-то (локально или в облаке), он остаётся сданным после слияния.
 function mergeHwStatus(a, b) {
@@ -2122,54 +2120,15 @@ function mergeHwStatus(a, b) {
   return merged;
 }
 
-function refreshHwUIAfterSync() {
-  try {
-    renderNav(currentOpenLessonId);
-    if (currentOpenLessonId) {
-      const holder = document.getElementById('hwButtonHolder');
-      const lesson = lessons.find(l => l.id === currentOpenLessonId);
-      if (holder && lesson) { holder.innerHTML = renderHwButton(lesson); attachHwButtonListener(lesson.id); }
-    }
-    if (progressScreen && !progressScreen.classList.contains('hidden')) {
-      renderProgressScreen(); pvMountMap(); pvAnimateCounters();
-    }
-  } catch (e) {}
-}
-
-// ── Асинхронная инициализация Firebase ──
-// Загружаем конфиг из config.json (не коммитится в git). Если файл отсутствует
-// или неверный — блок молча отключается и сайт работает локально, как раньше.
-(async function initCloudSync() {
-  try {
-    if (typeof firebase === 'undefined') return; // SDK не загружен
-    const res = await fetch('./config.json');
-    if (!res.ok) return; // нет файла — работаем локально
-    const { firebase: cfg } = await res.json();
-    if (!cfg || !cfg.apiKey) return; // неверный конфиг
-    FIREBASE_CONFIG = cfg;
-
-    firebase.initializeApp(FIREBASE_CONFIG);
-    firebase.auth().onAuthStateChanged((user) => {
-      if (!user) { firebase.auth().signInAnonymously().catch(() => {}); return; }
-      hwCloudRef = firebase.database().ref('stivale_hw/' + user.uid);
-      hwCloudRef.on('value', (snap) => {
-        const cloud = snap.val();
-        const local = getHwStatus();
-        const merged = mergeHwStatus(local, cloud);
-        const localHadEverything = JSON.stringify(merged) === JSON.stringify(local);
-        const cloudHadEverything = JSON.stringify(merged) === JSON.stringify(cloud || {});
-        if (!localHadEverything) { storageSet(HW_STORAGE_KEY, merged); refreshHwUIAfterSync(); }
-        if (!cloudHadEverything) hwCloudRef.set(merged).catch(() => {}); // долить недостающее и в облако
-      });
-    });
-  } catch (e) { /* конфиг не найден или ошибка при загрузке — работаем локально */ }
-})();
+// Полный движок облачной синхронизации живёт ниже, после определения streak/словаря
+// (initCloudSync и applyCloudSnapshot). Здесь остаётся только слияние ДЗ (mergeHwStatus)
+// как одна из функций-стратегий реестра CLOUD_KEYS.
 
 function toggleHwDone(lessonId) {
   const status = getHwStatus();
   status[lessonId] = !status[lessonId];
   storageSet(HW_STORAGE_KEY, status);
-  if (hwCloudRef) hwCloudRef.set(status).catch(() => {});
+  cloudPush(HW_STORAGE_KEY); // зеркалим в общий узел → отметка видна на других устройствах
   if (status[lessonId]) {
     launchConfetti();
     registerStudyDay();
@@ -2232,7 +2191,7 @@ function getStreakData() {
   return data;
 }
 
-function saveStreakData(data) { storageSet(STREAK_STORAGE_KEY, data); }
+function saveStreakData(data) { storageSet(STREAK_STORAGE_KEY, data); cloudPush(STREAK_STORAGE_KEY); }
 
 // Длина огонька (число дней в пути)
 function getFlameCount() { return getStreakData().visitDays.length; }
@@ -2266,6 +2225,125 @@ function registerStudyDay() {
   saveStreakData(data);
   return registerVisit().count;
 }
+
+// ============ ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ МЕЖДУ УСТРОЙСТВАМИ (общий узел, без логина) ============
+// Пользователь выбрал модель «автоматически, общий»: все устройства читают и пишут ОДИН
+// и тот же путь в Firebase Realtime Database, поэтому прогресс виден везде без кода и
+// без входа. Приватность — уровня «знаешь адрес сайта → видишь данные» (это отметки ДЗ
+// курса, не пароли). Правила базы см. в firebase-rules.json.
+//
+// Что синхронизируется, задаётся ОДНИМ реестром CLOUD_KEYS: ключ localStorage → функция
+// слияния двух версий (локальной и облачной). Добавить новый синхронизируемый ключ =
+// одна строка в реестре; писать в облако он начнёт сам. Уровень CEFR, карта, проценты и
+// вся статистика дневника ВЫЧИСЛЯЮТСЯ из этих ключей, поэтому синхронизируются следом.
+const CLOUD_NODE = 'stivale_shared/v1';
+
+// Firebase web-config НЕ секрет: он и так уходит в браузер каждому посетителю, а доступ к
+// данным ограничивают правила базы, а не «секретность» ключа. Поэтому конфиг зашит здесь
+// (чтобы синхронизация работала на GitHub Pages), а config.json — необязательный локальный
+// оверрайд для разработки.
+const FIREBASE_INLINE_CONFIG = {
+  apiKey: 'AIzaSyC1dHkIscv46RHJ2lp16wf1SGDRA1EmMb8',
+  authDomain: 'stivale-5539f.firebaseapp.com',
+  databaseURL: 'https://stivale-5539f-default-rtdb.firebaseio.com',
+  projectId: 'stivale-5539f',
+};
+
+let cloudRef = null;        // ссылка на общий узел; null = облако выключено (работаем локально)
+let cloudApplying = false;  // true, пока применяем снимок из облака, — чтобы не зациклить пуш
+
+// Огонёк = объединение календарей заходов/занятий: дни только копятся и не сбрасываются,
+// поэтому union по visitDays/studyDays корректен и не теряет накопленный путь.
+function mergeStreakData(a, b) {
+  a = a || {}; b = b || {};
+  const visitDays = [...new Set([...(a.visitDays || []), ...(b.visitDays || [])])].filter(Boolean).sort();
+  const studyDays = [...new Set([...(a.studyDays || []), ...(b.studyDays || [])])].filter(Boolean).sort();
+  const lastDate = [a.lastDate, b.lastDate].filter(Boolean).sort().pop() || null;
+  return { visitDays, studyDays, count: visitDays.length, lastDate };
+}
+// Слово выучено настолько, насколько его продвинуло самое «сильное» устройство — берём
+// максимум коробки Лейтнера (0/1/2), чтобы синхронизация не откатывала прогресс словаря.
+function mergeVocabProgress(a, b) {
+  const out = { ...(a || {}) };
+  Object.entries(b || {}).forEach(([k, v]) => { out[k] = Math.max(out[k] || 0, v || 0); });
+  return out;
+}
+const CLOUD_KEYS = {
+  [HW_STORAGE_KEY]:     mergeHwStatus,      // { 'lesson-1': true, ... } — union готовых ДЗ
+  [STREAK_STORAGE_KEY]: mergeStreakData,    // календарь огонька
+  [VOCAB_PROGRESS_KEY]: mergeVocabProgress, // прогресс словарного тренажёра
+};
+
+// Пишет текущее локальное значение ключа в общий узел (если облако включено и мы не в
+// момент применения входящего снимка). Вызывается из saveStreakData/setVocabProgress/ДЗ.
+function cloudPush(key) {
+  if (!cloudRef || cloudApplying) return;
+  const val = storageGet(key);
+  if (val == null) return;
+  cloudRef.child(key).set(val).catch(() => {});
+}
+
+// Перерисовывает всё, на что влияет прогресс, когда из облака пришли новые данные —
+// чтобы на этом устройстве сразу обновились сайдбар, карточка ДЗ, дневник, огонёк, словарь.
+function refreshAfterSync() {
+  try {
+    if (lessons.length) { renderNav(currentOpenLessonId); renderLessonGrid(); }
+    updateSidebarStreakBadge();
+    if (currentOpenLessonId) {
+      const holder = document.getElementById('hwButtonHolder');
+      const lesson = lessons.find(l => l.id === currentOpenLessonId);
+      if (holder && lesson) { holder.innerHTML = renderHwButton(lesson); attachHwButtonListener(lesson.id); }
+    }
+    if (progressScreen && !progressScreen.classList.contains('hidden')) {
+      renderProgressScreen(); pvMountMap(); pvAnimateCounters();
+    }
+    if (welcomeScreen && !welcomeScreen.classList.contains('hidden')) renderVocabTrainer();
+  } catch (e) {}
+}
+
+// Применяет снимок общего узла: по каждому ключу сливает облако с локальным, недостающее
+// дописывает и в localStorage, и обратно в облако. Так любые два устройства сходятся к
+// объединению своих данных, и ни одно не «затирает» прогресс другого.
+function applyCloudSnapshot(snap) {
+  const cloud = snap.val() || {};
+  const toPush = {};
+  let changedLocal = false;
+  cloudApplying = true;
+  for (const [key, mergeFn] of Object.entries(CLOUD_KEYS)) {
+    const local = storageGet(key) || {};
+    const remote = cloud[key] || {};
+    const merged = mergeFn(local, remote);
+    const mergedStr = JSON.stringify(merged);
+    if (mergedStr !== JSON.stringify(local))  { storageSet(key, merged); changedLocal = true; }
+    if (mergedStr !== JSON.stringify(remote)) { toPush[key] = merged; }
+  }
+  cloudApplying = false;
+  if (Object.keys(toPush).length) cloudRef.update(toPush).catch(() => {});
+  if (changedLocal) refreshAfterSync();
+}
+
+// ── Инициализация Firebase. Конфиг берём из config.json (локальный оверрайд), иначе из
+// зашитого FIREBASE_INLINE_CONFIG. Анонимный вход нужен лишь чтобы пройти правила базы —
+// узел общий, поэтому uid устройства роли не играет. Любая ошибка облака не ломает сайт. ──
+(async function initCloudSync() {
+  try {
+    if (typeof firebase === 'undefined') return; // SDK не загружен
+    let cfg = FIREBASE_INLINE_CONFIG;
+    try {
+      const res = await fetch('./config.json', { cache: 'no-cache' });
+      if (res.ok) { const j = await res.json(); if (j && j.firebase && j.firebase.apiKey) cfg = j.firebase; }
+    } catch (e) { /* нет config.json — используем зашитый конфиг */ }
+    if (!cfg || !cfg.apiKey) return;
+    FIREBASE_CONFIG = cfg;
+
+    firebase.initializeApp(FIREBASE_CONFIG);
+    firebase.auth().onAuthStateChanged((user) => {
+      if (!user) { firebase.auth().signInAnonymously().catch(() => {}); return; }
+      cloudRef = firebase.database().ref(CLOUD_NODE);
+      cloudRef.on('value', applyCloudSnapshot);
+    });
+  } catch (e) { /* облако недоступно — тихо работаем локально */ }
+})();
 
 // ── Тиры огонька: чем длиннее путь, тем «горячее» и другого цвета пламя.
 // Логика настоящего огня: чем жарче, тем цвет уходит от красного к синему и дальше.
