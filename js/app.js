@@ -53,6 +53,29 @@ function getLessonSpecial(number){ const k = LESSON_SPECIAL[number]; return k ? 
 // Гербовая звезда для спец-занятий (единый стиль иконок, заливка золотом через CSS)
 const NAV_STAR_SVG = '<span class="nav-star"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.6 6.3 6.8.5-5.2 4.4 1.6 6.6L12 17.3l-5.8 3.7 1.6-6.6-5.2-4.4 6.8-.5z"/></svg></span>';
 
+// ── Особые иконки-«плитки» для спец-занятий ──
+// Каждый тип занятия (практика · аттестация · экзамен) получает свой узнаваемый
+// глиф внутри цветной плитки-иконки (как иконки приложений). Штрих — currentColor.
+const SPECIAL_ICONS = {
+  // Практика — мишень/тренировка
+  practice: '<circle cx="12" cy="12" r="8.2" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.9" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>',
+  // Аттестация — планшет с галочкой
+  assessment: '<rect x="5.2" y="4.4" width="13.6" height="16.2" rx="2.3" stroke="currentColor" stroke-width="1.7"/><path d="M9 4.4V3.4h6v1" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.6 12.6l2.5 2.5 4.5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  // Экзамен — конфедератка (выпускная шапочка)
+  exam: '<path d="M12 4.2 2.4 9 12 13.8 21.6 9 12 4.2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6.4 11.2V15.4c0 1.5 2.5 2.9 5.6 2.9s5.6-1.4 5.6-2.9v-4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.6 9v4.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="21.6" cy="14.4" r="1" fill="currentColor"/>',
+};
+function specialTileHTML(key) {
+  const ico = SPECIAL_ICONS[key];
+  if (!ico) return '';
+  return `<span class="nav-type-tile nav-type-tile-${key}"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ico}</svg></span>`;
+}
+// Голый мини-глиф того же типа — для вставки внутрь текстовой метки-пилюли
+function specialGlyphHTML(key) {
+  const ico = SPECIAL_ICONS[key];
+  if (!ico) return '';
+  return `<svg class="nav-type-glyph" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ico}</svg>`;
+}
+
 // ── Авто-апгрейд блоков ответов/перевода ──
 // Автор урока пишет простые блоки .hw-answers / .hw-translation; при разборе файла
 // они превращаются в нативные details.reveal (CSS стилит их сам). Кнопки «Ответы» /
@@ -87,6 +110,25 @@ function upgradeRevealBlocks(rootEl) {
     let label = summary.textContent.replace(/^\s*показать\s+/i, '').trim() || (isTranslation ? 'Перевод' : 'Ответы');
     summary.textContent = label.charAt(0).toUpperCase() + label.slice(1);
     [...det.children].forEach(child => { if (child !== summary) child.removeAttribute('style'); });
+  });
+
+  // Соседние reveal-блоки («Ответы» / «Перевод» / «Подсказка») собираем в .reveal-row —
+  // flex-ряд, где кнопки стоят горизонтально. Работает для любого урока автоматически:
+  // автору достаточно написать блоки подряд, ничего размечать не нужно.
+  rootEl.querySelectorAll('details.reveal').forEach(det => {
+    if (det.parentElement && det.parentElement.classList.contains('reveal-row')) return;
+    const group = [det];
+    let node = det.nextSibling;
+    while (node) {
+      if ((node.nodeType === 3 && !node.textContent.trim()) || node.nodeType === 8) { node = node.nextSibling; continue; }
+      if (node.nodeType === 1 && node.matches('details.reveal')) { group.push(node); node = node.nextSibling; continue; }
+      break;
+    }
+    if (group.length < 2) return;
+    const row = document.createElement('div');
+    row.className = 'reveal-row';
+    det.before(row);
+    group.forEach(d => row.appendChild(d));
   });
 }
 
@@ -216,17 +258,32 @@ async function discoverLessons() {
 // Слова "вперемешку" — без разделения по урокам, только тег урока для справки.
 const VOCAB_PROGRESS_KEY = 'vocab_progress'; // { 'casa': 0|1|2, ... } — мини-Лейтнер
 
+const RU_LETTERS_RE = /[А-Яа-яЁё]/;
+
 function extractVocabFromHTML(html, lessonNumber) {
   const tpl = document.createElement('template');
   tpl.innerHTML = html;
   const out = [];
   tpl.content.querySelectorAll('td[data-word]').forEach(td => {
     const word = (td.dataset.word || '').trim();
+    if (!word) return;
+    // Явный перевод data-ru НА ТОЙ ЖЕ ячейке — самый надёжный способ (работает при
+    // любой форме таблицы); такие слова обходят и фильтр VOCAB_SKIP (pinned).
+    const explicit = (td.dataset.ru || '').trim();
+    if (explicit) { out.push({ it: word, ru: explicit, lesson: lessonNumber, pinned: true }); return; }
+    // Фолбэк «сосед справа» — только если сосед не является сам итальянским словом
+    // (нет своего data-word) и похож на перевод (есть кириллица). Иначе грамматические
+    // таблицы (спряжения, числа, род/число) дают мусорные пары типа «due → 3 tre».
     const nextTd = td.nextElementSibling;
-    if (!word || !nextTd || nextTd.tagName !== 'TD') return;
-    const translation = nextTd.textContent.trim();
-    if (!translation) return;
-    out.push({ it: word, ru: translation, lesson: lessonNumber });
+    const neighbor = (nextTd && nextTd.tagName === 'TD' && !nextTd.hasAttribute('data-word'))
+      ? nextTd.textContent.trim() : '';
+    if (neighbor && RU_LETTERS_RE.test(neighbor)) {
+      out.push({ it: word, ru: neighbor, lesson: lessonNumber });
+      return;
+    }
+    // Перевода в уроке нет — слово всё равно попадает в словарь: перевод подтянется
+    // автоматически (кэш vocab_auto_ru → онлайн-словарь), см. runAutoRuQueue().
+    out.push({ it: word, ru: '', lesson: lessonNumber, needsRu: true });
   });
   return out;
 }
@@ -243,13 +300,133 @@ function buildVocabPool() {
       extractVocabFromHTML(html, lesson.number).forEach(item => {
         const key = item.it.toLowerCase();
         if (seen.has(key)) return;
-        if (key.length < 2 || VOCAB_SKIP.has(key)) return; // пропускаем артикли/однобуквенные
+        // Артикли/однобуквенные пропускаем, но слова с явным data-ru (pinned) оставляем —
+        // иначе терялись бы омонимы вроде числительного «uno».
+        if (!item.pinned && (key.length < 2 || VOCAB_SKIP.has(key))) return;
+        // У слова нет перевода в уроке → берём из кэша автоперевода; если и там нет —
+        // ставим в очередь на онлайн-перевод и пока НЕ показываем (карточка без
+        // перевода бесполезна). Слово появится в пуле, как только перевод придёт.
+        if (item.needsRu) {
+          const autoRu = vocabAutoRuCache()[key];
+          if (!autoRu) { vocabQueueAutoRu(key); return; }
+          item.ru = autoRu;
+        }
         seen.add(key);
         pool.push(item);
       });
     });
   });
   return pool;
+}
+
+// ============ АВТОПЕРЕВОД СЛОВ, НЕ ПЕРЕВЕДЁННЫХ В УРОКЕ ============
+// Слова из грамматических таблиц (числа, спряжения, формы рода) часто не имеют
+// русского перевода по соседству. Такие слова переводятся автоматически через
+// бесплатный словарный API MyMemory (без ключей, CORS открыт → работает и на
+// GitHub Pages) и навсегда кэшируются в storage — каждый перевод запрашивается
+// один раз. Перевод из урока (data-ru / соседняя ячейка) всегда в приоритете.
+const VOCAB_AUTO_RU_KEY = 'vocab_auto_ru'; // { 'due': 'два', ... }
+let vocabAutoRuMem = null;
+function vocabAutoRuCache() {
+  if (!vocabAutoRuMem) vocabAutoRuMem = storageGet(VOCAB_AUTO_RU_KEY) || {};
+  return vocabAutoRuMem;
+}
+// Сбрасываем in-memory копию, когда автопереводы пришли из облака (applyCloudSnapshot
+// пишет напрямую в storage) — иначе кэш в памяти остался бы устаревшим.
+function invalidateVocabAutoRuMem() { vocabAutoRuMem = null; }
+const vocabAutoRuQueue = new Set();   // слова, ждущие перевода
+const vocabAutoRuFailed = new Set();  // не удалось перевести в этой сессии — не долбим API
+let vocabAutoRuBusy = false;
+let vocabAutoRuTimer = null;
+
+function vocabQueueAutoRu(key) {
+  if (vocabAutoRuCache()[key] || vocabAutoRuFailed.has(key)) return;
+  vocabAutoRuQueue.add(key);
+  // Дебаунс: buildVocabPool() зовётся часто — собираем всю пачку и уходим в фон один раз
+  if (!vocabAutoRuTimer && !vocabAutoRuBusy) {
+    vocabAutoRuTimer = setTimeout(() => { vocabAutoRuTimer = null; runAutoRuQueue(); }, 800);
+  }
+}
+
+// Чистка результата автоперевода: отбрасываем мусор (цифры, тех.символы, эхо без
+// кириллицы, чрезмерную длину), капс приводим к регистру исходного слова.
+function cleanAutoRu(word, raw) {
+  let t = String(raw || '').trim().replace(/^[-–—:;.,!?"'\s]+|[-–—:;.,!?"'\s]+$/g, '');
+  if (!t || !RU_LETTERS_RE.test(t)) return '';
+  if (/[0-9@#$%^*_=<>|{}[\]\\/]/.test(t)) return '';
+  if (t.length > 40) return '';
+  if (t === t.toUpperCase() && word !== word.toUpperCase()) t = t.toLowerCase();
+  return t;
+}
+
+async function fetchGoogleRu(word, signal) {
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=it&tl=ru&dt=t&q=${encodeURIComponent(word)}`;
+  const r = await fetch(url, { signal });
+  if (!r.ok) return '';
+  const d = await r.json();
+  return String((d && d[0] && d[0][0] && d[0][0][0]) || '');
+}
+
+async function fetchMyMemoryRu(word, signal) {
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=it|ru`;
+  const r = await fetch(url, { signal });
+  if (!r.ok) return '';
+  const d = await r.json();
+  return String((d && d.responseData && d.responseData.translatedText) || '');
+}
+
+// Основной переводчик — Google (gtx, без ключей, качество заметно выше),
+// фолбэк — MyMemory. Результат в любом случае проходит cleanAutoRu.
+async function translateItWord(word) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    let t = '';
+    try { t = cleanAutoRu(word, await fetchGoogleRu(word, ctrl.signal)); } catch (e) { t = ''; }
+    if (t) return t;
+    try { t = cleanAutoRu(word, await fetchMyMemoryRu(word, ctrl.signal)); } catch (e) { t = ''; }
+    return t;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function runAutoRuQueue() {
+  if (vocabAutoRuBusy) return;
+  vocabAutoRuBusy = true;
+  let added = 0;
+  try {
+    while (vocabAutoRuQueue.size) {
+      const key = vocabAutoRuQueue.values().next().value;
+      vocabAutoRuQueue.delete(key);
+      if (vocabAutoRuCache()[key]) continue;
+      let t = '';
+      try { t = await translateItWord(key); } catch (e) { t = ''; }
+      if (t) {
+        vocabAutoRuCache()[key] = t;
+        storageSet(VOCAB_AUTO_RU_KEY, vocabAutoRuMem); // сохраняем сразу — не потеряем при уходе со страницы
+        cloudPush(VOCAB_AUTO_RU_KEY);                  // делимся переводом с другими устройствами
+        added++;
+      } else {
+        vocabAutoRuFailed.add(key);
+      }
+      await new Promise(r => setTimeout(r, 350)); // щадящий темп для бесплатного API
+    }
+  } finally {
+    vocabAutoRuBusy = false;
+    if (added) {
+      // Пул пополнился переведёнными словами — обновляем карточку и открытую модалку.
+      // Компактную карточку не трогаем посреди практики (перевод уже раскрыт —
+      // перерендер сменил бы слово прямо под руками).
+      const revealed = document.getElementById('vocabTranslation')?.style.display === 'flex';
+      if (!revealed) renderVocabTrainer();
+      const modal = document.getElementById('vocabModal');
+      // renderVocabModalContent сохраняет текущее слово и состояние переворота
+      if (modal && modal.classList.contains('open')) renderVocabModalContent();
+    }
+    // пока переводили, могли добавиться новые слова
+    if (vocabAutoRuQueue.size) runAutoRuQueue();
+  }
 }
 
 function getVocabProgress() { return storageGet(VOCAB_PROGRESS_KEY) || {}; }
@@ -278,6 +455,8 @@ const ICON_VOCAB_SWAP = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.
 const ICON_VOCAB_CARDS = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6" width="17" height="12" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 10h17" stroke="currentColor" stroke-width="1.5"/></svg>';
 const ICON_VOCAB_LIST = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 const ICON_VOCAB_SPEAK = '<svg class="cs" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M16.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const ICON_VOCAB_RETRY = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 12a7.5 7.5 0 1 1 2.2 5.3M4.5 21v-4.5H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_VOCAB_CHECK = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 12.5L9.5 17.5L19.5 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function renderVocabTrainer() {
   const card = document.getElementById('vocabTrainerCard');
@@ -323,10 +502,13 @@ function renderVocabTrainer() {
         <button class="vocab-reveal-btn" id="vocabRevealBtn" type="button">Показать перевод</button>
       </div>
       <div class="vocab-actions" id="vocabActions" style="display:none;">
-        <button class="vocab-action-btn vocab-action-retry" data-action="retry" type="button">Повторить ещё раз</button>
-        <button class="vocab-action-btn vocab-action-known" data-action="known" type="button">Запомнила!</button>
+        <button class="vocab-action-btn vocab-action-retry" data-action="retry" type="button"><span class="ico">${ICON_VOCAB_RETRY}</span>Повторить</button>
+        <button class="vocab-action-btn vocab-action-known" data-action="known" type="button"><span class="ico">${ICON_VOCAB_CHECK}</span>Запомнила!</button>
       </div>
-      <div class="vocab-progress-bar-track"><div class="vocab-progress-bar-fill" style="width:${Math.round(knownCount / pool.length * 100)}%"></div></div>
+      <div class="vocab-progress-row">
+        <div class="vocab-progress-bar-track"><div class="vocab-progress-bar-fill" style="width:${Math.round(knownCount / pool.length * 100)}%"></div></div>
+        <span class="vocab-progress-pct">${Math.round(knownCount / pool.length * 100)}%</span>
+      </div>
       <p class="vocab-progress-label">${knownCount} из ${pool.length} уже закрепила</p>
       <button class="vocab-open-btn" id="vocabOpenBtn" type="button"><span class="ico">${ICON_TRAINER_OPEN}</span>Открыть тренажёр</button>
     </div>
@@ -379,12 +561,15 @@ function vocabPickNext() {
 
 function renderVocabRing(learned, total) {
   const pct = total ? learned / total : 0;
-  const R = 20, C = 2 * Math.PI * R, off = C * (1 - pct);
-  return `<svg class="vocab-ring" viewBox="0 0 48 48" width="48" height="48">
-    <circle cx="24" cy="24" r="${R}" fill="none" stroke="var(--line,#ece2d4)" stroke-width="5"/>
-    <circle cx="24" cy="24" r="${R}" fill="none" stroke="var(--olive,#7a8a4e)" stroke-width="5"
-      stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 24 24)"/>
-    <text x="24" y="25" text-anchor="middle" dominant-baseline="middle" class="vocab-ring-pct">${Math.round(pct * 100)}%</text>
+  const R = 24, C = 2 * Math.PI * R, off = C * (1 - pct);
+  return `<svg class="vocab-ring" viewBox="0 0 58 58" width="58" height="58">
+    <defs><linearGradient id="vocabRingGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8CA05E"/><stop offset="1" stop-color="#5E6E3C"/>
+    </linearGradient></defs>
+    <circle cx="29" cy="29" r="${R}" fill="none" stroke="var(--line,#ece2d4)" stroke-width="5.5"/>
+    <circle cx="29" cy="29" r="${R}" fill="none" stroke="url(#vocabRingGrad)" stroke-width="5.5"
+      stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 29 29)"/>
+    <text x="29" y="30" text-anchor="middle" dominant-baseline="middle" class="vocab-ring-pct">${Math.round(pct * 100)}%</text>
   </svg>`;
 }
 
@@ -394,23 +579,35 @@ function renderVocabCardHTML() {
   if (!pool.length) return `<p class="vocab-empty-note">Нет слов для этого фильтра.</p>`;
   if (!s.current || !pool.some(w => w.it === s.current.it)) vocabPickNext();
   const w = s.current;
-  const front = s.direction === 'it-ru' ? w.it : w.ru;
-  const back = s.direction === 'it-ru' ? w.ru : w.it;
+  const itFront = s.direction === 'it-ru';
+  const front = itFront ? w.it : w.ru;
+  const back = itFront ? w.ru : w.it;
+  // Кнопка озвучки — только на той стороне, где показан итальянский текст
+  // (на русской лицевой стороне озвучка выдала бы ответ раньше времени).
+  const speakBtn = `<button class="vocab-fc-speak" type="button" aria-label="Произнести">${ICON_VOCAB_SPEAK}</button>`;
   return `
     <div class="vocab-card-view">
-      <div class="vocab-flashcard${s.revealed ? ' is-revealed' : ''}" id="vocabFlashcard">
-        <button class="vocab-fc-speak" id="vocabSpeakBtn" type="button" aria-label="Произнести">${ICON_VOCAB_SPEAK}</button>
-        <span class="vocab-fc-word">${front}</span>
-        <div class="vocab-fc-back">
-          <span class="vocab-fc-divider"></span>
-          <span class="vocab-fc-answer">${back}</span>
-          <span class="vocab-lesson-tag">Урок ${w.lesson}</span>
+      <div class="vocab-flashcard${s.revealed ? ' is-revealed' : ''}" id="vocabFlashcard" role="button" tabindex="0" aria-label="Карточка: ${front}. Нажми, чтобы перевернуть">
+        <div class="vocab-fc-inner">
+          <div class="vocab-fc-face vocab-fc-front">
+            <span class="vocab-fc-lang">${itFront ? 'Italiano' : 'По-русски'}</span>
+            ${itFront ? speakBtn : ''}
+            <span class="vocab-fc-word">${front}</span>
+            <span class="vocab-fc-hint">нажми, чтобы перевернуть</span>
+          </div>
+          <div class="vocab-fc-face vocab-fc-back">
+            <span class="vocab-fc-lang">${itFront ? 'По-русски' : 'Italiano'}</span>
+            ${itFront ? '' : speakBtn}
+            <span class="vocab-fc-src">${front}</span>
+            <span class="vocab-fc-divider"></span>
+            <span class="vocab-fc-answer">${back}</span>
+            <span class="vocab-lesson-tag">Урок ${w.lesson}</span>
+          </div>
         </div>
-        <span class="vocab-fc-hint">нажми, чтобы увидеть перевод</span>
       </div>
       <div class="vocab-card-actions${s.revealed ? '' : ' is-hidden'}">
-        <button class="vocab-act vocab-act-retry" data-action="retry" type="button">Повторить</button>
-        <button class="vocab-act vocab-act-known" data-action="known" type="button">Запомнила!</button>
+        <button class="vocab-act vocab-act-retry" data-action="retry" type="button"><span class="ico">${ICON_VOCAB_RETRY}</span>Повторить</button>
+        <button class="vocab-act vocab-act-known" data-action="known" type="button"><span class="ico">${ICON_VOCAB_CHECK}</span>Запомнила!</button>
       </div>
       <p class="vocab-kbd-hint">Пробел — перевернуть · ← повторить · → запомнила</p>
     </div>`;
@@ -423,11 +620,11 @@ function renderVocabListHTML() {
     const box = vocabBoxOf(w.it);
     const st = box === 2 ? 'learned' : (box === 1 ? 'learning' : 'new');
     const lab = box === 2 ? 'выучено' : (box === 1 ? 'учу' : 'новое');
-    return `<button class="vocab-list-row" data-it="${w.it}" type="button">
-      <span class="vocab-list-dot ${st}"></span>
+    return `<button class="vocab-list-row ${st}" data-it="${w.it}" type="button">
       <span class="vocab-list-it">${w.it}</span>
       <span class="vocab-list-ru">${w.ru}</span>
       <span class="vocab-list-badge ${st}">${lab}</span>
+      ${ICON_VOCAB_SPEAK}
     </button>`;
   }).join('');
   return `<div class="vocab-list">${rows}</div>`;
@@ -438,7 +635,9 @@ function renderVocabModalContent() {
   if (!content) return;
   const fullPool = buildVocabPool();
   const total = fullPool.length;
-  const learned = fullPool.filter(w => vocabBoxOf(w.it) === 2).length;
+  let learned = 0, learning = 0;
+  fullPool.forEach(w => { const b = vocabBoxOf(w.it); if (b === 2) learned++; else if (b === 1) learning++; });
+  const fresh = total - learned - learning;
   const s = vocabModalState;
   const chips = ['all', ...vocabLessonsAvailable()].map(l => {
     const active = (s.filterLesson === l) ? ' is-active' : '';
@@ -453,6 +652,11 @@ function renderVocabModalContent() {
         <div class="vocab-reader-titlewrap">
           <span class="vocab-reader-title">Словарный тренажёр</span>
           <span class="vocab-reader-sub">${learned} из ${total} слов выучено</span>
+          <div class="vocab-head-chips">
+            <span class="vocab-head-chip new">Новые · ${fresh}</span>
+            <span class="vocab-head-chip learning">Учу · ${learning}</span>
+            <span class="vocab-head-chip learned">Выучено · ${learned}</span>
+          </div>
         </div>
         ${renderVocabRing(learned, total)}
       </header>
@@ -463,7 +667,7 @@ function renderVocabModalContent() {
       </div>
       <div class="vocab-reader-body">${body}</div>
       <footer class="vocab-reader-foot">
-        <span class="vocab-foot-stat">За сессию: показано ${s.sessionSeen} · запомнила ${s.sessionKnown}</span>
+        <span class="vocab-foot-stat" id="vocabFootStat">За сессию: показано ${s.sessionSeen} · запомнила ${s.sessionKnown}</span>
         <button class="vocab-reset-btn" id="vocabResetBtn" type="button">Сбросить прогресс</button>
       </footer>
     </div>`;
@@ -488,11 +692,14 @@ function bindVocabModalContent() {
     vocabModalState.current = null; vocabModalState.revealed = false; renderVocabModalContent();
   }));
   const fc = content.querySelector('#vocabFlashcard');
-  if (fc) fc.addEventListener('click', () => {
-    if (!vocabModalState.revealed) { vocabModalState.revealed = true; vocabModalState.sessionSeen++; renderVocabModalContent(); }
-  });
-  const speakBtn = content.querySelector('#vocabSpeakBtn');
-  if (speakBtn) speakBtn.addEventListener('click', (e) => { e.stopPropagation(); vocabSpeakCurrent(e.currentTarget); });
+  if (fc) {
+    fc.addEventListener('click', revealVocabCard);
+    fc.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); revealVocabCard(); }
+    });
+  }
+  content.querySelectorAll('.vocab-fc-speak').forEach(btn =>
+    btn.addEventListener('click', (e) => { e.stopPropagation(); vocabSpeakCurrent(e.currentTarget); }));
   content.querySelectorAll('.vocab-act').forEach(btn => btn.addEventListener('click', () => vocabMark(btn.dataset.action)));
   content.querySelectorAll('.vocab-list-row').forEach(row => row.addEventListener('click', () => {
     row.classList.add('speaking');
@@ -507,6 +714,23 @@ function bindVocabModalContent() {
       renderVocabModalContent(); renderVocabTrainer();
     }
   });
+}
+
+// Переворот карточки БЕЗ полного перерендера окна: класс is-revealed запускает
+// CSS-анимацию 3D-поворота, кнопки-вердикты плавно проявляются на своём месте.
+function revealVocabCard() {
+  const s = vocabModalState;
+  if (s.revealed || !s.current) return;
+  s.revealed = true;
+  s.sessionSeen++;
+  const content = document.getElementById('vocabModalContent');
+  if (!content) return;
+  const fc = content.querySelector('#vocabFlashcard');
+  if (fc) fc.classList.add('is-revealed');
+  const acts = content.querySelector('.vocab-card-actions');
+  if (acts) acts.classList.remove('is-hidden');
+  const stat = document.getElementById('vocabFootStat');
+  if (stat) stat.textContent = `За сессию: показано ${s.sessionSeen} · запомнила ${s.sessionKnown}`;
 }
 
 function vocabSpeakCurrent(btn) {
@@ -559,7 +783,7 @@ if (!window.__vocabKeyBound) {
     if (vocabModalState.view !== 'card') return;
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
-      if (!vocabModalState.revealed && vocabModalState.current) { vocabModalState.revealed = true; vocabModalState.sessionSeen++; renderVocabModalContent(); }
+      revealVocabCard();
     } else if (vocabModalState.revealed && e.key === 'ArrowRight') { vocabMark('known'); }
     else if (vocabModalState.revealed && e.key === 'ArrowLeft') { vocabMark('retry'); }
   });
@@ -1133,19 +1357,25 @@ function ensureStoryStyles() {
       display: flex; align-items: center; justify-content: center;
       text-align: center;
       position: relative; overflow: hidden;
-      background: linear-gradient(165deg, #fffaf3 0%, #fdf3e8 100%);
+      background: linear-gradient(160deg, #FFFDF8 0%, #FAF3E6 58%, #F5EBD8 100%);
       border: 1px solid var(--line, #ece2d4);
       border-radius: 16px;
       padding: 30px 22px 26px;
       margin: 0 0 16px;
-      box-shadow: 0 8px 24px rgba(35,25,15,.07), inset 0 1px 0 rgba(255,255,255,.5);
+      box-shadow: 0 8px 24px rgba(35,25,15,.07), inset 0 1px 0 rgba(255,255,255,.7);
       cursor: pointer;
       font: inherit;
       transition: transform .18s ease, box-shadow .18s ease;
     }
+    /* мягкое золотое «облако» в углу — перекликается с карточками тренажёра */
+    .story-preview-quote::after {
+      content: ''; position: absolute; width: 170px; height: 170px; border-radius: 50%;
+      bottom: -70px; right: -55px; pointer-events: none;
+      background: radial-gradient(circle, rgba(201,154,61,.13), transparent 70%);
+    }
     .story-preview-quote:hover {
       transform: translateY(-2px);
-      box-shadow: 0 12px 28px rgba(35,25,15,.1), inset 0 1px 0 rgba(255,255,255,.5);
+      box-shadow: 0 12px 28px rgba(35,25,15,.1), inset 0 1px 0 rgba(255,255,255,.7);
     }
     .story-preview-quote:active { transform: translateY(0); }
     .story-preview-quote-mark {
@@ -1214,12 +1444,26 @@ function ensureStoryStyles() {
     }
     /* Тело: текст слева, словарь справа — ЕДИНСТВЕННАЯ прокручиваемая область */
     .story-reader-body {
+      position: relative;
       flex: 1 1 auto; min-height: 0; overflow-y: auto;
       display: flex; gap: 32px; align-items: flex-start;
       padding: 20px 48px; margin: 0;
     }
     .story-reader-main { flex: 1 1 auto; min-width: 0; }
     .story-reader-aside { flex: 0 0 232px; }
+    /* Экран «генерируется»: на время запроса к ИИ (5–20 сек) весь ридер целиком
+       заменяется явным состоянием загрузки — так же, как это уже сделано для
+       компактной карточки в боковой колонке (renderStoryLoading). Полная замена
+       вместо полупрозрачной подсветки поверх старого текста — заметнее и надёжнее. */
+    .story-reader-loading {
+      flex: 1 1 auto; min-height: 260px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      padding: 40px 24px;
+      color: #8a7d6e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px; font-weight: 600; text-align: center;
+      animation: hwRevealFade .2s ease;
+    }
+    .story-reader-loading .story-spinner { width: 32px; height: 32px; border-width: 3px; }
     /* Связный текст: единый абзац, предложения идут подряд (это ТЕКСТ, а не список) */
     .story-prose {
       margin: 0;
@@ -1363,10 +1607,10 @@ function ensureStoryStyles() {
     }
     .story-btn:active { transform: translateY(1px); }
     .story-btn-primary {
-      background: var(--terracotta, #c1543a); color: #fff;
-      box-shadow: 0 4px 12px rgba(193,84,58,.28);
+      background: linear-gradient(150deg, #CE6144, #A8442E); color: #fff;
+      box-shadow: 0 6px 16px -6px rgba(193,84,58,.6), inset 0 1px 0 rgba(255,255,255,.22);
     }
-    .story-btn-primary:hover { background: #ad4631; }
+    .story-btn-primary:hover { background: linear-gradient(150deg, #C1543A, #963C28); transform: translateY(-1px); }
     .story-btn-ghost {
       background: transparent; color: #75695a; border-color: var(--line, #ddd1c0);
     }
@@ -1931,6 +2175,26 @@ if (!window.__storyEscBound) {
   });
 }
 
+// Мгновенная реакция на «Новая история» в полноэкранном окне: пока идёт запрос
+// к ИИ (5–20 сек), содержимое ридера целиком заменяется явным экраном загрузки
+// (та же логика, что и у renderStoryLoading для карточки в боковой колонке) —
+// иначе клик не воспринимается как «генерируется», а выглядит зависанием.
+function setStoryModalLoading() {
+  const modal = document.getElementById('storyModal');
+  if (!modal || !modal.classList.contains('open') || !currentStory) return;
+  stopStoryPlayback();
+  const content = document.getElementById('storyModalContent');
+  content.innerHTML = `
+    <div class="story-reader">
+      <header class="story-reader-head">${renderStoryThemeHTML(currentStory)}</header>
+      <div class="story-reader-loading">
+        <span class="story-spinner"></span>
+        <p>ИИ пишет новую историю…</p>
+      </div>
+    </div>
+  `;
+}
+
 // Если полноэкранное окно открыто в момент, когда пришла новая история (например,
 // пользователь нажал «Новая история» прямо в нём) — обновляем содержимое на лету.
 function refreshStoryModalIfOpen() {
@@ -1974,6 +2238,8 @@ async function loadStory(forceNew) {
   if (storyBusy) return;
   storyBusy = true;
   renderStoryLoading(section);
+  setStoryModalLoading();
+  const loadStart = Date.now();
 
   const { map, list } = collectLessonWords();
   const allowed = cleanAllowedWords(list);
@@ -1988,6 +2254,13 @@ async function loadStory(forceNew) {
     }
   }
   if (!story) story = buildOfflineStory();
+
+  // Без ИИ-сервера офлайн-генератор отрабатывает за миллисекунды — спиннер мелькнёт
+  // и исчезнет незаметно для глаза. Держим анимацию видимой минимум полсекунды,
+  // чтобы клик «Новая история» всегда ощущался как реальная генерация.
+  const MIN_LOADING_MS = 550;
+  const elapsed = Date.now() - loadStart;
+  if (elapsed < MIN_LOADING_MS) await new Promise(r => setTimeout(r, MIN_LOADING_MS - elapsed));
 
   storageSet(STORY_CACHE_KEY, story);
   renderStoryObject(story, section);
@@ -2092,9 +2365,20 @@ function getHwStatus() {
   return storageGet(HW_STORAGE_KEY) || {};
 }
 
+// Формат записи статуса ДЗ:
+//   • легаси: булево true/false (без метки времени — считается «давним», t = 0);
+//   • новый:  { v: 1|0, t: <мс эпохи> } — несёт метку времени для «последний выигрывает».
+// Такой формат позволяет синхронизировать не только «сделано», но и снятие отметки.
+function hwEntryDone(e) {
+  if (e && typeof e === 'object') return !!e.v;
+  return !!e;
+}
+function hwEntryTime(e) {
+  return (e && typeof e === 'object' && typeof e.t === 'number') ? e.t : 0;
+}
+
 function isHwDone(lessonId) {
-  const status = getHwStatus();
-  return !!status[lessonId];
+  return hwEntryDone(getHwStatus()[lessonId]);
 }
 
 // ============ ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ ДЗ МЕЖДУ УСТРОЙСТВАМИ (Firebase) ============
@@ -2111,12 +2395,25 @@ function isHwDone(lessonId) {
 // Загружаем его через fetch перед инициализацией.
 let FIREBASE_CONFIG = {};
 
-// Ни одно устройство никогда не "отменяет" готовое ДЗ само по себе — если урок отмечен
-// сданным хоть где-то (локально или в облаке), он остаётся сданным после слияния.
+// Слияние статусов ДЗ по правилу «последнее действие выигрывает» (last-write-wins):
+// для каждого урока берём запись с более свежей меткой времени. Так синхронизируется
+// и отметка «сделано», и её снятие — то устройство, где действие было позже, задаёт
+// итог на всех. Легаси-булевы записи считаются «давними» (t = 0), поэтому любое новое
+// действие с меткой времени их перебивает, но старые готовые ДЗ без метки не теряются.
 function mergeHwStatus(a, b) {
-  const merged = { ...(a || {}), ...(b || {}) };
-  Object.keys(a || {}).forEach(k => { if (a[k]) merged[k] = true; });
-  Object.keys(b || {}).forEach(k => { if (b[k]) merged[k] = true; });
+  a = a || {}; b = b || {};
+  const merged = {};
+  new Set([...Object.keys(a), ...Object.keys(b)]).forEach(k => {
+    const ea = a[k], eb = b[k];
+    const ta = hwEntryTime(ea), tb = hwEntryTime(eb);
+    if (ta > tb)      merged[k] = ea;
+    else if (tb > ta) merged[k] = eb;
+    else {
+      // Равные метки (обычно обе легаси, t = 0): при конфликте сохраняем «сделано»,
+      // чтобы миграция со старого формата не сбросила уже готовые задания.
+      merged[k] = (hwEntryDone(ea) || hwEntryDone(eb)) ? true : (ea !== undefined ? ea : eb);
+    }
+  });
   return merged;
 }
 
@@ -2126,10 +2423,12 @@ function mergeHwStatus(a, b) {
 
 function toggleHwDone(lessonId) {
   const status = getHwStatus();
-  status[lessonId] = !status[lessonId];
+  const nowDone = !hwEntryDone(status[lessonId]);
+  // Пишем запись с меткой времени → снятие отметки тоже «выигрывает» при синхронизации
+  status[lessonId] = { v: nowDone ? 1 : 0, t: Date.now() };
   storageSet(HW_STORAGE_KEY, status);
   cloudPush(HW_STORAGE_KEY); // зеркалим в общий узел → отметка видна на других устройствах
-  if (status[lessonId]) {
+  if (nowDone) {
     launchConfetti();
     registerStudyDay();
     updateSidebarStreakBadge();
@@ -2144,7 +2443,7 @@ function toggleHwDone(lessonId) {
       }, 900);
     }
   }
-  return status[lessonId];
+  return nowDone;
 }
 
 // ============ УДАРНЫЙ РЕЖИМ (STREAK) И КАЛЕНДАРЬ ЗАНЯТИЙ ============
@@ -2268,10 +2567,18 @@ function mergeVocabProgress(a, b) {
   Object.entries(b || {}).forEach(([k, v]) => { out[k] = Math.max(out[k] || 0, v || 0); });
   return out;
 }
+// Автопереводы слов — общий словарь на все устройства: перевёл кто-то один → он есть у
+// всех, и API больше не дёргается. Union: сохраняем любой уже известный перевод слова.
+function mergeVocabAutoRu(a, b) {
+  const out = { ...(a || {}) };
+  Object.entries(b || {}).forEach(([k, v]) => { if (v && !out[k]) out[k] = v; });
+  return out;
+}
 const CLOUD_KEYS = {
   [HW_STORAGE_KEY]:     mergeHwStatus,      // { 'lesson-1': true, ... } — union готовых ДЗ
   [STREAK_STORAGE_KEY]: mergeStreakData,    // календарь огонька
   [VOCAB_PROGRESS_KEY]: mergeVocabProgress, // прогресс словарного тренажёра
+  [VOCAB_AUTO_RU_KEY]:  mergeVocabAutoRu,   // общий кэш автопереводов слов
 };
 
 // Пишет текущее локальное значение ключа в общий узел (если облако включено и мы не в
@@ -2287,6 +2594,7 @@ function cloudPush(key) {
 // чтобы на этом устройстве сразу обновились сайдбар, карточка ДЗ, дневник, огонёк, словарь.
 function refreshAfterSync() {
   try {
+    invalidateVocabAutoRuMem(); // облако могло принести новые автопереводы слов
     if (lessons.length) { renderNav(currentOpenLessonId); renderLessonGrid(); }
     updateSidebarStreakBadge();
     if (currentOpenLessonId) {
@@ -2645,11 +2953,11 @@ function renderNav(activeId) {
     item.className = 'nav-item' + (lesson.id === activeId ? ' active' : '') + (special ? ' nav-item-' + special.key : '');
     item.innerHTML = `
       <div class="nav-item-row">
-        <span class="nav-item-lesson">${special ? NAV_STAR_SVG : ''}Урок ${lesson.number}</span>
+        <span class="nav-item-lesson">${special ? specialTileHTML(special.key) : ''}Урок ${lesson.number}</span>
         <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + ' ДЗ готово' : 'ДЗ не сдано'}</span>
       </div>
       <span class="nav-sub">${lesson.title}</span>
-      ${special ? `<span class="nav-type nav-type-${special.key}">${special.label}</span>` : ''}
+      ${special ? `<span class="nav-type nav-type-${special.key}">${specialGlyphHTML(special.key)}${special.label}</span>` : ''}
     `;
     item.addEventListener('click', () => {
       showLesson(lesson.id);
@@ -2669,11 +2977,12 @@ function renderLessonGrid() {
     return;
   }
   const done = isHwDone(lesson.id);
+  const special = getLessonSpecial(lesson.number);
   const card = document.createElement('div');
-  card.className = 'lesson-card';
+  card.className = 'lesson-card' + (special ? ' lesson-card-' + special.key : '');
   card.innerHTML = `
     <div class="nav-item-row" style="margin-bottom:12px;">
-      <span class="lesson-card-num" style="margin-bottom:0;">Урок ${lesson.number}</span>
+      <span class="lesson-card-num-wrap">${special ? specialTileHTML(special.key) : ''}<span class="lesson-card-num" style="margin-bottom:0;">Урок ${lesson.number}</span>${special ? `<span class="nav-type nav-type-${special.key}">${specialGlyphHTML(special.key)}${special.label}</span>` : ''}</span>
       <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + ' ДЗ готово' : 'ДЗ не сдано'}</span>
     </div>
     <h3>${lesson.title}</h3>
@@ -2734,14 +3043,43 @@ function renderHwButton(lesson) {
 // либо upgradeRevealBlocks (см. начало файла) сконвертировал .hw-answers/.hw-translation
 // при разборе файла урока. Стиль даёт CSS, раскрытие нативное — JS здесь не нужен.
 
-// Строка «N заданий · ≈ M минут» в шапке модалки ДЗ. Числа вычислены из содержимого
-// файла урока (computeHwStats), а не написаны руками; время округляем до пяти минут.
-function renderHwMetaRow(lesson) {
+// Иконки-статистики для шапки ДЗ (список заданий, таймер) — маленькие, под текст чипов.
+const ICON_HW_TASKS = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 5.5l1.2 1.3L7.5 4M4 11.5l1.2 1.3L7.5 10M4 17.5l1.2 1.3L7.5 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_HW_CLOCK = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// Чипы статистики в шапке модалки ДЗ: «N заданий», «≈ M минут». Числа вычислены из
+// содержимого файла урока (computeHwStats), а не написаны руками; время — до пяти минут.
+function renderHwStatChips(lesson) {
   const stats = lesson.hwStats || { count: 0, minutes: 0 };
-  if (!stats.count) return '';
-  const parts = [`${stats.count} ${storyPlural(stats.count, 'задание', 'задания', 'заданий')}`];
-  if (stats.minutes >= 5) parts.push(`≈ ${Math.round(stats.minutes / 5) * 5} минут`);
-  return `<div class="hw-sections-meta">${parts.map(p => `<span>${p}</span>`).join('')}</div>`;
+  const chips = [];
+  if (stats.count) {
+    chips.push(`<span class="hw-hero-stat"><span class="hw-hero-stat-ico">${ICON_HW_TASKS}</span>${stats.count} ${storyPlural(stats.count, 'задание', 'задания', 'заданий')}</span>`);
+  }
+  if (stats.minutes >= 5) {
+    chips.push(`<span class="hw-hero-stat"><span class="hw-hero-stat-ico">${ICON_HW_CLOCK}</span>≈ ${Math.round(stats.minutes / 5) * 5} мин</span>`);
+  }
+  return chips.length ? `<div class="hw-hero-stats">${chips.join('')}</div>` : '';
+}
+
+// Интерактивная плашка «отметить выполненным» (две строки текста + галочка).
+// data-role сохраняем — на нём висит обработчик переключения в openHwModal.
+function renderHwStatusBanner(done, role, extraClass) {
+  const title = role === 'hw-banner-toggle-bottom'
+    ? (done ? 'Домашка выполнена' : 'Всё готово?')
+    : (done ? 'Выполнено' : 'Отметить выполненным');
+  const sub = role === 'hw-banner-toggle-bottom'
+    ? (done ? 'Отмечено как сделанное' : 'Нажми, чтобы отметить домашнее задание выполненным')
+    : (done ? 'Отличная работа! Можно вернуться к уроку.' : 'Нажми, когда закончишь все задания');
+  return `
+    <button type="button" class="hw-status-banner ${done ? 'done' : 'pending'} ${extraClass || ''}" data-role="${role}">
+      <span class="hw-checkbox ${done ? 'checked' : ''}">${done ? ICON_CHECK_HTML : ''}</span>
+      <span class="hw-status-text">
+        <span class="hw-status-title">${title}</span>
+        <span class="hw-status-sub">${sub}</span>
+      </span>
+      ${done ? '' : '<span class="hw-status-chevron" aria-hidden="true"></span>'}
+    </button>
+  `;
 }
 
 // Домашнее задание — часть того же файла урока (lesson.homeworkHTML заполняется при
@@ -2749,22 +3087,22 @@ function renderHwMetaRow(lesson) {
 function renderHwModalContent(lesson) {
   const done = isHwDone(lesson.id);
   return `
-    <div class="hw-modal-head">
-      <h2>${ICON_NOTE_HTML} Домашнее задание</h2>
-    </div>
-    <p class="hw-modal-lesson-name">${lesson.title}</p>
-    <div class="hw-status-banner ${done ? 'done' : 'pending'}" data-role="hw-banner-toggle">
-      <span class="hw-checkbox ${done ? 'checked' : ''}" style="background:${done ? 'var(--olive)' : 'transparent'}; border-color:${done ? 'var(--olive)' : '#C1543A'};">${done ? ICON_CHECK_HTML : ''}</span>
-      <span>${done ? 'Домашнее задание отмечено как сделанное' : 'Домашнее задание ещё не отмечено как сделанное — нажми, чтобы отметить'}</span>
-    </div>
+    <header class="hw-hero ${done ? 'is-done' : ''}">
+      <div class="hw-hero-row">
+        <span class="hw-hero-badge">${done ? ICON_CHECK_HTML : ICON_NOTE_HTML}</span>
+        <div class="hw-hero-heading">
+          <span class="hw-hero-eyebrow">Урок ${lesson.number}</span>
+          <h2 class="hw-hero-title">Домашнее задание</h2>
+          <p class="hw-hero-lesson">${lesson.title}</p>
+        </div>
+      </div>
+      ${renderHwStatChips(lesson)}
+    </header>
+    ${renderHwStatusBanner(done, 'hw-banner-toggle')}
     <div class="hw-modal-body">
-      ${renderHwMetaRow(lesson)}
       ${lesson.homeworkHTML}
     </div>
-    <div class="hw-status-banner ${done ? 'done' : 'pending'}" data-role="hw-banner-toggle-bottom" style="margin-top:24px;">
-      <span class="hw-checkbox ${done ? 'checked' : ''}" style="background:${done ? 'var(--olive)' : 'transparent'}; border-color:${done ? 'var(--olive)' : '#C1543A'};">${done ? ICON_CHECK_HTML : ''}</span>
-      <span>${done ? 'Домашнее задание отмечено как сделанное' : 'Всё сделано? Нажми, чтобы отметить домашку выполненной'}</span>
-    </div>
+    ${renderHwStatusBanner(done, 'hw-banner-toggle-bottom', 'hw-status-banner-bottom')}
   `;
 }
 
@@ -2900,7 +3238,7 @@ function showLesson(id) {
 // ============ ДНЕВНИК ПРОГРЕССА ============
 function getCompletedLessonNumbers() {
   const status = getHwStatus();
-  return lessons.filter(l => status[l.id]).map(l => l.number);
+  return lessons.filter(l => hwEntryDone(status[l.id])).map(l => l.number);
 }
 
 function buildItalyMapSVG() {

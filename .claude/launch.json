@@ -7,6 +7,13 @@
       "runtimeArgs": ["-m", "http.server", "8017"],
       "port": 8017,
       "autoPort": true
+    },
+    {
+      "name": "web-server-verify",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8091"],
+      "port": 8091,
+      "autoPort": true
     }
   ]
 }
