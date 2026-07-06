@@ -265,7 +265,8 @@ function extractVocabFromHTML(html, lessonNumber) {
   tpl.innerHTML = html;
   const out = [];
   tpl.content.querySelectorAll('td[data-word]').forEach(td => {
-    const word = (td.dataset.word || '').trim();
+    // Краевая пунктуация («vorrei una birra.») ломает и карточки, и ключи Firebase
+    const word = (td.dataset.word || '').trim().replace(/^[\s.,!?…;:]+|[\s.,!?…;:]+$/g, '');
     if (!word) return;
     // Явный перевод data-ru НА ТОЙ ЖЕ ячейке — самый надёжный способ (работает при
     // любой форме таблицы); такие слова обходят и фильтр VOCAB_SKIP (pinned).
@@ -327,8 +328,23 @@ function buildVocabPool() {
 // один раз. Перевод из урока (data-ru / соседняя ячейка) всегда в приоритете.
 const VOCAB_AUTO_RU_KEY = 'vocab_auto_ru'; // { 'due': 'два', ... }
 let vocabAutoRuMem = null;
+// Символы, запрещённые в ключах Firebase RTDB — такие ключи роняли update() всего узла
+const FB_BAD_KEY_RE = /[.#$/\[\]]/;
 function vocabAutoRuCache() {
-  if (!vocabAutoRuMem) vocabAutoRuMem = storageGet(VOCAB_AUTO_RU_KEY) || {};
+  if (!vocabAutoRuMem) {
+    vocabAutoRuMem = storageGet(VOCAB_AUTO_RU_KEY) || {};
+    // миграция: ключи с точкой и т.п. (краевая пунктуация из data-word) чистим,
+    // иначе облачная синхронизация кэша падает на каждом снимке
+    let dirty = false;
+    Object.keys(vocabAutoRuMem).forEach(k => {
+      if (!FB_BAD_KEY_RE.test(k)) return;
+      const clean = k.replace(/^[\s.,!?…;:]+|[\s.,!?…;:]+$/g, '');
+      if (clean && !FB_BAD_KEY_RE.test(clean) && !vocabAutoRuMem[clean]) vocabAutoRuMem[clean] = vocabAutoRuMem[k];
+      delete vocabAutoRuMem[k];
+      dirty = true;
+    });
+    if (dirty) storageSet(VOCAB_AUTO_RU_KEY, vocabAutoRuMem);
+  }
   return vocabAutoRuMem;
 }
 // Сбрасываем in-memory копию, когда автопереводы пришли из облака (applyCloudSnapshot
@@ -458,6 +474,36 @@ const ICON_VOCAB_SPEAK = '<svg class="cs" viewBox="0 0 24 24" fill="none" xmlns=
 const ICON_VOCAB_RETRY = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 12a7.5 7.5 0 1 1 2.2 5.3M4.5 21v-4.5H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const ICON_VOCAB_CHECK = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 12.5L9.5 17.5L19.5 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+// ── Цель дня: 10 слов. Маленькая закрываемая цель ежедневно возвращает лучше,
+// чем вечный глобальный процент. Счётчик хранится по TZ-safe ключу дня. ──
+const VOCAB_DAILY_KEY = 'vocab_daily';
+const VOCAB_DAILY_GOAL = 10;
+function vocabDailyCount() {
+  const d = storageGet(VOCAB_DAILY_KEY);
+  return (d && d.day === dateKey(new Date())) ? (d.count || 0) : 0;
+}
+function bumpVocabDaily() {
+  const today = dateKey(new Date());
+  const count = vocabDailyCount() + 1;
+  storageSet(VOCAB_DAILY_KEY, { day: today, count });
+  return count;
+}
+function vocabDailyRowHTML() {
+  const n = Math.min(vocabDailyCount(), VOCAB_DAILY_GOAL);
+  const complete = n >= VOCAB_DAILY_GOAL;
+  let segs = '';
+  for (let i = 0; i < VOCAB_DAILY_GOAL; i++) segs += `<span class="vocab-daily-seg${i < n ? ' is-filled' : ''}"></span>`;
+  return `<div class="vocab-daily-row${complete ? ' is-complete' : ''}" id="vocabDailyRow">
+    <span>Цель дня</span>
+    <div class="vocab-daily-segs">${segs}</div>
+    ${complete ? `<span class="vocab-daily-check">${ICON_VOCAB_CHECK}</span>` : `<b>${n}/${VOCAB_DAILY_GOAL}</b>`}
+  </div>`;
+}
+function refreshVocabDailyRow() {
+  const row = document.getElementById('vocabDailyRow');
+  if (row) row.outerHTML = vocabDailyRowHTML();
+}
+
 function renderVocabTrainer() {
   const card = document.getElementById('vocabTrainerCard');
   if (!card) return;
@@ -488,12 +534,12 @@ function renderVocabTrainer() {
       <span class="vocab-card-icon"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5" transform="rotate(-7 10.5 12)"/><rect x="6.5" y="4.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
       <div class="vocab-card-head-text">
         <span class="vocab-card-title">Словарный тренажёр</span>
-        <span class="vocab-card-status"><span class="vocab-status-dot"></span>${pool.length} слов в копилке</span>
+        <span class="vocab-card-status"><span class="vocab-status-dot"></span>в копилке ${pool.length} ${storyPlural(pool.length, 'слово', 'слова', 'слов')}</span>
       </div>
     </div>
     <div class="vocab-card-body">
       <p class="vocab-trainer-sub">Слова из пройденных уроков, вперемешку — вспомни перевод</p>
-      <div class="vocab-flip-area">
+      <div class="vocab-flip-area" id="vocabFlipArea" role="button" tabindex="0" aria-label="Показать перевод">
         <div class="hw-vocab-cloud"><span>${currentVocabItem.it}</span></div>
         <div class="vocab-translation" id="vocabTranslation" style="display:none;">
           <span class="vocab-translation-text">${currentVocabItem.ru}</span>
@@ -505,6 +551,7 @@ function renderVocabTrainer() {
         <button class="vocab-action-btn vocab-action-retry" data-action="retry" type="button"><span class="ico">${ICON_VOCAB_RETRY}</span>Повторить</button>
         <button class="vocab-action-btn vocab-action-known" data-action="known" type="button"><span class="ico">${ICON_VOCAB_CHECK}</span>Запомнила!</button>
       </div>
+      ${vocabDailyRowHTML()}
       <div class="vocab-progress-row">
         <div class="vocab-progress-bar-track"><div class="vocab-progress-bar-fill" style="width:${Math.round(knownCount / pool.length * 100)}%"></div></div>
         <span class="vocab-progress-pct">${Math.round(knownCount / pool.length * 100)}%</span>
@@ -515,11 +562,21 @@ function renderVocabTrainer() {
   `;
 
   const revealBtn = document.getElementById('vocabRevealBtn');
-  revealBtn.addEventListener('click', () => {
+  const revealWord = () => {
+    if (document.getElementById('vocabTranslation').style.display === 'flex') return;
     document.getElementById('vocabTranslation').style.display = 'flex';
     document.getElementById('vocabActions').style.display = 'flex';
     revealBtn.style.display = 'none';
-  });
+  };
+  revealBtn.addEventListener('click', (e) => { e.stopPropagation(); revealWord(); });
+  // вся зона слова кликабельна — не нужно целиться в кнопку
+  const flipArea = document.getElementById('vocabFlipArea');
+  if (flipArea) {
+    flipArea.addEventListener('click', revealWord);
+    flipArea.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); revealWord(); }
+    });
+  }
 
   card.querySelectorAll('.vocab-action-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -529,6 +586,7 @@ function renderVocabTrainer() {
       // «Повторить» сбрасывает в 0. (Раньше known давал box+1, и до «закреплено» почти не доходило.)
       map[key] = btn.dataset.action === 'known' ? 2 : 0;
       setVocabProgress(map);
+      bumpVocabDaily(); // любое повторение приближает цель дня
       renderVocabTrainer();
     });
   });
@@ -745,6 +803,7 @@ function vocabMark(action) {
   const map = getVocabProgress();
   map[w.it.toLowerCase()] = action === 'known' ? 2 : 0;   // known → выучено сразу, retry → сброс
   setVocabProgress(map);
+  bumpVocabDaily(); // повторение в модалке тоже засчитывается в цель дня
   if (action === 'known') vocabModalState.sessionKnown++;
   vocabPickNext();
   renderVocabModalContent();
@@ -1400,6 +1459,34 @@ function ensureStoryStyles() {
       border: 1px solid var(--line, #ece2d4);
       padding: 5px 11px; border-radius: 100px;
     }
+    /* Одна строка меты вместо гирлянды чипов — меньше слоёв в узкой колонке */
+    .story-preview-meta {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px; color: #a3947f; margin: 0 0 14px;
+    }
+    /* «Читать» — акцентный текст-линк (не вторая залитая кнопка на экране),
+       «Новая» — тихая иконка-кнопка */
+    .story-read-link {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px; font-weight: 700; color: var(--terracotta, #c1543a);
+      background: none; border: none; padding: 6px 2px; cursor: pointer;
+      transition: opacity .15s ease;
+    }
+    .story-read-link .ico { width: 15px; height: 15px; transition: transform .15s ease; }
+    .story-read-link:hover .ico { transform: translateX(4px); }
+    .story-read-link:active { opacity: .7; }
+    .story-new-iconbtn {
+      margin-left: auto;
+      width: 34px; height: 34px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--cream, #f7f1e6); border: 1px solid var(--line, #ece2d4);
+      color: #9a8f80; cursor: pointer;
+      transition: color .15s ease, border-color .15s ease, transform .15s ease, background .15s ease;
+    }
+    .story-new-iconbtn .ico { width: 14px; height: 14px; }
+    .story-new-iconbtn:hover { color: var(--terracotta, #c1543a); border-color: rgba(193,84,58,.4); transform: rotate(20deg) scale(1.06); }
+    .story-new-iconbtn:active { transform: rotate(20deg) scale(.95); }
     /* ═══ Полноэкранный ридер истории ═══
        Каркас: шапка + тулбар закреплены сверху, кнопки — снизу, между ними
        прокручивается только область чтения. Всё всегда помещается в окне. */
@@ -1826,13 +1913,10 @@ function renderStoryObject(s, section) {
         <span class="story-preview-quote-text">${previewText}</span>
         <span class="story-preview-fade"></span>
       </button>
-      <div class="story-preview-stats">
-        <span class="story-preview-stat">${s.lines.length} ${s.lines.length === 1 ? 'предложение' : 'предложения'}</span>
-        <span class="story-preview-stat">${s.words.length} ${s.words.length === 1 ? 'слово' : 'слов'} для разбора</span>
-      </div>
+      <p class="story-preview-meta">${s.lines.length} ${storyPlural(s.lines.length, 'предложение', 'предложения', 'предложений')} · ${s.words.length} ${storyPlural(s.words.length, 'слово', 'слова', 'слов')} для разбора · ~2 мин</p>
       <div class="story-controls">
-        <button type="button" class="story-btn story-btn-primary" id="storyReadBtn">Читать историю ${ICON_ARROW_RIGHT_HTML}</button>
-        <button type="button" class="story-btn story-btn-ghost" id="storyNewBtn">${ICON_SPARKLE_HTML} Новая</button>
+        <button type="button" class="story-read-link" id="storyReadBtn">Читать историю ${ICON_ARROW_RIGHT_HTML}</button>
+        <button type="button" class="story-new-iconbtn" id="storyNewBtn" title="Сгенерировать новую историю" aria-label="Новая история">${ICON_SPARKLE_HTML}</button>
       </div>
     </div>
   `;
@@ -2570,8 +2654,10 @@ function mergeVocabProgress(a, b) {
 // Автопереводы слов — общий словарь на все устройства: перевёл кто-то один → он есть у
 // всех, и API больше не дёргается. Union: сохраняем любой уже известный перевод слова.
 function mergeVocabAutoRu(a, b) {
-  const out = { ...(a || {}) };
-  Object.entries(b || {}).forEach(([k, v]) => { if (v && !out[k]) out[k] = v; });
+  const out = {};
+  // невалидные для Firebase ключи отбрасываем на слиянии — иначе update() узла падает
+  Object.entries(a || {}).forEach(([k, v]) => { if (v && !FB_BAD_KEY_RE.test(k)) out[k] = v; });
+  Object.entries(b || {}).forEach(([k, v]) => { if (v && !out[k] && !FB_BAD_KEY_RE.test(k)) out[k] = v; });
   return out;
 }
 const CLOUD_KEYS = {
@@ -2978,16 +3064,23 @@ function renderLessonGrid() {
   }
   const done = isHwDone(lesson.id);
   const special = getLessonSpecial(lesson.number);
+  const stage = getLessonStage(lesson.number);
   const card = document.createElement('div');
   card.className = 'lesson-card' + (special ? ' lesson-card-' + special.key : '');
   card.innerHTML = `
-    <div class="nav-item-row" style="margin-bottom:12px;">
-      <span class="lesson-card-num-wrap">${special ? specialTileHTML(special.key) : ''}<span class="lesson-card-num" style="margin-bottom:0;">Урок ${lesson.number}</span>${special ? `<span class="nav-type nav-type-${special.key}">${specialGlyphHTML(special.key)}${special.label}</span>` : ''}</span>
+    <div class="nav-item-row" style="margin-bottom:14px;">
+      <span class="lesson-card-num-wrap">${special ? specialTileHTML(special.key) : ''}<span class="lesson-card-num" style="margin-bottom:0;">Урок ${lesson.number} из ${PLANNED_TOTAL}</span>${special ? `<span class="nav-type nav-type-${special.key}">${specialGlyphHTML(special.key)}${special.label}</span>` : ''}</span>
       <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + ' ДЗ готово' : 'ДЗ не сдано'}</span>
     </div>
     <h3>${lesson.title}</h3>
     <p>${lesson.subtitle}</p>
-    <div class="lesson-card-meta"><span>⏱ ${lesson.time}</span></div>
+    <div class="lesson-card-meta">
+      <span class="lesson-meta-chip"><span class="ico">${ICON_HW_CLOCK}</span>${lesson.time}</span>
+      ${stage ? `<span class="lesson-meta-chip lesson-meta-chip-stage">Этап ${stage.n} · ${stage.level}</span>` : ''}
+    </div>
+    <button class="lesson-continue-btn" data-role="open-lesson" type="button">
+      ${done ? 'Открыть урок' : 'Продолжить урок'} ${ICON_ARROW_RIGHT_HTML}
+    </button>
     <div class="hw-toggle-card ${done ? 'is-done' : ''}" data-role="hw-toggle">
       <span class="hw-checkbox ${done ? 'checked' : ''}">${done ? ICON_CHECK_HTML : ''}</span>
       <span class="hw-label ${done ? 'done-label' : ''}">${done ? 'Домашка сделана' : 'Отметить домашку сделанной'}</span>
@@ -3005,15 +3098,109 @@ function renderLessonGrid() {
   });
   lessonGrid.appendChild(card);
 
-  const futureCard = document.createElement('div');
-  futureCard.className = 'lesson-card lesson-card-future';
-  futureCard.innerHTML = `
-    <span class="lesson-card-num">Скоро</span>
-    <span class="lesson-card-future-icon">${ICON_LOCK_CLOSED_HTML}</span>
-    <h3>Следующий урок</h3>
-    <p>Появится здесь, когда будет готов</p>
+  // Тонкая полоска-тизер следующего занятия — ожидание как часть маршрута,
+  // а не пустая карточка размером с главную.
+  if (lesson.number < PLANNED_TOTAL) {
+    const nextSpecial = getLessonSpecial(lesson.number + 1);
+    const strip = document.createElement('div');
+    strip.className = 'lesson-next-strip';
+    strip.innerHTML = `
+      <span class="lesson-next-icon">${ICON_LOCK_CLOSED_HTML}</span>
+      <span class="lesson-next-text">Дальше: <b>Урок ${lesson.number + 1}${nextSpecial ? ' · ' + nextSpecial.label.toLowerCase() : ''}</b> — готовится и появится здесь сам</span>
+      <span class="lesson-next-dot"></span>
+    `;
+    lessonGrid.appendChild(strip);
+  }
+
+  renderCourseRoute(); // маршрут пересчитывается вместе с карточкой (сдача ДЗ, синк)
+}
+
+// ============ МАРШРУТ КУРСА ============
+// 43 занятия как сегменты пути под шапкой: пройденные — олива, текущее — терракотовый
+// пин с пульсом, рубежи (аттестация/экзамен) — золотые метки. Сегменты флексятся,
+// поэтому линия целиком помещается и на телефоне. Клик по доступному → открыть урок.
+function renderCourseRoute() {
+  const wrap = document.getElementById('courseRoute');
+  if (!wrap) return;
+  if (!lessons.length) { wrap.innerHTML = ''; return; }
+
+  const current = lessons[lessons.length - 1].number;
+  const status = getHwStatus();
+  const doneSet = new Set(lessons.filter(l => hwEntryDone(status[l.id])).map(l => l.number));
+  const availSet = new Set(lessons.map(l => l.number));
+  const titles = new Map(lessons.map(l => [l.number, l.title]));
+  const doneTotal = doneSet.size;
+
+  const stagesHTML = LESSON_STAGES.map(st => {
+    let dots = '';
+    let stDone = 0;
+    for (let n = st.from; n <= st.to; n++) {
+      const special = getLessonSpecial(n);
+      if (doneSet.has(n)) stDone++;
+      const cls = n === current ? 'is-current'
+        : doneSet.has(n) ? 'is-done'
+        : availSet.has(n) ? 'is-open'
+        : 'is-future';
+      const sp = special ? ' is-' + special.key : '';
+      const tip = `Урок ${n}${titles.has(n) ? ' · ' + titles.get(n) : special ? ' · ' + special.label : ''}`;
+      const clickable = availSet.has(n);
+      dots += `<button class="route-dot ${cls}${sp}" data-n="${n}" title="${tip.replace(/"/g, '&quot;')}" type="button"${clickable ? '' : ' disabled'} aria-label="${tip.replace(/"/g, '&quot;')}"></button>`;
+    }
+    const count = st.to - st.from + 1;
+    return `<div class="route-stage" style="flex:${count} 1 0;">
+      <div class="route-dots">${dots}</div>
+      <div class="route-stage-label"><span class="route-stage-name">Этап ${st.n} · ${st.level}</span><b>${stDone}/${count}</b></div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="course-route">
+      <div class="route-head">
+        <span class="route-title">Твой путь</span>
+        <span class="route-sub">Урок ${current} из ${PLANNED_TOTAL} · пройдено ${doneTotal}</span>
+        <button class="route-link" id="routeDiaryLink" type="button">Дневник →</button>
+      </div>
+      <div class="route-stages">${stagesHTML}</div>
+    </div>
   `;
-  lessonGrid.appendChild(futureCard);
+
+  wrap.querySelectorAll('.route-dot:not([disabled])').forEach(dot =>
+    dot.addEventListener('click', () => showLesson('lesson-' + dot.dataset.n)));
+  const diary = wrap.querySelector('#routeDiaryLink');
+  if (diary) diary.addEventListener('click', () => {
+    const btn = document.getElementById('progressNavBtn');
+    if (btn) btn.click();
+  });
+}
+
+// ============ ШАПКА ДНЯ ============
+// Приветствие по времени суток, дата по-итальянски (микро-погружение в язык)
+// и золотой чип-стрик «День N пути» — награда за возврат видна с первого взгляда.
+// Огонёк — тот же многослойный SVG (flameSvgMarkup), что в сайдбаре и дневнике
+// прогресса: один визуальный язык для одной и той же сущности во всём приложении.
+
+function renderWelcomeHero() {
+  const now = new Date();
+  const h = now.getHours();
+  const title = document.querySelector('.welcome-title');
+  if (title) title.textContent = (h >= 18 || h < 4) ? 'Buonasera!' : 'Buongiorno!';
+
+  // Стрик-чип в ряд бейджей — настоящий анимированный огонёк (flameSvgMarkup),
+  // как в сайдбаре и дневнике прогресса, а не плоская иконка.
+  const badges = document.querySelector('.welcome-badges');
+  const days = (typeof getFlameCount === 'function') ? getFlameCount() : 0;
+  if (badges && days > 0) {
+    const tier = getFlameTier(days);
+    const lit = visitedToday();
+    let chip = document.getElementById('welcomeStreakBadge');
+    if (!chip) {
+      chip = document.createElement('span');
+      chip.id = 'welcomeStreakBadge';
+      badges.prepend(chip);
+    }
+    chip.className = 'welcome-badge welcome-badge-streak flame-tier-' + tier + (lit ? '' : ' flame-dormant');
+    chip.innerHTML = `<span class="welcome-badge-icon welcome-badge-flame">${flameSvgMarkup(tier)}</span>День ${days} пути`;
+  }
 }
 
 function showWelcome() {
@@ -3788,6 +3975,7 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
   renderLessonGrid();
   renderNav(null);
   initStreakFlame();
+  renderWelcomeHero(); // приветствие по времени суток + дата + стрик-чип (после initStreakFlame)
   renderVocabTrainer();
   renderVocabIdea2();
 })();
@@ -3801,7 +3989,7 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (prefersReduced) return;
 
-  const SELECTOR = '.content .section, .lesson-card, .video-card, .summary-box';
+  const SELECTOR = '.content .section, .lesson-card, .video-card, .summary-box, .vocab-section, .lesson-next-strip, .course-route';
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) {
       if (e.isIntersecting) {
