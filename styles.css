@@ -2998,30 +2998,32 @@
   .video-grid::-webkit-scrollbar { height: 6px; }
   .video-grid::-webkit-scrollbar-thumb { background: #d8ccb4; border-radius: 100px; }
   .video-grid::-webkit-scrollbar-track { background: transparent; }
-  /* Хвостовой отступ: пустая колонка в конце рельса — чтобы последнюю карточку
-     можно было целиком «вытащить» из-за правой колонки при прокрутке. */
-  .video-rail-end { display: none; }
 
   /* ── Рельс с видео уезжает вправо ПОД правую колонку (тренажёр/истории).
      Работает только в двухколоночном режиме (>1280px, до этого колонки в стопке).
-     Карточки у правого края плавно тают (mask) и «прячутся» за окном тренажёра. ── */
+     Карточки у правого края плавно тают (mask) и «прячутся» за окном тренажёра.
+     Без искусственного хвостового отступа: рельс листается до конца СВОЕГО
+     содержимого — последняя карточка естественно затухает у панели, без
+     пустого места после неё (лишний spacer/padding раньше давал видимый зазор). ── */
   @media (min-width: 1281px) {
     .video-section {
       /* переменные геометрии правой колонки — держим в синхроне с .welcome-side-rail */
       --rail-panel: 336px;
       --rail-gap: 28px;
+      --rail-fade: 96px;
     }
     .video-grid {
       /* расширяем рельс вправо ровно на ширину правой колонки + зазор */
       width: calc(100% + var(--rail-panel) + var(--rail-gap));
+      /* запас прокрутки РОВНО в ширину скрытой зоны (панель + растушёвка) —
+         на максимуме прокрутки последняя карточка выходит точно к границе
+         полной непрозрачности, без лишнего пустого места после неё. */
+      padding-right: calc(var(--rail-panel) + var(--rail-fade));
       -webkit-mask-image: linear-gradient(to right,
-        #000 calc(100% - var(--rail-panel) - 96px), transparent calc(100% - var(--rail-panel)));
+        #000 calc(100% - var(--rail-panel) - var(--rail-fade)), transparent calc(100% - var(--rail-panel)));
               mask-image: linear-gradient(to right,
-        #000 calc(100% - var(--rail-panel) - 96px), transparent calc(100% - var(--rail-panel)));
+        #000 calc(100% - var(--rail-panel) - var(--rail-fade)), transparent calc(100% - var(--rail-panel)));
     }
-    /* хвостовой спейсер шире панели+растушёвки — чтобы последнюю карточку
-       можно было целиком вывести из-за правой колонки в «чистую» зону */
-    .video-rail-end { display: block; grid-column: span 2; }
     /* правая колонка должна перекрывать уезжающий рельс */
     .welcome-side-rail { position: relative; z-index: 2; }
   }
