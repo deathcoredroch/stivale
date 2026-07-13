@@ -85,7 +85,7 @@ function upgradeRevealBlocks(rootEl) {
     const isTranslation = div.classList.contains('hw-translation');
     const isHint = div.classList.contains('hw-hint');
     const det = document.createElement('details');
-    det.className = 'reveal ' + (isTranslation ? 'translation' : 'answer');
+    det.className = 'reveal ' + (isTranslation ? 'translation' : isHint ? 'answer hint' : 'answer');
     const summary = document.createElement('summary');
     const titleEl = div.querySelector('.hw-rev-title');
     summary.textContent = (titleEl ? titleEl.textContent.trim() : '') || (isHint ? 'Подсказка' : isTranslation ? 'Перевод' : 'Ответы');
@@ -104,7 +104,8 @@ function upgradeRevealBlocks(rootEl) {
     const summary = det.querySelector(':scope > summary');
     if (!summary) return;
     const isTranslation = /перевод/i.test(summary.textContent);
-    det.className = 'reveal ' + (isTranslation ? 'translation' : 'answer');
+    const isHint = /подсказк/i.test(summary.textContent);
+    det.className = 'reveal ' + (isTranslation ? 'translation' : isHint ? 'answer hint' : 'answer');
     det.removeAttribute('style');
     summary.removeAttribute('style');
     let label = summary.textContent.replace(/^\s*показать\s+/i, '').trim() || (isTranslation ? 'Перевод' : 'Ответы');
@@ -129,6 +130,72 @@ function upgradeRevealBlocks(rootEl) {
     row.className = 'reveal-row';
     det.before(row);
     group.forEach(d => row.appendChild(d));
+  });
+}
+
+// ── Автополировка вёрстки урока: единый дизайн без правки файлов уроков ──
+// 1. Переводы в диалогах (<p> без .it внутри .dialogue) получают класс .tr, инлайн-стили снимаются.
+// 2. Эмодзи-стикеры в начале служебных меток (🎯, 💡, 🎬, ☁️) убираются — их место занимают SVG-иконки из CSS.
+// 3. Метка задания «Задание 4 · тема · 4 мин» раскладывается на чип, тему и таймер справа.
+// 4. Номер блока ДЗ «1 · Разминка…» получает круглый бейдж с цифрой.
+// При неожиданной разметке каждая ступень тихо пропускает элемент — контент не теряется.
+const LEADING_EMOJI_RE = /^[\s\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{FE0F}\u{200D}]+/u;
+
+function polishLessonMarkup(rootEl) {
+  // 1. Диалоги: строка-перевод — это <p> без класса .it и без вложенного .it
+  //    (в части уроков перевод лежит <em> внутри той же строки — такие не трогаем)
+  rootEl.querySelectorAll('.dialogue p').forEach(p => {
+    if (p.classList.contains('it') || p.querySelector('.it')) return;
+    p.classList.add('tr');
+    p.removeAttribute('style');
+  });
+
+  // 2. Снимаем эмодзи в начале меток — иконки рисует CSS (::before c mask)
+  rootEl.querySelectorAll('.task-label, .teacher-note .label, .video-label, .hw-task-label').forEach(el => {
+    const first = el.firstChild;
+    if (first && first.nodeType === 3) first.textContent = first.textContent.replace(LEADING_EMOJI_RE, '');
+  });
+
+  // 3. Метка задания: «Задание 4 · тема · 4 мин» → чип + тема + таймер
+  rootEl.querySelectorAll('.task-label').forEach(el => {
+    if (el.children.length) return;
+    const parts = el.textContent.split('·').map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return;
+    el.textContent = '';
+    const chip = document.createElement('span');
+    chip.className = 'task-chip';
+    chip.textContent = parts.shift();
+    el.appendChild(chip);
+    // последняя часть «4 мин» / «8–10 мин» → таймер (\b не работает с кириллицей)
+    const last = parts[parts.length - 1] || '';
+    const time = /^[\d≈~]/.test(last) && /мин/i.test(last) ? parts.pop() : null;
+    if (parts.length) {
+      const desc = document.createElement('span');
+      desc.className = 'task-desc';
+      desc.textContent = parts.join(' · ');
+      el.appendChild(desc);
+    }
+    if (time) {
+      const t = document.createElement('span');
+      t.className = 'task-time';
+      t.textContent = time;
+      el.appendChild(t);
+    }
+  });
+
+  // 4. Номер блока ДЗ: «1 · Разминка…» → бейдж с цифрой + название
+  rootEl.querySelectorAll('.hw-section-num').forEach(el => {
+    if (el.children.length) return;
+    const m = el.textContent.match(/^\s*(\d+(?:\.\d+)?)\s*·\s*(.+)$/s);
+    if (!m) return;
+    el.textContent = '';
+    const badge = document.createElement('span');
+    badge.className = 'hw-num-badge';
+    badge.textContent = m[1];
+    const title = document.createElement('span');
+    title.className = 'hw-num-title';
+    title.textContent = m[2].trim();
+    el.append(badge, title);
   });
 }
 
@@ -157,8 +224,8 @@ function parseLessonFragment(html) {
   }
   const sectionsEl = tpl.content.querySelector('[data-lesson-part="sections"]');
   const hwEl = tpl.content.querySelector('[data-lesson-part="homework"]');
-  if (sectionsEl) upgradeRevealBlocks(sectionsEl);
-  if (hwEl) upgradeRevealBlocks(hwEl);
+  if (sectionsEl) { upgradeRevealBlocks(sectionsEl); polishLessonMarkup(sectionsEl); }
+  if (hwEl) { upgradeRevealBlocks(hwEl); polishLessonMarkup(hwEl); }
   return {
     meta,
     sectionsHTML: sectionsEl ? sectionsEl.innerHTML : '',
@@ -264,7 +331,15 @@ function extractVocabFromHTML(html, lessonNumber) {
   const tpl = document.createElement('template');
   tpl.innerHTML = html;
   const out = [];
-  tpl.content.querySelectorAll('td[data-word]').forEach(td => {
+  // Слова берём ТОЛЬКО из кураторских словарных таблиц ДЗ — ячейки .hw-it
+  // (заголовок «Лексика урока»). Это авторская выжимка важных НОВЫХ слов урока:
+  // глаголы даны инфинитивом, переводы выверены вручную. Грамматические таблицы и
+  // таблицы спряжений (класс .it в секциях) НЕ берём — иначе в словарь попадают
+  // формы «parto/lavoro/mi sveglio» и мусорные пары «tu (ты)», «-O (м.р.)»,
+  // «Определённый арт.» (сосед-ячейка там не перевод, а грамматическая метка).
+  // Числовую таблицу (.hw-table-numbers) тоже пропускаем — это не новая лексика.
+  tpl.content.querySelectorAll('td.hw-it[data-word]').forEach(td => {
+    if (td.closest('.hw-table-numbers')) return;
     // Краевая пунктуация («vorrei una birra.») ломает и карточки, и ключи Firebase
     const word = (td.dataset.word || '').trim().replace(/^[\s.,!?…;:]+|[\s.,!?…;:]+$/g, '');
     if (!word) return;
@@ -273,8 +348,7 @@ function extractVocabFromHTML(html, lessonNumber) {
     const explicit = (td.dataset.ru || '').trim();
     if (explicit) { out.push({ it: word, ru: explicit, lesson: lessonNumber, pinned: true }); return; }
     // Фолбэк «сосед справа» — только если сосед не является сам итальянским словом
-    // (нет своего data-word) и похож на перевод (есть кириллица). Иначе грамматические
-    // таблицы (спряжения, числа, род/число) дают мусорные пары типа «due → 3 tre».
+    // (нет своего data-word) и похож на перевод (есть кириллица).
     const nextTd = td.nextElementSibling;
     const neighbor = (nextTd && nextTd.tagName === 'TD' && !nextTd.hasAttribute('data-word'))
       ? nextTd.textContent.trim() : '';
@@ -2660,11 +2734,20 @@ function mergeVocabAutoRu(a, b) {
   Object.entries(b || {}).forEach(([k, v]) => { if (v && !out[k] && !FB_BAD_KEY_RE.test(k)) out[k] = v; });
   return out;
 }
+// Рекорд блиц-игры — как и словарь Лейтнера: устройство с лучшим результатом «выигрывает»,
+// синхронизация никогда не откатывает рекорд вниз.
+const GAME_BEST_KEY = 'game_best'; // { '7': 112, ... } — лучший счёт по номеру урока
+function mergeGameBest(a, b) {
+  const out = { ...(a || {}) };
+  Object.entries(b || {}).forEach(([k, v]) => { out[k] = Math.max(out[k] || 0, v || 0); });
+  return out;
+}
 const CLOUD_KEYS = {
   [HW_STORAGE_KEY]:     mergeHwStatus,      // { 'lesson-1': true, ... } — union готовых ДЗ
   [STREAK_STORAGE_KEY]: mergeStreakData,    // календарь огонька
   [VOCAB_PROGRESS_KEY]: mergeVocabProgress, // прогресс словарного тренажёра
   [VOCAB_AUTO_RU_KEY]:  mergeVocabAutoRu,   // общий кэш автопереводов слов
+  [GAME_BEST_KEY]:      mergeGameBest,      // рекорды блиц-игры «Ripasso lampo» по урокам
 };
 
 // Пишет текущее локальное значение ключа в общий узел (если облако включено и мы не в
@@ -3067,6 +3150,7 @@ function renderLessonGrid() {
   const stage = getLessonStage(lesson.number);
   const card = document.createElement('div');
   card.className = 'lesson-card' + (special ? ' lesson-card-' + special.key : '');
+  card.dataset.num = lesson.number; // большой полупрозрачный номер-водяной знак (CSS attr(data-num))
   card.innerHTML = `
     <div class="nav-item-row" style="margin-bottom:14px;">
       <span class="lesson-card-num-wrap">${special ? specialTileHTML(special.key) : ''}<span class="lesson-card-num" style="margin-bottom:0;">Урок ${lesson.number} из ${PLANNED_TOTAL}</span>${special ? `<span class="nav-type nav-type-${special.key}">${specialGlyphHTML(special.key)}${special.label}</span>` : ''}</span>
@@ -3144,7 +3228,8 @@ function renderCourseRoute() {
       const sp = special ? ' is-' + special.key : '';
       const tip = `Урок ${n}${titles.has(n) ? ' · ' + titles.get(n) : special ? ' · ' + special.label : ''}`;
       const clickable = availSet.has(n);
-      dots += `<button class="route-dot ${cls}${sp}" data-n="${n}" title="${tip.replace(/"/g, '&quot;')}" type="button"${clickable ? '' : ' disabled'} aria-label="${tip.replace(/"/g, '&quot;')}"></button>`;
+      // --i задаёт задержку каскадного появления точек (волна слева направо, см. CSS dotPop)
+      dots += `<button class="route-dot ${cls}${sp}" data-n="${n}" style="--i:${n}" title="${tip.replace(/"/g, '&quot;')}" type="button"${clickable ? '' : ' disabled'} aria-label="${tip.replace(/"/g, '&quot;')}"></button>`;
     }
     const count = st.to - st.from + 1;
     return `<div class="route-stage" style="flex:${count} 1 0;">
@@ -3293,6 +3378,137 @@ function renderHwModalContent(lesson) {
   `;
 }
 
+// ============ СЛОВАРЬ УРОКА В КОНЦЕ ДЗ (замена «облака слов») ============
+// Аккуратная адаптивная таблица всех слов урока: перевод по клику + озвучка.
+// Строится из тех же пар <td data-word> + перевод, что питают тренажёр
+// (collectLessonVocab), поэтому появляется в КАЖДОМ уроке автоматически, без правки
+// файлов. Уроки-повторения без словарных таблиц (напр. урок 15) сохраняют свой
+// смысловой «облако тем» — пустая таблица не навязывается.
+const VR_SPEAK_ICON = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18.07 5.93a9 9 0 0 1 0 12.14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+
+function vrEsc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function vrPluralWords(n) {
+  const d = n % 10, dd = n % 100;
+  if (d === 1 && dd !== 11) return 'слово';
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'слова';
+  return 'слов';
+}
+
+// Уникальные пары слово→перевод урока (секции + ДЗ) в порядке появления.
+// Берём только слова с ЯВНЫМ переводом в самом уроке (data-ru или русский сосед
+// в таблице). Формы из грамматических таблиц без перевода (спряжения io/tu/lui…)
+// намеренно исключаем — иначе справочник раздувается десятками «dormo, dormi,
+// dorme…» с плейсхолдерами. Результат детерминирован (не зависит от кэша тренажёра).
+function collectLessonVocab(lesson) {
+  const map = new Map();
+  const seenStem = new Set();
+  // «la madre» и «madre» из двух таблиц урока — одно и то же слово: сравниваем по
+  // основе без ведущего артикля, берём первое вхождение (обычно форма с артиклем).
+  const stemOf = s => s.toLowerCase().replace(/^(l'|un'|il |lo |la |i |gli |le |un |uno |una )/, '').trim();
+  [lesson.sectionsHTML, lesson.homeworkHTML].forEach(html => {
+    if (!html) return;
+    extractVocabFromHTML(html, lesson.number).forEach(item => {
+      if (item.needsRu || !item.ru) return; // без перевода прямо в уроке — не берём
+      const key = item.it.toLowerCase();
+      if (map.has(key)) return;
+      if (!item.pinned && (key.length < 2 || VOCAB_SKIP.has(key))) return;
+      const stem = stemOf(item.it);
+      if (stem && seenStem.has(stem)) return;
+      if (stem) seenStem.add(stem);
+      map.set(key, { it: item.it, ru: item.ru });
+    });
+  });
+  return [...map.values()];
+}
+
+function vrSyncRevealAll(section) {
+  const rows = [...section.querySelectorAll('.vr-row')];
+  const allShown = rows.length > 0 && rows.every(r => r.classList.contains('is-revealed'));
+  const btn = section.querySelector('.vr-reveal-all');
+  if (btn) {
+    btn.textContent = allShown ? 'Скрыть переводы' : 'Показать переводы';
+    btn.classList.toggle('is-active', allShown);
+  }
+}
+
+// DOM-элемент словаря урока с навешенными обработчиками (клик = перевод, 🔊 = озвучка).
+function buildVocabRecapEl(items) {
+  const section = document.createElement('section');
+  section.className = 'vocab-recap';
+  const rows = items.map(w => `
+      <div class="vr-row" data-word="${vrEsc(w.it)}">
+        <button class="vr-speak" type="button" aria-label="Послушать: ${vrEsc(w.it)}">${VR_SPEAK_ICON}</button>
+        <span class="vr-it">${vrEsc(w.it)}</span>
+        <button class="vr-ru" type="button" aria-expanded="false" title="Показать перевод">
+          <span class="vr-ru-hint">перевод</span>
+          <span class="vr-ru-text">${vrEsc(w.ru)}</span>
+        </button>
+      </div>`).join('');
+  section.innerHTML = `
+    <div class="vr-head">
+      <p class="hw-task-label">Словарь урока · ${items.length} ${vrPluralWords(items.length)}</p>
+      <button class="vr-reveal-all" type="button">Показать переводы</button>
+    </div>
+    <div class="vr-grid">${rows}</div>`;
+
+  const grid = section.querySelector('.vr-grid');
+  grid.addEventListener('click', e => {
+    const speakBtn = e.target.closest('.vr-speak');
+    if (speakBtn) {
+      const row = speakBtn.closest('.vr-row');
+      const word = row && row.dataset.word;
+      if (word && window.speakIt) window.speakIt(word);
+      speakBtn.classList.add('is-playing');
+      setTimeout(() => speakBtn.classList.remove('is-playing'), 650);
+      return;
+    }
+    const ruBtn = e.target.closest('.vr-ru');
+    if (ruBtn) {
+      const row = ruBtn.closest('.vr-row');
+      const shown = row.classList.toggle('is-revealed');
+      ruBtn.setAttribute('aria-expanded', shown ? 'true' : 'false');
+      vrSyncRevealAll(section);
+    }
+  });
+
+  section.querySelector('.vr-reveal-all').addEventListener('click', () => {
+    const allRows = [...grid.querySelectorAll('.vr-row')];
+    const allShown = allRows.every(r => r.classList.contains('is-revealed'));
+    allRows.forEach(r => {
+      r.classList.toggle('is-revealed', !allShown);
+      const b = r.querySelector('.vr-ru');
+      if (b) b.setAttribute('aria-expanded', String(!allShown));
+    });
+    vrSyncRevealAll(section);
+  });
+
+  return section;
+}
+
+// Вставляет/заменяет словарь урока в конце ДЗ. .hw-vocab-recap → заменяем целиком;
+// голое .hw-vocab-cloud → заменяем; ничего нет → добавляем в конец. Нет переводимых
+// слов → не трогаем (урок-повторение сохраняет своё «облако тем»).
+function injectVocabRecap(container, lesson) {
+  const body = container.querySelector('.hw-modal-body') || container;
+  const items = collectLessonVocab(lesson);
+  if (!items.length) return;
+  const recapEl = buildVocabRecapEl(items);
+  const existingRecap = body.querySelector('.hw-vocab-recap');
+  const existingCloud = body.querySelector('.hw-vocab-cloud');
+  if (existingRecap) {
+    existingRecap.replaceWith(recapEl);
+  } else if (existingCloud) {
+    const prev = existingCloud.previousElementSibling;
+    if (prev && /облак/i.test(prev.textContent || '')) prev.remove();
+    existingCloud.replaceWith(recapEl);
+  } else {
+    body.appendChild(recapEl);
+  }
+}
+
 function openHwModal(lessonId) {
   const lesson = lessons.find(l => l.id === lessonId);
   if (!lesson) return;
@@ -3303,6 +3519,7 @@ function openHwModal(lessonId) {
   modalContent.scrollTop = 0;
   document.body.style.overflow = 'hidden';
   wrapResponsiveTables(modalContent);
+  injectVocabRecap(modalContent, lesson);
 
   document.getElementById('hwModalCloseBtn').onclick = closeHwModal;
 
@@ -3355,6 +3572,9 @@ function wrapResponsiveTables(container) {
     });
   };
   updateScrollState();
+  // Ширина таблиц меняется после догрузки веб-шрифтов — пересчитываем ещё раз
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateScrollState);
+  requestAnimationFrame(updateScrollState);
 
   // Пересчитываем при ресайзе/повороте экрана (один общий слушатель на окно)
   if (!window.__tableScrollResizeBound) {
@@ -3420,6 +3640,441 @@ function showLesson(id) {
   attachHwButtonListener(id);
   const contentEl = lessonScreen.querySelector('.content');
   wrapResponsiveTables(contentEl);
+  initLessonGames(contentEl, lesson);
+}
+
+// ============ БЛИЦ-ИГРА «RIPASSO LAMPO» (быстрое повторение правил) ============
+// Урок кладёт в секцию «Повторение» блок:
+//   <div class="lesson-game" data-lesson-game>
+//     <script type="application/json">{"questions":[…]}</script>
+//   </div>
+// Типы вопросов (движок перемешивает и вопросы, и варианты):
+//   c — выбор ответа:  {"t":"c","q":"Noi ___ (capire)","o":["capiamo","capisciamo"],"c":0,"rule":"…","say":"…"}
+//   b — собери фразу:  {"t":"b","ru":"Вечером я читаю.","w":["La sera","leggo"],"rule":"…","say":"…"}
+//   e — найди ошибку:  {"t":"e","w":["Noi","capisciamo","l'italiano"],"bad":1,"fix":"capiamo","rule":"…","say":"…"}
+//   v — vero o falso:  {"t":"v","q":"«Ho fame» — я голоден.","a":true,"rule":"…","say":"…"}
+// Партия = GAME_RUN_SIZE случайных вопросов из колоды урока, на каждый — таймер:
+// бонус за скорость, серия из 3+ верных удваивает очки. Рекорды per-урок
+// (GAME_BEST_KEY) синхронизируются через CLOUD_KEYS, звук — локальная настройка.
+
+const GAME_RUN_SIZE = 12;
+const GAME_SECS = { c: 20, v: 20, e: 25, b: 35 };
+const GAME_SOUND_KEY = 'game_sound'; // вкл/выкл звуков игры — не синхронизируется
+
+function getGameBestFor(lessonNumber) {
+  const all = storageGet(GAME_BEST_KEY) || {};
+  return all[lessonNumber] || 0;
+}
+function getGameTotalScore() {
+  const all = storageGet(GAME_BEST_KEY) || {};
+  return Object.values(all).reduce((s, v) => s + (+v || 0), 0);
+}
+
+// true — если это новый рекорд (тогда он сохранён и отправлен в облако)
+function saveGameBest(lessonNumber, score) {
+  if (!lessonNumber || score <= getGameBestFor(lessonNumber)) return false;
+  const all = storageGet(GAME_BEST_KEY) || {};
+  all[lessonNumber] = score;
+  storageSet(GAME_BEST_KEY, all);
+  cloudPush(GAME_BEST_KEY);
+  return true;
+}
+
+function gameShuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Звуки: крошечный WebAudio-синтезатор, без внешних файлов ──
+let gameAudioCtx = null;
+function gameSoundOn() { return storageGet(GAME_SOUND_KEY) !== false; }
+function gamePlaySound(kind) {
+  if (!gameSoundOn()) return;
+  try {
+    gameAudioCtx = gameAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = gameAudioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const note = (f, t, d, type, g) => {
+      const o = ctx.createOscillator(), v = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.value = f;
+      v.gain.setValueAtTime(0.0001, now + t);
+      v.gain.exponentialRampToValueAtTime(g || 0.055, now + t + 0.015);
+      v.gain.exponentialRampToValueAtTime(0.0001, now + t + (d || 0.12));
+      o.connect(v); v.connect(ctx.destination);
+      o.start(now + t); o.stop(now + t + (d || 0.12) + 0.05);
+    };
+    if (kind === 'ok')       { note(659, 0, 0.10); note(880, 0.09, 0.16); }
+    else if (kind === 'no')  { note(196, 0, 0.22, 'sawtooth', 0.04); }
+    else if (kind === 'win') { [523, 659, 784, 1047].forEach((f, i) => note(f, i * 0.11, 0.18)); }
+    else if (kind === 'tap') { note(540, 0, 0.05, 'triangle', 0.03); }
+  } catch (e) {}
+}
+
+function initLessonGames(rootEl, lesson) {
+  if (!rootEl) return;
+  rootEl.querySelectorAll('[data-lesson-game]').forEach(holder => {
+    let data = null;
+    const src = holder.querySelector('script[type="application/json"]');
+    try { data = JSON.parse(src ? src.textContent : ''); }
+    catch (e) { console.error('[game] не удалось разобрать JSON блиц-игры', e); }
+    if (!data || !Array.isArray(data.questions) || !data.questions.length) {
+      holder.style.display = 'none';
+      return;
+    }
+    buildBlitzGame(holder, data.questions, lesson ? lesson.number : 0);
+  });
+}
+
+function buildBlitzGame(holder, pool, lessonNumber) {
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  // «___» в вопросе превращаем в стилизованный пропуск
+  const gapify = (s) => esc(s).replace(/_{2,}/g, '<span class="lg-gap"></span>');
+  const say = (text) => { if (text && typeof window.speakIt === 'function') window.speakIt(text); };
+
+  const RUN = Math.min(GAME_RUN_SIZE, pool.length);
+  const TYPE_LABEL = { c: 'Выбери ответ', b: 'Собери фразу', e: 'Найди ошибку', v: 'Vero o falso?' };
+
+  // Состояние одного прохождения
+  let order = [], idx = 0, score = 0, streak = 0, bestStreak = 0, flawless = 0,
+      missed = [], speedTotal = 0, timerId = null, deadline = 0, qSecs = 0;
+
+  function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null; } }
+
+  function startTimer(secs, onExpire) {
+    stopTimer();
+    qSecs = secs;
+    deadline = Date.now() + secs * 1000;
+    const fill = holder.querySelector('.lg-timer-fill');
+    timerId = setInterval(() => {
+      if (!holder.isConnected) { stopTimer(); return; } // урок перерисован — глушим таймер
+      const left = deadline - Date.now();
+      const p = Math.max(0, left / (qSecs * 1000));
+      if (fill) { fill.style.transform = 'scaleX(' + p + ')'; fill.classList.toggle('is-low', p < 0.25); }
+      if (left <= 0) { stopTimer(); onExpire(); }
+    }, 100);
+  }
+  function timeRatio() { return Math.max(0, (deadline - Date.now()) / (qSecs * 1000)); }
+
+  function muteBtnHTML() { return `<button type="button" class="lg-mute" title="Звук игры">${gameSoundOn() ? '🔊' : '🔇'}</button>`; }
+  function bindMute() {
+    holder.querySelectorAll('.lg-mute').forEach(b => b.addEventListener('click', () => {
+      storageSet(GAME_SOUND_KEY, !gameSoundOn());
+      holder.querySelectorAll('.lg-mute').forEach(x => { x.textContent = gameSoundOn() ? '🔊' : '🔇'; });
+      if (gameSoundOn()) gamePlaySound('tap');
+    }));
+  }
+
+  function renderIntro() {
+    stopTimer();
+    const best = getGameBestFor(lessonNumber);
+    const total = getGameTotalScore();
+    const words = ['ciao', 'allora', 'perfetto', 'andiamo', 'ecco', 'bravissima'];
+    holder.innerHTML = `
+      <div class="lg-card lg-state-intro">
+        <div class="lg-flare" aria-hidden="true"></div>
+        <div class="lg-bgwords" aria-hidden="true">${words.map((w, i) => `<span class="lg-bgw lg-bgw-${i}">${w}</span>`).join('')}</div>
+        <div class="lg-head">
+          <span class="lg-logo">⚡</span>
+          <div class="lg-head-text">
+            <p class="lg-eyebrow">Игра урока · блиц</p>
+            <p class="lg-title">Ripasso lampo</p>
+            <p class="lg-sub">${RUN} вопросов из колоды в ${pool.length} — каждая партия новая. Четыре режима вперемешку, таймер на вопрос, бонус за скорость. Серия из 3+ верных — очки ×2!</p>
+          </div>
+        </div>
+        <div class="lg-intro-row">
+          <button type="button" class="lg-btn lg-btn-start">Играть</button>
+          <span class="lg-stat">🏆 Рекорд: <b>${best || '—'}</b></span>
+          <span class="lg-stat">✨ Всего очков: <b>${total}</b></span>
+          ${muteBtnHTML()}
+        </div>
+      </div>`;
+    holder.querySelector('.lg-btn-start').addEventListener('click', startRun);
+    bindMute();
+  }
+
+  function startRun() {
+    order = gameShuffle(pool).slice(0, RUN);
+    order.forEach(q => { delete q._ok; delete q._done; });
+    idx = 0; score = 0; streak = 0; bestStreak = 0; flawless = 0; missed = []; speedTotal = 0;
+    gamePlaySound('tap');
+    renderQuestion();
+  }
+
+  function progressHTML() {
+    return `<div class="lg-prog">${order.map((q, i) => {
+      let cls = 'lg-seg';
+      if (q._done) cls += q._ok ? ' is-right' : ' is-wrong';
+      else if (i === idx) cls += ' is-cur';
+      return `<span class="${cls}"></span>`;
+    }).join('')}</div>`;
+  }
+
+  function playHeadHTML() {
+    return `
+      <div class="lg-play-head">
+        ${progressHTML()}
+        <div class="lg-play-stats">
+          ${streak >= 3 ? `<span class="lg-streak">🔥${streak}<i>×2</i></span>` : (streak > 0 ? `<span class="lg-streak lg-streak-soft">🔥${streak}</span>` : '')}
+          <span class="lg-score">${score}</span>
+          ${muteBtnHTML()}
+        </div>
+      </div>`;
+  }
+
+  function shell(q, bodyHTML) {
+    holder.innerHTML = `
+      <div class="lg-card lg-state-play">
+        ${playHeadHTML()}
+        <div class="lg-topline">
+          <span class="lg-type-chip lg-type-${q.t}">${TYPE_LABEL[q.t] || 'Вопрос'}</span>
+          <span class="lg-counter">${idx + 1} / ${RUN}</span>
+        </div>
+        <div class="lg-timer"><span class="lg-timer-fill"></span></div>
+        <div class="lg-qwrap">${bodyHTML}</div>
+        <div class="lg-feedback-slot"></div>
+      </div>`;
+    bindMute();
+  }
+
+  function renderQuestion() {
+    if (idx >= RUN) { renderEnd(); return; }
+    const q = order[idx];
+    if (q.t === 'b') renderBuild(q);
+    else if (q.t === 'e') renderError(q);
+    else if (q.t === 'v') renderVero(q);
+    else renderChoice(q);
+  }
+
+  // ── Тип «выбери ответ» ──
+  function renderChoice(q) {
+    const opts = gameShuffle(q.o.map((text, i) => ({ text, right: i === q.c })));
+    shell(q, `
+      <p class="lg-q">${gapify(q.q)}</p>
+      <div class="lg-opts">${opts.map((o, i) => `<button type="button" class="lg-opt" data-i="${i}">${esc(o.text)}</button>`).join('')}</div>`);
+    const btns = [...holder.querySelectorAll('.lg-opt')];
+    let done = false;
+    const finish = (iClicked) => {
+      if (done) return; done = true;
+      const ok = iClicked >= 0 && opts[iClicked].right;
+      btns.forEach((b, j) => {
+        b.disabled = true;
+        if (opts[j].right) b.classList.add('is-right');
+        else if (j === iClicked) b.classList.add('is-wrong');
+      });
+      settle(q, ok, ok ? 10 : 0, { timeout: iClicked < 0 });
+    };
+    btns.forEach((btn, i) => btn.addEventListener('click', () => finish(i)));
+    startTimer(GAME_SECS.c, () => finish(-1));
+  }
+
+  // ── Тип «vero o falso» ──
+  function renderVero(q) {
+    shell(q, `
+      <p class="lg-q lg-q-vero">${gapify(q.q)}</p>
+      <div class="lg-vero-row">
+        <button type="button" class="lg-opt lg-vero" data-v="1">VERO ✓</button>
+        <button type="button" class="lg-opt lg-vero" data-v="0">FALSO ✗</button>
+      </div>`);
+    const btns = [...holder.querySelectorAll('.lg-vero')];
+    let done = false;
+    const finish = (val) => {
+      if (done) return; done = true;
+      const ok = val !== null && val === !!q.a;
+      btns.forEach(b => {
+        b.disabled = true;
+        const bv = b.dataset.v === '1';
+        if (bv === !!q.a) b.classList.add('is-right');
+        else if (val !== null && bv === val) b.classList.add('is-wrong');
+      });
+      settle(q, ok, ok ? 10 : 0, { timeout: val === null });
+    };
+    btns.forEach(b => b.addEventListener('click', () => finish(b.dataset.v === '1')));
+    startTimer(GAME_SECS.v, () => finish(null));
+  }
+
+  // ── Тип «найди ошибку»: одна попытка ──
+  function renderError(q) {
+    shell(q, `
+      <p class="lg-q lg-q-hint">Нажми на слово с ошибкой:</p>
+      <div class="lg-err-row">${q.w.map((w, i) => `<button type="button" class="lg-chip lg-err" data-i="${i}">${esc(w)}</button>`).join('')}</div>`);
+    const btns = [...holder.querySelectorAll('.lg-err')];
+    let done = false;
+    const finish = (i) => {
+      if (done) return; done = true;
+      const ok = i === q.bad;
+      btns.forEach((b, j) => {
+        b.disabled = true;
+        if (j === q.bad) b.classList.add('is-found');
+        else if (i >= 0 && j === i) b.classList.add('is-wrong');
+      });
+      settle(q, ok, ok ? 10 : 0, { timeout: i < 0, fix: q.fix });
+    };
+    btns.forEach((b, i) => b.addEventListener('click', () => finish(i)));
+    startTimer(GAME_SECS.e, () => finish(-1));
+  }
+
+  // ── Тип «собери фразу» ──
+  function renderBuild(q) {
+    let pos = 0, errors = 0;
+    const chips = gameShuffle(q.w.map((text, i) => ({ text, i })));
+    shell(q, `
+      <p class="lg-q lg-q-build">Собери по-итальянски: <em>«${esc(q.ru)}»</em></p>
+      <div class="lg-answer"></div>
+      <div class="lg-chips">${chips.map((c, i) => `<button type="button" class="lg-chip" data-i="${i}">${esc(c.text)}</button>`).join('')}</div>`);
+    const answerEl = holder.querySelector('.lg-answer');
+    const chipBtns = [...holder.querySelectorAll('.lg-chip')];
+    let done = false;
+    chipBtns.forEach((btn, i) => btn.addEventListener('click', () => {
+      if (done || btn.disabled) return;
+      // Дубликаты слов равнозначны: сверяем текст фишки со следующим нужным словом
+      if (chips[i].text === q.w[pos]) {
+        btn.disabled = true;
+        btn.classList.add('is-used');
+        const placed = document.createElement('span');
+        placed.className = 'lg-placed';
+        placed.textContent = q.w[pos];
+        answerEl.appendChild(placed);
+        pos++;
+        gamePlaySound('tap');
+        if (pos === q.w.length) {
+          done = true;
+          const pts = errors === 0 ? 10 : errors === 1 ? 6 : errors === 2 ? 3 : 0;
+          settle(q, errors === 0, pts, { build: true });
+        }
+      } else {
+        errors++;
+        btn.classList.remove('is-shake');
+        void btn.offsetWidth; // перезапуск анимации
+        btn.classList.add('is-shake');
+      }
+    }));
+    startTimer(GAME_SECS.b, () => {
+      if (done) return; done = true;
+      chipBtns.forEach(b => { b.disabled = true; });
+      settle(q, false, 0, { timeout: true, build: true });
+    });
+  }
+
+  // Общий финал вопроса: очки, серия, вспышка правила, кнопка «Дальше», озвучка
+  function settle(q, ok, basePts, extra) {
+    stopTimer();
+    extra = extra || {};
+    q._done = true; q._ok = ok;
+    let pts = 0, bonus = 0, mult = 1;
+    if (ok) {
+      const r = timeRatio();
+      bonus = r >= 0.5 ? 5 : r >= 0.2 ? 2 : 0;
+      streak++;
+      bestStreak = Math.max(bestStreak, streak);
+      mult = streak >= 3 ? 2 : 1;
+      pts = (basePts + bonus) * mult;
+      flawless++;
+      speedTotal += bonus * mult;
+      gamePlaySound('ok');
+    } else {
+      streak = 0;
+      pts = basePts; // сборка с 1–2 ошибками всё же приносит немного очков
+      if (q.rule) missed.push(q.rule);
+      gamePlaySound('no');
+    }
+    score += pts;
+    const phrase = q.say || '';
+    const verdict = extra.timeout ? '⏰ Время вышло!'
+      : ok ? (mult === 2 ? `Esatto! 🔥 серия ${streak} — очки ×2` : 'Esatto! ✓')
+      : (extra.build ? 'Собрано, но с ошибками' : q.t === 'e' ? 'Ошибка пряталась в другом слове' : 'Ой! Правильный ответ подсвечен');
+    const slot = holder.querySelector('.lg-feedback-slot');
+    slot.innerHTML = `
+      <div class="lg-feedback ${ok ? 'is-ok' : 'is-no'}">
+        <div class="lg-feedback-top">
+          <p class="lg-verdict">${verdict}</p>
+          ${pts ? `<span class="lg-pts">+${pts}</span>` : ''}
+        </div>
+        ${extra.fix ? `<p class="lg-fixline"><s>${esc(q.w[q.bad])}</s> → <b>${esc(extra.fix)}</b></p>` : ''}
+        ${q.rule ? `<p class="lg-rule">${esc(q.rule)}</p>` : ''}
+        <div class="lg-feedback-row">
+          ${phrase ? `<button type="button" class="lg-say">🔊 ${esc(phrase)}</button>` : ''}
+          <button type="button" class="lg-btn lg-btn-next">${idx + 1 === RUN ? 'Итоги' : 'Дальше'}</button>
+        </div>
+      </div>`;
+    const head = holder.querySelector('.lg-play-head');
+    if (head) { head.outerHTML = playHeadHTML().trim(); bindMute(); }
+    if (phrase) {
+      say(phrase);
+      slot.querySelector('.lg-say').addEventListener('click', () => say(phrase));
+    }
+    const nextBtn = slot.querySelector('.lg-btn-next');
+    nextBtn.addEventListener('click', () => { idx++; renderQuestion(); });
+    nextBtn.focus({ preventScroll: true });
+  }
+
+  function renderEnd() {
+    stopTimer();
+    const pct = flawless / RUN;
+    const medal = pct >= 0.9 ? '🥇' : pct >= 0.65 ? '🥈' : '🥉';
+    const isRecord = saveGameBest(lessonNumber, score);
+    const uniqMissed = [...new Set(missed)].slice(0, 5);
+    holder.innerHTML = `
+      <div class="lg-card lg-state-end">
+        <div class="lg-conf-layer" aria-hidden="true"></div>
+        <div class="lg-medal-wrap"><span class="lg-rays" aria-hidden="true"></span><span class="lg-medal">${medal}</span></div>
+        ${pct === 1 ? '<p class="lg-perfect-banner">PERFETTO! Партия без единой ошибки</p>' : ''}
+        <p class="lg-end-score">0</p>
+        <p class="lg-end-sub">${isRecord ? '<span class="lg-record">🎉 Новый рекорд!</span>' : `🏆 рекорд: ${getGameBestFor(lessonNumber)}`}</p>
+        <div class="lg-end-stats">
+          <span class="lg-stat">🎯 Без ошибок: <b>${flawless}/${RUN}</b></span>
+          <span class="lg-stat">🔥 Лучшая серия: <b>${bestStreak}</b></span>
+          <span class="lg-stat">⚡ За скорость: <b>+${speedTotal}</b></span>
+        </div>
+        ${uniqMissed.length
+          ? `<div class="lg-missed"><p class="lg-missed-title">Повтори перед следующим разом</p><ul>${uniqMissed.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>`
+          : '<p class="lg-perfetto">Все правила на месте — прекрасная работа! 💪</p>'}
+        <div class="lg-end-actions">
+          <button type="button" class="lg-btn lg-btn-start">Ещё раз</button>
+          ${muteBtnHTML()}
+        </div>
+      </div>`;
+    holder.querySelector('.lg-btn-start').addEventListener('click', startRun);
+    bindMute();
+    animateScore(holder.querySelector('.lg-end-score'), score);
+    if (isRecord || medal === '🥇') { spawnConfetti(holder.querySelector('.lg-conf-layer')); gamePlaySound('win'); }
+  }
+
+  function animateScore(el, target) {
+    if (!el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = target; return; }
+    const t0 = performance.now(), dur = 900;
+    const tick = (t) => {
+      if (!el.isConnected) return;
+      const p = Math.min(1, (t - t0) / dur);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function spawnConfetti(layer) {
+    if (!layer || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const colors = ['#C1543A', '#E2B457', '#6B7A4D', '#F3EDE0', '#2F8A57', '#C99A3D'];
+    for (let i = 0; i < 42; i++) {
+      const p = document.createElement('span');
+      p.className = 'lg-conf lg-conf-' + (i % 3);
+      p.style.left = (2 + Math.random() * 96) + '%';
+      p.style.background = colors[i % colors.length];
+      p.style.animationDelay = (Math.random() * 0.7) + 's';
+      p.style.animationDuration = (1.4 + Math.random() * 1.2) + 's';
+      p.style.transform = `rotate(${Math.random() * 360}deg)`;
+      layer.appendChild(p);
+    }
+    setTimeout(() => { layer.innerHTML = ''; }, 3400);
+  }
+
+  renderIntro();
 }
 
 // ============ ДНЕВНИК ПРОГРЕССА ============
@@ -3768,21 +4423,31 @@ function renderProgressScreen() {
 
 // Подгоняет viewBox под реальные границы регионов (убирает пустые поля SVG)
 // и ставит маркер текущего региона. Вызывается после вставки SVG в DOM (нужен getBBox).
+// Геометрия регионов статична (карта не меняется), поэтому viewBox считается
+// один раз и кэшируется — иначе каждый рендер дневника делал 41 getBBox(),
+// то есть 41 синхронный reflow, и это было главной причиной подвисания.
+let PV_MAP_VIEWBOX_CACHE = null;
+let PV_MAP_VIEWBOX_SIZE_CACHE = 0;
 function pvMountMap() {
   const svg = progressScreen.querySelector('.pv-map-svg');
   if (!svg) return;
   const zones = svg.querySelectorAll('.pv-zone');
   if (!zones.length) return;
 
-  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
-  zones.forEach(p => {
-    const b = p.getBBox();
-    x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y);
-    x2 = Math.max(x2, b.x + b.width); y2 = Math.max(y2, b.y + b.height);
-  });
-  const size = Math.max(x2 - x1, y2 - y1);
-  const pad = size * 0.05;
-  svg.setAttribute('viewBox', `${(x1 - pad).toFixed(1)} ${(y1 - pad).toFixed(1)} ${(x2 - x1 + pad * 2).toFixed(1)} ${(y2 - y1 + pad * 2).toFixed(1)}`);
+  if (!PV_MAP_VIEWBOX_CACHE) {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    zones.forEach(p => {
+      const b = p.getBBox();
+      x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y);
+      x2 = Math.max(x2, b.x + b.width); y2 = Math.max(y2, b.y + b.height);
+    });
+    const size = Math.max(x2 - x1, y2 - y1);
+    const pad = size * 0.05;
+    PV_MAP_VIEWBOX_CACHE = `${(x1 - pad).toFixed(1)} ${(y1 - pad).toFixed(1)} ${(x2 - x1 + pad * 2).toFixed(1)} ${(y2 - y1 + pad * 2).toFixed(1)}`;
+    PV_MAP_VIEWBOX_SIZE_CACHE = size;
+  }
+  svg.setAttribute('viewBox', PV_MAP_VIEWBOX_CACHE);
+  const size = PV_MAP_VIEWBOX_SIZE_CACHE;
 
   const completed = getCompletedLessonNumbers();
   const maxDone = completed.length ? Math.max(...completed) : 0;
@@ -4018,4 +4683,33 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
     }
   });
   mo.observe(mainEl, { childList: true, subtree: true });
+})();
+
+// ============ ПОЛКА ВИДЕО: стрелки прокрутки ============
+// Кнопки в заголовке секции листают горизонтальный рельс на ~2 карточки,
+// у краёв соответствующая стрелка гаснет (класс is-off).
+(function initVideoRail() {
+  const grid = document.querySelector('.video-grid');
+  const viewport = document.querySelector('.video-viewport');
+  const prev = document.getElementById('railPrevBtn');
+  const next = document.getElementById('railNextBtn');
+  if (!grid || !prev || !next) return;
+  const step = () => {
+    const card = grid.querySelector('.video-card');
+    return (card ? card.getBoundingClientRect().width + 16 : 316) * 2;
+  };
+  const sync = () => {
+    const max = grid.scrollWidth - grid.clientWidth;
+    const atEnd = grid.scrollLeft >= max - 4;
+    prev.classList.toggle('is-off', grid.scrollLeft <= 4);
+    next.classList.toggle('is-off', atEnd);
+    // В конце прокрутки последняя карточка встаёт у края колонки — гасим краевой
+    // блюр (.rail-end → opacity:0), чтобы она осталась резкой (см. styles.css).
+    if (viewport) viewport.classList.toggle('rail-end', atEnd);
+  };
+  prev.addEventListener('click', () => grid.scrollBy({ left: -step(), behavior: 'smooth' }));
+  next.addEventListener('click', () => grid.scrollBy({ left: step(), behavior: 'smooth' }));
+  grid.addEventListener('scroll', sync, { passive: true });
+  window.addEventListener('resize', sync);
+  sync();
 })();
