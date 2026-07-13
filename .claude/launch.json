@@ -14,6 +14,13 @@
       "runtimeArgs": ["-m", "http.server", "8091"],
       "port": 8091,
       "autoPort": true
+    },
+    {
+      "name": "worktree-redesign",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8377"],
+      "port": 8377,
+      "autoPort": false
     }
   ]
 }

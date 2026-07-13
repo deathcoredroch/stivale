@@ -3616,17 +3616,25 @@ function showLesson(id) {
   document.getElementById('progressNavBtn').classList.remove('active');
   document.getElementById('homeNavBtn').classList.remove('active');
   lessonScreen.classList.remove('hidden');
+  const stage = getLessonStage(lesson.number);
   lessonScreen.innerHTML = `
     <div class="header">
+      <span class="header-num" aria-hidden="true">${String(lesson.number).padStart(2, '0')}</span>
       <div class="header-text">
-        <span class="header-lesson-badge">Урок ${lesson.number}</span>
+        <span class="header-lesson-badge">Урок ${lesson.number}${stage ? ` · этап ${stage.n} · ${stage.level}` : ''}</span>
         <h1 class="header-title">${lesson.title}</h1>
         <p class="header-subtitle">${lesson.subtitle}</p>
       </div>
       <div class="header-meta">
         <div class="header-meta-info">
-          <span class="meta-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>${lesson.time}</span>
-          <span class="meta-pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 20.5v-1.8c0-2.6-2.4-4.7-5.3-4.7h-4.4c-2.9 0-5.3 2.1-5.3 4.7v1.8"/><circle cx="12" cy="7.8" r="3.8"/></svg>${lesson.level}</span>
+          <span class="meta-pill">
+            <span class="meta-pill-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>
+            <span class="meta-pill-txt"><small>Длительность</small><b>${lesson.time}</b></span>
+          </span>
+          <span class="meta-pill">
+            <span class="meta-pill-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.5 8.5 12 13l9.5-4.5L12 4z"/><path d="M6.5 10.8v4.7c0 1.2 2.5 2.5 5.5 2.5s5.5-1.3 5.5-2.5v-4.7"/><path d="M21.5 8.5v5"/></svg></span>
+            <span class="meta-pill-txt"><small>Уровень</small><b>${lesson.level}</b></span>
+          </span>
         </div>
         <span id="hwButtonHolder">${renderHwButton(lesson)}</span>
       </div>
@@ -4643,6 +4651,17 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
   renderWelcomeHero(); // приветствие по времени суток + дата + стрик-чип (после initStreakFlame)
   renderVocabTrainer();
   renderVocabIdea2();
+
+  // Deep-link: ?lesson=8 открывает урок сразу, &hw=1 — вместе с домашкой (шаринг/отладка)
+  const deepParams = new URLSearchParams(location.search);
+  const deepLink = deepParams.get('lesson');
+  if (deepLink) {
+    const target = lessons.find(l => l.number === Number(deepLink));
+    if (target) {
+      showLesson(target.id);
+      if (deepParams.get('hw') === '1') openHwModal(target.id);
+    }
+  }
 })();
 
 // ============ SCROLL REVEAL (Design System v3) ============
