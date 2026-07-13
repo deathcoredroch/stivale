@@ -4,6 +4,10 @@
 //   <script type="application/json" data-lesson-meta>
 //   {"title": "...", "subtitle": "...", "time": "60 минут", "level": "A1"}
 //   </script>
+//
+// Необязательное поле "type" в этой же мете помечает занятие звездой в сайдбаре/на
+// карточке/маршруте: "practice" (Практика), "assessment" (Аттестация) или "exam" (Экзамен).
+// Без поля — обычный урок. Больше никакого реестра номеров уроков где-то в app.js нет.
 //   <div data-lesson-part="sections"> ... HTML тела урока ... </div>
 //   <div data-lesson-part="homework"> ... HTML домашнего задания ... </div>
 //
@@ -34,13 +38,8 @@ const LESSON_STAGES = [
 ];
 const PLANNED_TOTAL = LESSON_STAGES[LESSON_STAGES.length - 1].to;
 
-// Спец-занятия со звездой. Тип определяет метку и её цвет.
-const LESSON_SPECIAL = {
-  14: 'practice',  15: 'assessment',
-  27: 'practice',  28: 'practice',
-  39: 'practice',  40: 'practice',  41: 'practice',
-  42: 'exam',      43: 'exam',
-};
+// Спец-занятия со звездой ("практика"/"аттестация"/"экзамен") — тип задаётся полем
+// "type" в data-lesson-meta самого файла урока (lessons/lesson-N.html), не здесь.
 const SPECIAL_META = {
   practice:   { label: 'Практика' },
   assessment: { label: 'Аттестация' },
@@ -48,7 +47,7 @@ const SPECIAL_META = {
 };
 
 function getLessonStage(number)  { return LESSON_STAGES.find(s => number >= s.from && number <= s.to) || null; }
-function getLessonSpecial(number){ const k = LESSON_SPECIAL[number]; return k ? { key: k, ...SPECIAL_META[k] } : null; }
+function specialMetaFor(type) { return (type && SPECIAL_META[type]) ? { key: type, ...SPECIAL_META[type] } : null; }
 
 // Гербовая звезда для спец-занятий (единый стиль иконок, заливка золотом через CSS)
 const NAV_STAR_SVG = '<span class="nav-star"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.6 6.3 6.8.5-5.2 4.4 1.6 6.6L12 17.3l-5.8 3.7 1.6-6.6-5.2-4.4 6.8-.5z"/></svg></span>';
@@ -257,6 +256,7 @@ async function fetchLesson(n) {
         subtitle: parsed.meta.subtitle || '',
         time: parsed.meta.time || '',
         level: parsed.meta.level || '',
+        type: parsed.meta.type || null, // "practice"/"assessment"/"exam" — из самого файла урока
         sectionsHTML: parsed.sectionsHTML,
         homeworkHTML: parsed.homeworkHTML,
         hwStats: parsed.hwStats
@@ -3117,7 +3117,7 @@ function renderNav(activeId) {
     }
 
     const done = isHwDone(lesson.id);
-    const special = getLessonSpecial(lesson.number);
+    const special = specialMetaFor(lesson.type);
     const item = document.createElement('div');
     item.className = 'nav-item' + (lesson.id === activeId ? ' active' : '') + (special ? ' nav-item-' + special.key : '');
     item.innerHTML = `
@@ -3146,7 +3146,7 @@ function renderLessonGrid() {
     return;
   }
   const done = isHwDone(lesson.id);
-  const special = getLessonSpecial(lesson.number);
+  const special = specialMetaFor(lesson.type);
   const stage = getLessonStage(lesson.number);
   const card = document.createElement('div');
   card.className = 'lesson-card' + (special ? ' lesson-card-' + special.key : '');
@@ -3185,12 +3185,13 @@ function renderLessonGrid() {
   // Тонкая полоска-тизер следующего занятия — ожидание как часть маршрута,
   // а не пустая карточка размером с главную.
   if (lesson.number < PLANNED_TOTAL) {
-    const nextSpecial = getLessonSpecial(lesson.number + 1);
+    // Тип следующего занятия неизвестен, пока его файл не появился (type лежит в
+    // его же data-lesson-meta) — тизер показывает только номер, без пометки.
     const strip = document.createElement('div');
     strip.className = 'lesson-next-strip';
     strip.innerHTML = `
       <span class="lesson-next-icon">${ICON_LOCK_CLOSED_HTML}</span>
-      <span class="lesson-next-text">Дальше: <b>Урок ${lesson.number + 1}${nextSpecial ? ' · ' + nextSpecial.label.toLowerCase() : ''}</b> — готовится и появится здесь сам</span>
+      <span class="lesson-next-text">Дальше: <b>Урок ${lesson.number + 1}</b> — готовится и появится здесь сам</span>
       <span class="lesson-next-dot"></span>
     `;
     lessonGrid.appendChild(strip);
@@ -3213,13 +3214,16 @@ function renderCourseRoute() {
   const doneSet = new Set(lessons.filter(l => hwEntryDone(status[l.id])).map(l => l.number));
   const availSet = new Set(lessons.map(l => l.number));
   const titles = new Map(lessons.map(l => [l.number, l.title]));
+  const typesByNumber = new Map(lessons.map(l => [l.number, l.type]));
   const doneTotal = doneSet.size;
 
   const stagesHTML = LESSON_STAGES.map(st => {
     let dots = '';
     let stDone = 0;
     for (let n = st.from; n <= st.to; n++) {
-      const special = getLessonSpecial(n);
+      // Тип берётся из меты уже загруженного урока — для будущих номеров (файла ещё
+      // нет) special будет null, и точка маршрута просто не подсветится звездой.
+      const special = specialMetaFor(typesByNumber.get(n));
       if (doneSet.has(n)) stDone++;
       const cls = n === current ? 'is-current'
         : doneSet.has(n) ? 'is-done'
@@ -4185,7 +4189,7 @@ function buildItalyMapSVG() {
 
 // ============ УРОВЕНЬ ВЛАДЕНИЯ CEFR ============
 // 41 урок покрывает путь от нуля до уверенного A2.
-// Пороги привязаны к реальному плану курса (43 занятия, LESSON_STAGES/LESSON_SPECIAL):
+// Пороги привязаны к реальному плану курса (43 занятия, LESSON_STAGES / meta.type уроков):
 // A0 (0), A0+ (3), A1 (8, к концу этапа 1 занятие 15 — аттестация А1), A1+ (16, старт этапа 2),
 // A2- (26), A2 (35), A2+ (43 — курс полностью пройден, включая оба экзамена 42-43).
 function getCEFRLevel(doneCount) {
