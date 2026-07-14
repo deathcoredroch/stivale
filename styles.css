@@ -6803,7 +6803,8 @@
 .scroll-top-btn.is-visible { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
 .scroll-top-btn:hover {
   transform: translateY(-3px) scale(1.06);
-  box-shadow: 0 16px 30px -8px rgba(161, 68, 40, 0.62), 0 4px 10px rgba(86, 48, 26, 0.2);
+  box-shadow: 0 16px 30px -8px rgba(161, 68, 40, 0.62), 0 4px 10px rgba(86, 48, 26, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 .scroll-top-btn:active { transform: translateY(-1px) scale(0.94); }
 
