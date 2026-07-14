@@ -21,6 +21,13 @@
       "runtimeArgs": ["-m", "http.server", "8377"],
       "port": 8377,
       "autoPort": false
+    },
+    {
+      "name": "web-server-exam",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8420"],
+      "port": 8420,
+      "autoPort": true
     }
   ]
 }

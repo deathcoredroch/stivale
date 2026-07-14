@@ -24,6 +24,7 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors());
+app.use(express.json({ limit: '256kb' })); // нужен для POST /api/exam-feedback (открытые ответы могут быть длинными)
 
 const CACHE_DIR = path.join(__dirname, '../audio/cache');
 // Клиент (index.htm) обращается к порту 3002 — делаем его портом по умолчанию,
@@ -316,6 +317,94 @@ app.get('/api/explain', async (req, res) => {
     res.json({ breakdown: blocks, provider });
   } catch (e) {
     console.error('✗ Explain error:', e.message);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// ============================================================================
+//  ФИДБЕК ПО ФИНАЛЬНОМУ ЭКЗАМЕНУ  —  POST /api/exam-feedback
+//  Берёт проценты по слабым/сильным темам теста (lesson-43) + тексты трёх открытых
+//  заданий и просит ИИ написать связный комментарий-рекомендацию ПО-РУССКИ: что уже
+//  отлично, что подтянуть, без выдумывания фактов, которых нет во входных данных.
+// ============================================================================
+function buildExamFeedbackPrompt(overallPct, sections, weakCategories, strongCategories, essays) {
+  const system =
+`Sei un'insegnante d'italiano madrelingua per una studentessa russofona di livello A2 che ha appena finito l'esame scritto finale del corso.
+COMPITO: scrivere un commento-raccomandazione IN RUSSO, caldo ma concreto, basato SOLO sui dati forniti (voto totale, percentuali per sezione e per categoria, tre testi liberi).
+STRUTTURA OBBLIGATORIA — esattamente 3 paragrafi separati da "\\n" (nessun titolo, nessun elenco puntato):
+1) Verdetto generale in una frase, ancorato al voto totale (%): dì con onestà e calore se il livello A2 è raggiunto o cosa manca.
+2) Punti di forza e priorità: nomina 1-2 sezioni/categorie forti concrete E le 2-3 categorie deboli concrete PIÙ importanti da ripassare (con il loro %), suggerendo di tornare alle lezioni corrispondenti.
+3) Una frase sui tre testi liberi: impressione generale di fluidità e uso della grammatica (NON correggere frase per frase); se un testo è vuoto o troppo corto, dillo con gentilezza.
+REGOLE FERREE:
+- NON inventare fatti sulla studentessa (età, paese, motivazioni) non presenti nei dati.
+- Cita i nomi delle categorie ESATTAMENTE come forniti.
+- Concreto, niente frasi generiche di riempimento. Ogni paragrafo 1-2 frasi.
+- Tono di sostegno, non un voto scolastico: sta per concludere un corso intero.
+- TUTTO in RUSSO semplice e naturale.
+Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo.`;
+
+  const secLine = Array.isArray(sections) && sections.length
+    ? sections.map(s => `${s.name}: ${s.pct}% (${s.correct}/${s.total})`).join('; ')
+    : 'nessun dato';
+
+  const user =
+`Voto totale dell'esame: ${overallPct}%.
+Risultato per sezione: ${secLine}.
+Categorie con percentuale più bassa (dalla più debole): ${weakCategories.join('; ') || 'nessuna'}.
+Categorie forti (>=90%): ${strongCategories.join('; ') || 'nessuna in particolare'}.
+
+Tre testi liberi scritti dalla studentessa:
+${essays.map((e, i) => `${i + 1}. Consegna: ${e.prompt}\nTesto: ${e.text ? e.text : '(vuoto — non scritto)'}`).join('\n\n')}
+
+Rispondi con questo JSON ESATTO:
+{"feedback":"<commento in russo, 3 paragrafi separati da \\n>"}`;
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
+function parseExamFeedback(raw) {
+  if (!raw) return null;
+  let t = String(raw).trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a >= 0 && b > a) t = t.slice(a, b + 1);
+  let d;
+  try { d = JSON.parse(t); } catch (e) { return null; }
+  const feedback = d && String(d.feedback || '').trim();
+  return feedback || null;
+}
+
+app.post('/api/exam-feedback', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const overallPct = Number.isFinite(body.overallPct) ? Math.round(body.overallPct) : null;
+    const sections = Array.isArray(body.sections)
+      ? body.sections.slice(0, 8).map((s) => ({
+          name: String(s?.name || '').slice(0, 40),
+          pct: Number.isFinite(s?.pct) ? Math.round(s.pct) : 0,
+          correct: Number.isFinite(s?.correct) ? s.correct : 0,
+          total: Number.isFinite(s?.total) ? s.total : 0,
+        }))
+      : [];
+    const weakCategories = Array.isArray(body.weakCategories) ? body.weakCategories.slice(0, 8).map(String) : [];
+    const strongCategories = Array.isArray(body.strongCategories) ? body.strongCategories.slice(0, 8).map(String) : [];
+    const essays = Array.isArray(body.essays)
+      ? body.essays.slice(0, 3).map((e) => ({ prompt: String(e?.prompt || '').slice(0, 300), text: String(e?.text || '').slice(0, 2000) }))
+      : [];
+
+    console.log(`🎓 Exam feedback: итог ${overallPct ?? '?'}% · ${weakCategories.length} слабых тем · ${essays.filter(e => e.text).length}/3 эссе заполнено · ${providerLabel()}`);
+    const { content, provider } = await callAI(buildExamFeedbackPrompt(overallPct, sections, weakCategories, strongCategories, essays), 0.6);
+    const feedback = parseExamFeedback(content);
+    if (!feedback) {
+      console.error('✗ Exam feedback: не удалось разобрать JSON ИИ');
+      return res.status(502).json({ error: 'bad AI output' });
+    }
+    console.log(`✓ Exam feedback готов (${provider})`);
+    res.json({ feedback, provider });
+  } catch (e) {
+    console.error('✗ Exam feedback error:', e.message);
     res.status(500).json({ error: String(e.message || e) });
   }
 });

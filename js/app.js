@@ -2742,12 +2742,24 @@ function mergeGameBest(a, b) {
   Object.entries(b || {}).forEach(([k, v]) => { out[k] = Math.max(out[k] || 0, v || 0); });
   return out;
 }
+// Финальный экзамен (lesson-43, js/exam.js): { last: {pct,byCategory,t}, best: {...} }.
+// last — берём более свежую по времени попытку; best — с более высоким процентом.
+// Строковый литерал ключа продублирован в exam.js (EXAM_STORAGE_KEY) — оба места должны
+// совпадать, но именно app.js — источник правды для самого механизма синхронизации.
+const FINAL_EXAM_KEY = 'final_exam';
+function mergeFinalExam(a, b) {
+  a = a || {}; b = b || {};
+  const pickLast = (x, y) => { if (!x) return y || null; if (!y) return x; return (y.t || 0) > (x.t || 0) ? y : x; };
+  const pickBest = (x, y) => { if (!x) return y || null; if (!y) return x; return (y.pct || 0) > (x.pct || 0) ? y : x; };
+  return { last: pickLast(a.last, b.last), best: pickBest(a.best, b.best) };
+}
 const CLOUD_KEYS = {
   [HW_STORAGE_KEY]:     mergeHwStatus,      // { 'lesson-1': true, ... } — union готовых ДЗ
   [STREAK_STORAGE_KEY]: mergeStreakData,    // календарь огонька
   [VOCAB_PROGRESS_KEY]: mergeVocabProgress, // прогресс словарного тренажёра
   [VOCAB_AUTO_RU_KEY]:  mergeVocabAutoRu,   // общий кэш автопереводов слов
   [GAME_BEST_KEY]:      mergeGameBest,      // рекорды блиц-игры «Ripasso lampo» по урокам
+  [FINAL_EXAM_KEY]:     mergeFinalExam,     // последняя/лучшая попытка финального письменного экзамена
 };
 
 // Пишет текущее локальное значение ключа в общий узел (если облако включено и мы не в
@@ -3297,6 +3309,7 @@ function showWelcome() {
   welcomeScreen.classList.remove('hidden');
   lessonScreen.classList.add('hidden');
   progressScreen.classList.add('hidden');
+  document.querySelector('.main').classList.remove('is-exam-open');
   document.getElementById('progressNavBtn').classList.remove('active');
   document.getElementById('homeNavBtn').classList.add('active');
   renderNav(null);
@@ -3621,8 +3634,13 @@ function showLesson(id) {
   document.getElementById('homeNavBtn').classList.remove('active');
   lessonScreen.classList.remove('hidden');
   const stage = getLessonStage(lesson.number);
+  // Экзаменационные занятия (type:"exam") получают отдельную тёмную золото-гранатовую
+  // тему поверх обычной v5-дизайн-системы — единственный хук: класс на .main/.header/.content,
+  // сама тема живёт в styles.css («ТЕМА ЭКЗАМЕНА» рядом с дизайн-системой урока v4).
+  const isExam = lesson.type === 'exam';
+  document.querySelector('.main').classList.toggle('is-exam-open', isExam);
   lessonScreen.innerHTML = `
-    <div class="header">
+    <div class="header${isExam ? ' header-exam' : ''}">
       <span class="header-num" aria-hidden="true">${String(lesson.number).padStart(2, '0')}</span>
       <div class="header-text">
         <span class="header-lesson-badge">Урок ${lesson.number}${stage ? ` · этап ${stage.n} · ${stage.level}` : ''}</span>
@@ -3643,7 +3661,7 @@ function showLesson(id) {
         <span id="hwButtonHolder">${renderHwButton(lesson)}</span>
       </div>
     </div>
-    <div class="content">
+    <div class="content${isExam ? ' content-exam' : ''}">
       ${lesson.sectionsHTML}
     </div>
   `;
@@ -3653,6 +3671,7 @@ function showLesson(id) {
   const contentEl = lessonScreen.querySelector('.content');
   wrapResponsiveTables(contentEl);
   initLessonGames(contentEl, lesson);
+  if (window.initFinalExam) window.initFinalExam(contentEl, lesson);
 }
 
 // ============ БЛИЦ-ИГРА «RIPASSO LAMPO» (быстрое повторение правил) ============
@@ -4097,7 +4116,10 @@ function getCompletedLessonNumbers() {
 
 function buildItalyMapSVG() {
   const completed = getCompletedLessonNumbers();
-  const maxDone = completed.length ? Math.max(...completed) : 0;
+  // Регион открывается по КОЛИЧЕСТВУ сданных уроков, а не по номеру самого
+  // дальнего — иначе один сданный урок «из будущего» (например, для теста)
+  // мгновенно распахивал бы половину карты вместо постепенного открытия.
+  const maxDone = completed.length;
 
   const ZONES = [
     { zone: 1, d: "M 187.8 207.8 L 182.8 204.3 L 180.6 201.2 L 181.8 194.4 L 180.4 189.6 L 181.9 188.1 L 181.3 186.1 L 182.1 183.5 L 185.1 181.2 L 192.8 181.3 L 195.1 179.7 L 195.2 177.8 L 197.3 176.7 L 196.1 174.1 L 197.3 171.1 L 204.5 170.0 L 205.2 168.2 L 208.9 166.7 L 208.6 164.9 L 210.1 163.2 L 207.5 158.9 L 201.8 155.5 L 207.4 151.5 L 213.8 151.2 L 215.8 148.4 L 219.5 147.2 L 219.6 145.4 L 224.4 144.1 L 224.9 142.2 L 222.2 141.1 L 223.2 140.0 L 229.5 136.9 L 237.8 135.9 L 239.4 137.6 L 238.6 139.7 L 239.6 140.8 L 239.6 145.3 L 239.2 148.4 L 235.7 151.8 L 238.4 155.2 L 237.2 156.5 L 245.9 159.6 L 249.9 164.9 L 252.7 165.8 L 252.0 167.0 L 253.6 169.0 L 257.1 168.9 L 263.7 171.3 L 262.8 172.9 L 265.1 178.3 L 249.6 190.7 L 251.9 197.7 L 248.7 196.7 L 248.6 195.4 L 242.7 197.1 L 242.5 195.8 L 238.6 192.9 L 235.0 197.5 L 232.9 195.1 L 230.6 197.1 L 230.5 202.0 L 228.1 203.1 L 232.2 209.8 L 224.3 210.4 L 228.6 214.9 L 227.8 215.5 L 232.1 218.3 L 233.0 230.5 L 234.1 231.6 L 233.2 232.6 L 233.0 239.8 L 236.2 238.2 L 238.4 241.5 L 242.3 241.9 L 242.7 244.5 L 240.0 245.0 L 239.1 246.5 L 242.0 248.0 L 244.0 247.5 L 242.6 249.9 L 243.9 250.0 L 244.1 251.7 L 246.1 251.3 L 245.9 253.3 L 247.0 253.6 L 244.9 254.1 L 248.2 254.9 L 245.6 255.1 L 247.0 255.6 L 245.0 256.8 L 247.4 258.5 L 245.1 259.1 L 250.6 258.7 L 247.1 260.7 L 247.4 262.0 L 243.4 261.5 L 242.4 259.1 L 239.9 258.5 L 236.9 259.4 L 232.4 258.5 L 229.3 259.2 L 226.1 261.9 L 219.9 260.8 L 215.0 262.4 L 213.4 261.0 L 211.2 262.8 L 210.9 261.7 L 208.8 262.0 L 207.5 262.8 L 207.2 265.9 L 203.3 265.6 L 201.3 268.9 L 198.6 267.9 L 198.5 265.9 L 196.5 265.5 L 187.8 267.7 L 187.0 268.2 L 188.3 270.0 L 186.0 271.2 L 183.8 269.2 L 183.5 272.6 L 186.5 273.1 L 187.3 274.4 L 188.2 272.9 L 189.9 274.3 L 189.4 275.5 L 186.2 276.2 L 185.7 278.1 L 187.5 278.4 L 187.2 279.6 L 184.4 281.8 L 184.2 284.2 L 182.6 284.7 L 183.5 286.7 L 185.7 286.5 L 186.8 287.9 L 185.9 288.9 L 182.7 288.5 L 182.8 289.7 L 186.0 289.9 L 188.4 293.4 L 184.5 295.8 L 181.8 294.7 L 180.7 295.6 L 175.4 292.6 L 175.6 293.7 L 172.4 293.9 L 171.1 296.4 L 163.2 296.9 L 159.9 296.1 L 159.2 293.8 L 157.4 294.8 L 156.9 293.3 L 156.8 295.1 L 155.6 293.9 L 154.3 294.6 L 154.6 297.0 L 152.5 297.3 L 152.5 296.0 L 151.0 296.9 L 151.5 298.0 L 148.6 298.4 L 145.7 301.1 L 142.4 302.2 L 140.2 301.4 L 141.3 300.0 L 130.1 302.6 L 130.0 299.6 L 125.3 299.7 L 111.9 301.8 L 108.1 305.2 L 102.8 306.3 L 99.6 305.0 L 98.3 300.3 L 96.4 299.0 L 98.7 295.7 L 97.0 294.0 L 89.7 291.8 L 87.8 293.6 L 83.1 293.0 L 72.1 287.6 L 73.0 284.9 L 71.7 284.4 L 73.6 282.2 L 70.8 279.3 L 72.2 278.7 L 71.6 277.1 L 64.6 276.5 L 63.5 271.5 L 60.0 268.4 L 60.8 267.1 L 64.5 266.3 L 65.2 264.7 L 71.1 265.1 L 73.9 262.8 L 81.6 266.0 L 86.1 265.0 L 85.1 263.2 L 86.0 261.9 L 91.3 261.8 L 93.1 258.2 L 101.1 256.4 L 103.0 257.9 L 107.2 254.4 L 108.6 254.6 L 109.8 253.5 L 109.7 251.1 L 107.1 246.5 L 109.5 246.1 L 109.4 244.6 L 112.0 243.4 L 112.3 241.2 L 114.5 239.1 L 107.6 236.2 L 106.3 234.1 L 108.7 228.5 L 110.2 228.6 L 110.4 231.8 L 112.1 231.0 L 118.1 232.5 L 122.7 228.2 L 131.5 227.1 L 133.2 228.0 L 144.1 221.6 L 148.3 222.2 L 151.7 220.7 L 155.8 223.5 L 158.3 222.8 L 162.4 224.6 L 166.5 223.9 L 167.9 224.8 L 179.2 219.7 L 183.8 220.9 L 183.9 218.7 L 188.0 215.7 L 184.7 211.7 L 187.8 207.8 Z M 141.9 300.6 L 142.4 301.6 L 142.7 301.3 L 141.9 300.6 Z" },
@@ -4151,7 +4173,7 @@ function buildItalyMapSVG() {
     const isOpen = z.zone <= maxDone;
     const isNext = z.zone === maxDone + 1;
     const cls  = isOpen ? 'pv-zone pv-zone-open' : isNext ? 'pv-zone pv-zone-next' : 'pv-zone pv-zone-locked';
-    const fill = isOpen ? 'url(#pvGoldFill)' : isNext ? '#E9D9A9' : '#BCAF9A';
+    const fill = isOpen ? 'url(#pvGoldFill)' : isNext ? '#E7C061' : '#E5DECB';
     const tip  = cityNameByZone[z.zone] ? `<title>Урок ${z.zone} · ${cityNameByZone[z.zone]}</title>` : '';
     return `<path class="${cls}" d="${z.d}" fill="${fill}" data-zone="${z.zone}">${tip}</path>`;
   };
@@ -4295,7 +4317,9 @@ function renderProgressScreen() {
   const completed = getCompletedLessonNumbers();
   const completedSet = new Set(completed);
   const doneCount = completed.length;
-  const maxDone = completed.length ? Math.max(...completed) : 0;
+  // Регион открывается по КОЛИЧЕСТВУ сданных уроков, а не по номеру самого
+  // дальнего — карта должна расти постепенно, урок за уроком, а не скачком.
+  const maxDone = doneCount;
   const streak = getCurrentStreak();
   const streakData = getStreakData();
   const cefrLevel = getCEFRLevel(doneCount);
@@ -4462,7 +4486,7 @@ function pvMountMap() {
   const size = PV_MAP_VIEWBOX_SIZE_CACHE;
 
   const completed = getCompletedLessonNumbers();
-  const maxDone = completed.length ? Math.max(...completed) : 0;
+  const maxDone = completed.length;
   // Маркер стоит на последнем открытом городе («ты здесь»); до старта — на первом.
   // Карта — 41 регион, а курс идёт до 43 занятий (финальные экзамены без новых
   // регионов), поэтому прижимаем к границе карты — иначе на уроках 42-43 маркер
@@ -4521,6 +4545,7 @@ function showProgress() {
   welcomeScreen.classList.add('hidden');
   lessonScreen.classList.add('hidden');
   progressScreen.classList.remove('hidden');
+  document.querySelector('.main').classList.remove('is-exam-open');
   document.getElementById('progressNavBtn').classList.add('active');
   document.getElementById('homeNavBtn').classList.remove('active');
   renderNav(null);
@@ -4736,3 +4761,32 @@ document.getElementById('progressNavBtn').addEventListener('click', () => {
   window.addEventListener('resize', sync);
   sync();
 })();
+
+// ============ КНОПКА «НАВЕРХ» ============
+// Два независимых экземпляра на разных скролл-контейнерах:
+//  - .main         — урок и финальный экзамен (оба рендерятся внутри #lessonScreen)
+//  - .hw-modal-panel — модалка домашнего задания (свой overflow, отдельная прокрутка)
+function bindScrollTopButton(scrollEl, btn, threshold, isActive) {
+  if (!scrollEl || !btn) return;
+  const sync = () => btn.classList.toggle('is-visible',
+    scrollEl.scrollTop > threshold && (!isActive || isActive()));
+  scrollEl.addEventListener('scroll', sync, { passive: true });
+  btn.addEventListener('click', () => scrollEl.scrollTo({ top: 0, behavior: 'smooth' }));
+  sync();
+  return sync;
+}
+// Урок и финальный экзамен рендерятся в #lessonScreen — кнопку показываем только там,
+// а на главной/в дневнике прячем даже при прокрутке .main.
+const lessonScrollSync = bindScrollTopButton(
+  document.querySelector('.main'),
+  document.getElementById('mainScrollTopBtn'),
+  420,
+  () => { const ls = document.getElementById('lessonScreen'); return ls && !ls.classList.contains('hidden'); }
+);
+// Смена экрана (главная ⇄ урок ⇄ дневник) не вызывает scroll — пересчитываем видимость
+// кнопки при каждом переключении, чтобы она гасла при уходе с урока.
+if (lessonScrollSync) {
+  const ls = document.getElementById('lessonScreen');
+  if (ls) new MutationObserver(lessonScrollSync).observe(ls, { attributes: true, attributeFilter: ['class'] });
+}
+bindScrollTopButton(document.getElementById('hwModalContent'), document.getElementById('hwScrollTopBtn'), 120);

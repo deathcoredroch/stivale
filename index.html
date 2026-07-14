@@ -15,7 +15,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
     <link rel="manifest" href="./site.webmanifest">
 <!-- ?v= — защита от кэша браузера: при заметных правках стилей/скриптов поднимаем номер -->
-<link rel="stylesheet" href="./styles.css?v=6.4">
+<link rel="stylesheet" href="./styles.css?v=6.5">
 </head>
 
 <body>
@@ -274,10 +274,19 @@
     <div id="progressScreen" class="hidden"></div>
   </main>
 
+  <button type="button" class="scroll-top-btn" id="mainScrollTopBtn" aria-label="Наверх">
+    <span class="scroll-top-btn-ring"></span>
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L12 8.5L18 14.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
   <div class="hw-modal-overlay" id="hwModal">
     <div class="hw-modal-frame">
       <button class="hw-modal-close" id="hwModalCloseBtn" aria-label="Закрыть"><span class="ico" style="width:15px;height:15px;"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></button>
       <div class="hw-modal-panel" id="hwModalContent" role="dialog" aria-modal="true"></div>
+      <button type="button" class="scroll-top-btn scroll-top-btn--modal" id="hwScrollTopBtn" aria-label="Наверх">
+        <span class="scroll-top-btn-ring"></span>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 14.5L12 8.5L18 14.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
   </div>
 
@@ -311,7 +320,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
-<script src="./js/app.js?v=6.4"></script>
+<script src="./js/app.js?v=6.5"></script>
 
 <!-- МОДАЛКА НАСТРОЕК — вне .app, чтобы position:fixed работал на iOS -->
 <div class="settings-modal-overlay" id="settingsModal">
@@ -401,5 +410,6 @@
 </div>
 
 <script src="./js/audio.js"></script>
+<script src="./js/exam.js?v=1.1"></script>
 </body>
 </html>
