@@ -6776,7 +6776,9 @@
   margin: 0;
   border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.4);
-  background: linear-gradient(150deg, var(--gold-bright) 0%, var(--terracotta) 100%);
+  /* Радиальный градиент вместо резкого диагонального — тот «раскол по диагонали»
+     заставлял глаз читать ровный круг как перекошенный (визуальная иллюзия). */
+  background: radial-gradient(120% 120% at 32% 28%, var(--gold-bright) 0%, var(--terracotta) 78%);
   color: #fff;
   display: flex;
   align-items: center;
