@@ -3309,7 +3309,7 @@ function showWelcome() {
   welcomeScreen.classList.remove('hidden');
   lessonScreen.classList.add('hidden');
   progressScreen.classList.add('hidden');
-  document.querySelector('.main').classList.remove('is-exam-open');
+  document.body.classList.remove('is-exam-open', 'theme-assessment', 'theme-practice');
   document.getElementById('progressNavBtn').classList.remove('active');
   document.getElementById('homeNavBtn').classList.add('active');
   renderNav(null);
@@ -3634,11 +3634,16 @@ function showLesson(id) {
   document.getElementById('homeNavBtn').classList.remove('active');
   lessonScreen.classList.remove('hidden');
   const stage = getLessonStage(lesson.number);
-  // Экзаменационные занятия (type:"exam") получают отдельную тёмную золото-гранатовую
-  // тему поверх обычной v5-дизайн-системы — единственный хук: класс на .main/.header/.content,
-  // сама тема живёт в styles.css («ТЕМА ЭКЗАМЕНА» рядом с дизайн-системой урока v4).
-  const isExam = lesson.type === 'exam';
-  document.querySelector('.main').classList.toggle('is-exam-open', isExam);
+  // Особые занятия получают отдельную тёмную тему поверх обычной v5-дизайн-системы —
+  // единственный хук: классы на <body> (+ .header-exam/.content-exam ниже), сама тема
+  // живёт в styles.css («ТЕМА ЭКЗАМЕНА» рядом с дизайн-системой урока v4). Палитра
+  // зависит от типа: exam — золото/гранат, assessment — жёлтая, practice — зелёная
+  // (классы-варианты .theme-assessment/.theme-practice, см. «ВАРИАНТЫ ТЕМЫ ЭКЗАМЕНА»).
+  // Классы именно на body, чтобы палитру видел и сайдбар (его цветная дымка).
+  const isExam = ['exam', 'assessment', 'practice'].includes(lesson.type);
+  document.body.classList.toggle('is-exam-open', isExam);
+  document.body.classList.toggle('theme-assessment', lesson.type === 'assessment');
+  document.body.classList.toggle('theme-practice', lesson.type === 'practice');
   lessonScreen.innerHTML = `
     <div class="header${isExam ? ' header-exam' : ''}">
       <span class="header-num" aria-hidden="true">${String(lesson.number).padStart(2, '0')}</span>
@@ -4545,7 +4550,7 @@ function showProgress() {
   welcomeScreen.classList.add('hidden');
   lessonScreen.classList.add('hidden');
   progressScreen.classList.remove('hidden');
-  document.querySelector('.main').classList.remove('is-exam-open');
+  document.body.classList.remove('is-exam-open', 'theme-assessment', 'theme-practice');
   document.getElementById('progressNavBtn').classList.add('active');
   document.getElementById('homeNavBtn').classList.remove('active');
   renderNav(null);

@@ -33,6 +33,18 @@
     '<path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
     '<path d="M18.07 5.93a9 9 0 0 1 0 12.14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 
+  // Лавровый венок со звездой — эмблема стартового экрана экзамена
+  const LAUREL_ICON = '<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M32 12l3.4 6.9 7.6 1.1-5.5 5.4 1.3 7.6L32 29.4l-6.8 3.6 1.3-7.6-5.5-5.4 7.6-1.1z" fill="currentColor"/>' +
+    '<path d="M15.5 26c-2.8 8.6-.9 17.6 5.8 24.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' +
+    '<path d="M48.5 26c2.8 8.6.9 17.6-5.8 24.2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' +
+    '<path d="M14.8 32.5c3.1-.4 5.6.8 7 3.1-3.1.5-5.6-.7-7-3.1z" fill="currentColor"/>' +
+    '<path d="M15.6 39.4c3-.1 5.4 1.3 6.5 3.8-3.1.2-5.4-1.2-6.5-3.8z" fill="currentColor"/>' +
+    '<path d="M17.8 45.8c2.9.3 5 1.9 5.9 4.5-3-.2-5.1-1.8-5.9-4.5z" fill="currentColor"/>' +
+    '<path d="M49.2 32.5c-3.1-.4-5.6.8-7 3.1 3.1.5 5.6-.7 7-3.1z" fill="currentColor"/>' +
+    '<path d="M48.4 39.4c-3-.1-5.4 1.3-6.5 3.8 3.1.2 5.4-1.2 6.5-3.8z" fill="currentColor"/>' +
+    '<path d="M46.2 45.8c-2.9.3-5 1.9-5.9 4.5 3-.2 5.1-1.8 5.9-4.5z" fill="currentColor"/></svg>';
+
   function examEsc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   }
@@ -42,11 +54,60 @@
       .replace(/[''`´]/g, "'")
       .replace(/\s+/g, ' ');
   }
-  function textMatches(userVal, correct) {
-    const accepted = Array.isArray(correct) ? correct : [correct];
+  // Снять диакритику: «perché» → «perche», «città» → «citta». Для мягкой проверки акцентов.
+  function stripAccents(s) {
+    return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  // Расстояние Левенштейна — распознаём опечатку «в один символ» (settantoto → settantotto).
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    const m = a.length, n = b.length;
+    if (!m) return n; if (!n) return m;
+    let prev = Array.from({ length: n + 1 }, (_, i) => i);
+    let cur = new Array(n + 1);
+    for (let i = 1; i <= m; i++) {
+      cur[0] = i;
+      for (let j = 1; j <= n; j++) {
+        const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      }
+      const t = prev; prev = cur; cur = t;
+    }
+    return prev[n];
+  }
+  // Умная проверка текстового ответа. Возвращает статус:
+  //   correct/exact  — точное совпадение (в балл);
+  //   correct/accent — верно, но потерян акцент (в балл, с мягкой пометкой);
+  //   near/typo      — одна опечатка в слове ≥4 симв. (НЕ в балл, но фиксируем близость);
+  //   wrong          — мимо.
+  function gradeTextAnswer(userVal, correct) {
+    const accepted = (Array.isArray(correct) ? correct : [correct]).map(examNorm);
     const u = examNorm(userVal);
-    if (!u) return false;
-    return accepted.some(a => examNorm(a) === u);
+    if (!u) return { status: 'wrong', kind: 'empty' };
+    if (accepted.some(a => a === u)) return { status: 'correct', kind: 'exact' };
+    const uNoAcc = stripAccents(u);
+    if (accepted.some(a => stripAccents(a) === uNoAcc)) return { status: 'correct', kind: 'accent' };
+    const near = accepted.some(a => {
+      const an = stripAccents(a);
+      if (Math.max(an.length, uNoAcc.length) < 4) return false;
+      return levenshtein(an, uNoAcc) <= 1;
+    });
+    return near ? { status: 'near', kind: 'typo' } : { status: 'wrong', kind: 'wrong' };
+  }
+  // Тип вопроса → навык (узнавание vs активная продукция) + человекочитаемое имя.
+  const TYPE_META = {
+    single:    { skill: 'recognition', label: 'Выбор варианта' },
+    listen:    { skill: 'recognition', label: 'Аудирование' },
+    truefalse: { skill: 'recognition', label: 'Верно / неверно' },
+    multi:     { skill: 'recognition', label: 'Множественный выбор' },
+    match:     { skill: 'recognition', label: 'Сопоставление' },
+    text:      { skill: 'production',  label: 'Ввод формы' },
+  };
+  function fmtDuration(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return `${s} с`;
+    const m = Math.floor(s / 60), r = s % 60;
+    return r ? `${m} мин ${r} с` : `${m} мин`;
   }
   function debounce(fn, ms) {
     let t;
@@ -133,19 +194,31 @@
       </div>`;
   }
 
+  // Шапка части: римский номер + итальянское название + русский подзаголовок со счётчиком
+  function renderPartHead(roman, titleIt, sub) {
+    return `<div class="exam-part-head">
+      <span class="exam-part-num">${roman}</span>
+      <div class="exam-part-titles">
+        <span class="exam-part-title">${examEsc(titleIt)}</span>
+        <span class="exam-part-sub">${examEsc(sub)}</span>
+      </div>
+    </div>`;
+  }
+
   function renderLessicoBlock(questions) {
     const items = questions.filter(q => q.block === 'lessico');
     if (!items.length) return '';
-    return `<div class="exam-block"><h3 class="exam-block-title">1 · Лексика</h3>${items.map(renderQuestion).join('')}</div>`;
+    return `<div class="exam-block">${renderPartHead('I', 'Lessico', `Лексика · ${items.length} вопросов`)}${items.map(renderQuestion).join('')}</div>`;
   }
   function renderGrammaticaBlock(questions) {
     const items = questions.filter(q => q.block === 'grammatica');
     if (!items.length) return '';
-    return `<div class="exam-block"><h3 class="exam-block-title">2 · Грамматика</h3>${items.map(renderQuestion).join('')}</div>`;
+    return `<div class="exam-block">${renderPartHead('II', 'Grammatica', `Грамматика · ${items.length} вопросов`)}${items.map(renderQuestion).join('')}</div>`;
   }
   function renderLetturaBlock(lettura) {
     if (!lettura.length) return '';
-    return `<div class="exam-block"><h3 class="exam-block-title">3 · Чтение</h3>
+    const count = lettura.reduce((a, l) => a + l.questions.length, 0);
+    return `<div class="exam-block">${renderPartHead('III', 'Lettura', `Чтение · ${count} вопросов`)}
       ${lettura.map(l => `
         <div class="exam-reading">
           <div class="exam-reading-text" data-lang="it">${examEsc(l.textIt)}</div>
@@ -158,7 +231,7 @@
   }
   function renderAscoltoBlock(items) {
     if (!items.length) return '';
-    return `<div class="exam-block"><h3 class="exam-block-title">4 · Аудирование</h3>
+    return `<div class="exam-block">${renderPartHead('IV', 'Ascolto', `Аудирование · ${items.length} фраз`)}
       ${items.map(q => `
         <div class="exam-q" data-qid="${examEsc(q.id)}">
           <div class="exam-q-cat">${examEsc(q.cat)}</div>
@@ -171,7 +244,7 @@
   }
   function renderProduzioneBlock(items) {
     if (!items.length) return '';
-    return `<div class="exam-block"><h3 class="exam-block-title">5 · Письмо (открытые задания)</h3>
+    return `<div class="exam-block">${renderPartHead('V', 'Produzione scritta', 'Письмо · в балл не идёт, уходит в ИИ-разбор')}
       ${items.map(p => `
         <div class="exam-q exam-q-open" data-qid="${examEsc(p.id)}">
           <div class="exam-q-text">${examGapify(p.prompt)}</div>
@@ -184,13 +257,25 @@
   function renderExamShell(bank, totalGraded) {
     const prev = window.storageGet ? window.storageGet(EXAM_STORAGE_KEY) : null;
     const prevHtml = (prev && prev.last)
-      ? `<p class="exam-intro-prev">Последняя попытка: <b>${prev.last.pct}%</b>${prev.best ? ` · лучшая: <b>${prev.best.pct}%</b>` : ''}</p>`
+      ? `<div class="exam-intro-prev">
+          <span class="exam-prev-pill">Последняя попытка <b>${prev.last.pct}%</b></span>
+          ${prev.best ? `<span class="exam-prev-pill">Лучшая <b>${prev.best.pct}%</b></span>` : ''}
+        </div>`
       : '';
     return `
       <div class="exam-intro" data-exam-intro>
-        <p class="exam-intro-text">Всего ${totalGraded} вопросов на автопроверку + ${bank.produzione.length} открытых письменных задания. Таймера нет — отвечай в своём темпе, кнопка «Проверить» доступна в любой момент, пропущенные вопросы просто идут в зачёт как неверные.</p>
+        <div class="exam-intro-laurel">${LAUREL_ICON}</div>
+        <p class="exam-intro-eyebrow">Esame finale scritto · Livello A2</p>
+        <p class="exam-intro-title">Итог всего курса</p>
+        <p class="exam-intro-text">Пять частей: лексика, грамматика, чтение, аудирование и письмо. Таймера нет — отвечай в своём темпе, кнопка «Проверить» доступна в любой момент. Пропущенные вопросы просто идут в зачёт как неверные.</p>
+        <div class="exam-intro-stats">
+          <div class="exam-stat"><b>${totalGraded}</b><span>вопросов</span></div>
+          <div class="exam-stat"><b>5</b><span>частей</span></div>
+          <div class="exam-stat"><b>${bank.produzione.length}</b><span>открытых заданий</span></div>
+          <div class="exam-stat"><b>∞</b><span>без таймера</span></div>
+        </div>
         ${prevHtml}
-        <button type="button" class="exam-start-btn" data-role="exam-start">${prev && prev.last ? 'Пройти заново' : 'Начать тест'}</button>
+        <button type="button" class="exam-start-btn" data-role="exam-start">${prev && prev.last ? 'Пройти заново' : 'Начать экзамен'}</button>
       </div>
       <div class="exam-body" data-exam-body hidden>
         ${renderLessicoBlock(bank.questions)}
@@ -199,7 +284,10 @@
         ${renderAscoltoBlock(bank.ascolto)}
         ${renderProduzioneBlock(bank.produzione)}
         <div class="exam-submit-bar">
-          <span class="exam-submit-progress" data-exam-progress>Отвечено 0 из ${totalGraded}</span>
+          <div class="exam-submit-info">
+            <span class="exam-submit-progress" data-exam-progress>Отвечено 0 из ${totalGraded}</span>
+            <span class="exam-submit-track"><span class="exam-submit-fill" data-exam-fill></span></span>
+          </div>
           <button type="button" class="exam-submit-btn" data-role="exam-submit">Проверить</button>
         </div>
       </div>
@@ -226,6 +314,7 @@
     const bodyEl = holder.querySelector('[data-exam-body]');
     const resultsEl = holder.querySelector('[data-exam-results]');
     const progressEl = bodyEl.querySelector('[data-exam-progress]');
+    const fillEl = bodyEl.querySelector('[data-exam-fill]');
 
     const updateProgress = () => {
       let n = 0;
@@ -234,6 +323,7 @@
         if (qEl && isAnswered(qEl, q)) n++;
       });
       progressEl.textContent = `Отвечено ${n} из ${gradedList.length}`;
+      if (fillEl) fillEl.style.width = (gradedList.length ? Math.round((n / gradedList.length) * 100) : 0) + '%';
     };
     const debouncedProgress = debounce(updateProgress, 250);
 
@@ -242,6 +332,7 @@
       bodyEl.hidden = false;
       resultsEl.hidden = true;
       resultsEl.innerHTML = '';
+      state.startedAt = Date.now(); // старт таймера — для аналитики скорости
       holder.scrollIntoView({ behavior: 'smooth', block: 'start' });
       updateProgress();
     });
@@ -277,53 +368,83 @@
 
   // ══════════════════════════ ПРОВЕРКА И БАЛЛЫ ══════════════════════════
 
-  function gradeQuestion(qEl, q) {
+  // Возвращает детальную оценку: { status: 'correct'|'near'|'wrong', kind, userText }.
+  // 'near' — «почти» (одна опечатка / один неверный пункт в multi/match): в балл НЕ идёт,
+  // но показывается отдельно как «ты был в одном шаге».
+  function gradeQuestionDetailed(qEl, q) {
     switch (q.type) {
       case 'single': case 'listen': {
         const checked = qEl.querySelector('input[data-role="opt"]:checked');
-        return checked ? +checked.value === q.correct : false;
+        const ok = checked ? +checked.value === q.correct : false;
+        return { status: ok ? 'correct' : 'wrong', kind: ok ? 'exact' : 'wrong', userText: checked ? q.options[+checked.value] : '' };
       }
       case 'multi': {
         const checked = [...qEl.querySelectorAll('input[data-role="opt"]:checked')].map(i => +i.value).sort((a, b) => a - b);
-        const correctArr = [...q.correct].sort((a, b) => a - b);
-        return checked.length === correctArr.length && checked.every((v, i) => v === correctArr[i]);
+        const want = [...q.correct].sort((a, b) => a - b);
+        const exact = checked.length === want.length && checked.every((v, i) => v === want[i]);
+        const setW = new Set(want), setC = new Set(checked);
+        const missing = want.filter(v => !setC.has(v)).length;
+        const extra = checked.filter(v => !setW.has(v)).length;
+        const status = exact ? 'correct' : (missing + extra === 1 ? 'near' : 'wrong');
+        return { status, kind: status, userText: checked.map(i => q.options[i]).join(', ') };
       }
       case 'truefalse': {
         const checked = qEl.querySelector('input[data-role="tf"]:checked');
-        return checked ? (checked.value === 'true') === q.correct : false;
+        const ok = checked ? (checked.value === 'true') === q.correct : false;
+        return { status: ok ? 'correct' : 'wrong', kind: ok ? 'exact' : 'wrong', userText: checked ? (checked.value === 'true' ? 'Vero' : 'Falso') : '' };
       }
       case 'text': {
         const input = qEl.querySelector('input[data-role="text"]');
-        return textMatches(input ? input.value : '', q.correct);
+        const val = input ? input.value : '';
+        const r = gradeTextAnswer(val, q.correct);
+        return { status: r.status, kind: r.kind, userText: val.trim() };
       }
       case 'match': {
         const sels = [...qEl.querySelectorAll('select[data-role="match"]')];
         const userAns = sels.map(s => s.value === '' ? null : +s.value);
-        return q.correct.every((c, i) => userAns[i] === c);
+        const wrongCount = q.correct.reduce((acc, c, i) => acc + (userAns[i] === c ? 0 : 1), 0);
+        const status = wrongCount === 0 ? 'correct' : (wrongCount === 1 ? 'near' : 'wrong');
+        return { status, kind: status, userText: q.left.map((l, i) => `${l} → ${userAns[i] == null ? '—' : q.right[userAns[i]]}`).join('; ') };
       }
-      default: return false;
+      default: return { status: 'wrong', kind: 'wrong', userText: '' };
     }
   }
 
-  function renderCorrection(q) {
-    let answerText = '';
+  function correctAnswerText(q) {
     switch (q.type) {
-      case 'single': case 'listen': answerText = q.options[q.correct]; break;
-      case 'multi': answerText = q.correct.map(i => q.options[i]).join(', '); break;
-      case 'truefalse': answerText = q.correct ? 'Vero' : 'Falso'; break;
-      case 'text': answerText = Array.isArray(q.correct) ? q.correct[0] : q.correct; break;
-      case 'match': answerText = q.left.map((l, i) => `${l} → ${q.right[q.correct[i]]}`).join('; '); break;
+      case 'single': case 'listen': return q.options[q.correct];
+      case 'multi': return q.correct.map(i => q.options[i]).join(', ');
+      case 'truefalse': return q.correct ? 'Vero' : 'Falso';
+      case 'text': return Array.isArray(q.correct) ? q.correct[0] : q.correct;
+      case 'match': return q.left.map((l, i) => `${l} → ${q.right[q.correct[i]]}`).join('; ');
     }
-    return `<div class="exam-correction">
-      <p class="exam-correction-answer">Правильно: <b>${examEsc(answerText)}</b></p>
+    return '';
+  }
+
+  function renderCorrection(q, d) {
+    const near = d && d.status === 'near';
+    const nearNote = near
+      ? `<p class="exam-correction-near">Почти! Ты в одном шаге — ${q.type === 'text' ? 'опечатка в написании.' : 'ошибка ровно в одном пункте.'}</p>`
+      : '';
+    const yourLine = (d && d.userText)
+      ? `<p class="exam-correction-your">Твой ответ: <b>${examEsc(d.userText)}</b></p>`
+      : `<p class="exam-correction-your exam-correction-blank">Ответ не выбран</p>`;
+    return `<div class="exam-correction${near ? ' is-near' : ''}">
+      ${nearNote}
+      ${yourLine}
+      <p class="exam-correction-answer">Правильно: <b>${examEsc(correctAnswerText(q))}</b></p>
       ${q.explain ? `<p class="exam-correction-rule">${examEsc(q.explain)}</p>` : ''}
     </div>`;
   }
 
-  function saveExamAttempt(pct, byCategory) {
-    const rec = { pct, byCategory, t: Date.now() };
+  function saveExamAttempt(a) {
+    const rec = {
+      pct: a.pct, byCategory: a.byCategory, bySection: a.bySection,
+      recognition: a.recognition, production: a.production,
+      near: a.nearCount, durationMs: a.durationMs, t: Date.now(),
+    };
     const cur = (window.storageGet && window.storageGet(EXAM_STORAGE_KEY)) || {};
-    const best = (!cur.best || pct > cur.best.pct) ? rec : cur.best;
+    const best = (!cur.best || a.pct > cur.best.pct) ? rec : cur.best;
     const next = { last: rec, best };
     if (window.storageSet) window.storageSet(EXAM_STORAGE_KEY, next);
     if (window.cloudPush) window.cloudPush(EXAM_STORAGE_KEY);
@@ -336,56 +457,84 @@
     const resultsEl = holder.querySelector('[data-exam-results]');
 
     bodyEl.querySelectorAll('.exam-q').forEach(el => {
-      el.classList.remove('is-correct', 'is-wrong');
+      el.classList.remove('is-correct', 'is-wrong', 'is-near', 'is-accent');
       const slot = el.querySelector('.exam-reveal-slot');
       if (slot) slot.innerHTML = '';
     });
 
-    const catTotals = {};
-    const sectionTotals = {};
-    let totalCorrect = 0;
+    const catTotals = {}, sectionTotals = {}, typeTotals = {}, catSecMap = {};
+    const skillTotals = { recognition: { correct: 0, total: 0 }, production: { correct: 0, total: 0 } };
+    let totalCorrect = 0, nearCount = 0, blankCount = 0;
+    const nearMisses = [], wrongText = [];
 
     gradedList.forEach(q => {
       const qEl = bodyEl.querySelector(`[data-qid="${q.id}"]`);
       if (!qEl) return;
-      const correct = gradeQuestion(qEl, q);
-      catTotals[q.cat] = catTotals[q.cat] || { correct: 0, total: 0 };
-      catTotals[q.cat].total++;
-      const sec = q.section || 'Прочее';
-      sectionTotals[sec] = sectionTotals[sec] || { correct: 0, total: 0 };
-      sectionTotals[sec].total++;
-      if (correct) {
-        catTotals[q.cat].correct++;
-        sectionTotals[sec].correct++;
+      const d = gradeQuestionDetailed(qEl, q);
+      const isCorrect = d.status === 'correct';
+      const bump = (obj, key) => { obj[key] = obj[key] || { correct: 0, total: 0 }; obj[key].total++; if (isCorrect) obj[key].correct++; };
+      bump(catTotals, q.cat);
+      bump(sectionTotals, q.section || 'Прочее');
+      bump(typeTotals, q.type);
+      if (!catSecMap[q.cat]) catSecMap[q.cat] = q.section || 'Прочее';
+      const meta = TYPE_META[q.type] || TYPE_META.single;
+      skillTotals[meta.skill].total++;
+      if (isCorrect) skillTotals[meta.skill].correct++;
+
+      if (isCorrect) {
         totalCorrect++;
         qEl.classList.add('is-correct');
+        if (d.kind === 'accent') { // засчитано, но напомним про акцент
+          qEl.classList.add('is-accent');
+          const slot = qEl.querySelector('.exam-reveal-slot');
+          if (slot) slot.innerHTML = `<div class="exam-correction is-accent"><p class="exam-correction-near">Засчитано! Только не теряй акцент: <b>${examEsc(correctAnswerText(q))}</b>.</p></div>`;
+        }
       } else {
-        qEl.classList.add('is-wrong');
+        if (d.status === 'near') { nearCount++; qEl.classList.add('is-near'); }
+        else qEl.classList.add('is-wrong');
+        if (!d.userText) blankCount++;
         const slot = qEl.querySelector('.exam-reveal-slot');
-        if (slot) slot.innerHTML = renderCorrection(q);
+        if (slot) slot.innerHTML = renderCorrection(q, d);
+        if (d.status === 'near') nearMisses.push({ cat: q.cat, your: d.userText, correct: correctAnswerText(q) });
+        if (q.type === 'text' && d.userText) wrongText.push({ cat: q.cat, your: d.userText, correct: correctAnswerText(q) });
       }
     });
 
     const totalGraded = gradedList.length;
     const pct = totalGraded ? Math.round((totalCorrect / totalGraded) * 100) : 0;
-    const byCategory = Object.entries(catTotals)
-      .map(([cat, v]) => ({ cat, correct: v.correct, total: v.total, pct: v.total ? Math.round((v.correct / v.total) * 100) : 0 }))
-      .sort((a, b) => a.pct - b.pct);
-    const bySection = SECTION_ORDER
-      .filter(s => sectionTotals[s])
-      .map(s => ({ cat: s, correct: sectionTotals[s].correct, total: sectionTotals[s].total,
-        pct: sectionTotals[s].total ? Math.round((sectionTotals[s].correct / sectionTotals[s].total) * 100) : 0 }));
+    const mapPct = obj => Object.entries(obj).map(([k, v]) => ({ cat: k, correct: v.correct, total: v.total, pct: v.total ? Math.round(v.correct / v.total * 100) : 0 }));
+    const byCategory = mapPct(catTotals).map(c => ({ ...c, sec: catSecMap[c.cat] || 'Прочее' })).sort((x, y) => x.pct - y.pct);
+    const bySection = SECTION_ORDER.filter(s => sectionTotals[s]).map(s => ({
+      cat: s, correct: sectionTotals[s].correct, total: sectionTotals[s].total,
+      pct: Math.round(sectionTotals[s].correct / sectionTotals[s].total * 100),
+    }));
+    const byType = mapPct(typeTotals).map(t => ({ ...t, label: (TYPE_META[t.cat] || {}).label || t.cat })).sort((a, b) => b.total - a.total);
+    const recognition = skillTotals.recognition.total ? Math.round(skillTotals.recognition.correct / skillTotals.recognition.total * 100) : 0;
+    const production = skillTotals.production.total ? Math.round(skillTotals.production.correct / skillTotals.production.total * 100) : 0;
 
     const essays = bank.produzione.map(p => {
       const ta = bodyEl.querySelector(`[data-qid="${p.id}"] textarea`);
-      return { prompt: p.prompt, text: ta ? ta.value.trim() : '' };
+      const text = ta ? ta.value.trim() : '';
+      return { prompt: p.prompt, text, words: text ? text.split(/\s+/).filter(Boolean).length : 0, minSentences: p.minSentences || 5 };
     });
 
-    saveExamAttempt(pct, byCategory);
+    const durationMs = state.startedAt ? Date.now() - state.startedAt : 0;
+    // предыдущая попытка ДО перезаписи — для дельт
+    const prevRec = (window.storageGet && window.storageGet(EXAM_STORAGE_KEY)) || {};
+    const prevLast = prevRec.last || null;
+
+    const analytics = {
+      pct, totalCorrect, totalGraded, nearCount, blankCount,
+      answered: totalGraded - blankCount,
+      bySection, byCategory, byType, recognition, production, skillTotals,
+      durationMs, nearMisses, wrongText, essays,
+    };
+
+    saveExamAttempt(analytics);
 
     resultsEl.hidden = false;
-    resultsEl.innerHTML = renderResults(pct, totalCorrect, totalGraded, bySection, byCategory);
-    wireResults(state, resultsEl, byCategory, bySection, essays);
+    resultsEl.innerHTML = renderResults(analytics, prevLast);
+    wireResults(state, resultsEl, analytics, prevLast);
     resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -398,19 +547,79 @@
     return 'lo';
   }
 
-  function renderResults(pct, correct, total, bySection, byCategory) {
-    const badge = badgeFor(pct);
-    // Компактная сводка по 4 разделам вместо длинного списка «тем»
-    const sectionCards = bySection.map(s => `
+  // Вердикт по уровню A2: учитывает и общий процент, и самый слабый раздел
+  // (нельзя «закрыть» A2 с проваленным разделом даже при высоком среднем).
+  function cefrVerdict(a) {
+    const weakest = a.bySection.length ? Math.min(...a.bySection.map(s => s.pct)) : 0;
+    if (a.pct >= 75 && weakest >= 60) return { cls: 'pass', icon: '✓', title: 'Уровень A2 подтверждён', text: 'Курс можно закрывать: результат ровный по всем разделам.' };
+    if (a.pct >= 60 && weakest >= 45) return { cls: 'near', icon: '≈', title: 'A2 почти взят', text: 'База прочная — подтяни слабые разделы, и можно закрывать курс.' };
+    return { cls: 'redo', icon: '↺', title: 'A2 пока не закрыт', text: 'Стоит вернуться к слабым темам и пройти тест повторно перед завершением курса.' };
+  }
+
+  // Дельта против прошлой попытки → чип «+8%» / «−3%» / «= ровно»
+  function deltaChip(cur, prev, big) {
+    if (prev == null || !Number.isFinite(prev)) return '';
+    const d = cur - prev;
+    const cls = d > 0 ? 'up' : (d < 0 ? 'down' : 'flat');
+    const sign = d > 0 ? '+' : (d < 0 ? '−' : '±');
+    const val = Math.abs(d);
+    return `<span class="exam-delta exam-delta-${cls}${big ? ' exam-delta-big' : ''}">${sign}${val}${big ? '%' : ''}</span>`;
+  }
+
+  function renderResults(a, prevLast) {
+    const badge = badgeFor(a.pct);
+    const verdict = cefrVerdict(a);
+    const prevPct = prevLast ? prevLast.pct : null;
+    const prevSecMap = {};
+    if (prevLast && Array.isArray(prevLast.bySection)) prevLast.bySection.forEach(s => { prevSecMap[s.cat] = s.pct; });
+
+    // ── Карточки 4 разделов с дельтами ──
+    const sectionCards = a.bySection.map(s => `
       <div class="exam-sec-card exam-tone-${toneFor(s.pct)}">
         <span class="exam-sec-name">${examEsc(s.cat)}</span>
-        <span class="exam-sec-pct">${s.pct}<i>%</i></span>
+        <span class="exam-sec-pct">${s.pct}<i>%</i>${deltaChip(s.pct, prevSecMap[s.cat])}</span>
         <span class="exam-sec-bar"><span style="width:${s.pct}%"></span></span>
         <span class="exam-sec-frac">${s.correct}/${s.total}</span>
       </div>`).join('');
 
-    // Слабые темы — только те, что ниже 100%, максимум 6, компактными чипами
-    const weak = byCategory.filter(c => c.pct < 100).slice(0, 6);
+    // ── Панель навыков: узнавание vs активная продукция + метрики ──
+    const skillGap = a.recognition - a.production;
+    let skillInsight = 'Узнавание и активная продукция сбалансированы — хороший знак зрелого A2.';
+    if (a.skillTotals.production.total && skillGap >= 15) skillInsight = 'Формы узнаёшь заметно лучше, чем воспроизводишь сама — тренируй активный вызов из памяти (перевод с русского, а не выбор варианта).';
+    else if (skillGap <= -15) skillInsight = 'Активно пишешь формы даже увереннее, чем выбираешь из вариантов — сильный признак, продолжай в том же духе.';
+    const avgPerQ = a.answered ? Math.round(a.durationMs / a.answered / 1000) : 0;
+    const profile = `
+      <div class="exam-profile">
+        <div class="exam-profile-skills">
+          <div class="exam-skill exam-tone-${toneFor(a.recognition)}">
+            <div class="exam-skill-top"><span>Узнавание</span><b>${a.recognition}%</b></div>
+            <span class="exam-skill-bar"><span style="width:${a.recognition}%"></span></span>
+            <span class="exam-skill-hint">выбор варианта, В/Н, аудио, сопоставление</span>
+          </div>
+          <div class="exam-skill exam-tone-${toneFor(a.production)}">
+            <div class="exam-skill-top"><span>Активная продукция</span><b>${a.production}%</b></div>
+            <span class="exam-skill-bar"><span style="width:${a.production}%"></span></span>
+            <span class="exam-skill-hint">сама вписываешь форму по-итальянски</span>
+          </div>
+        </div>
+        <p class="exam-profile-insight">${examEsc(skillInsight)}</p>
+        <div class="exam-metrics">
+          <div class="exam-metric"><b>${a.durationMs ? fmtDuration(a.durationMs) : '—'}</b><span>время</span></div>
+          <div class="exam-metric"><b>${avgPerQ ? avgPerQ + ' с' : '—'}</b><span>на вопрос</span></div>
+          <div class="exam-metric exam-metric-near"><b>${a.nearCount}</b><span>почти верных</span></div>
+          <div class="exam-metric"><b>${a.answered}/${a.totalGraded}</b><span>отвечено</span></div>
+        </div>
+      </div>`;
+
+    // ── «Почти верно» — отдельная тёплая карточка (эти ответы были в шаге от правильного) ──
+    const nearBlock = a.nearCount ? `
+      <div class="exam-near-note">
+        <span class="exam-near-badge">≈ ${a.nearCount}</span>
+        <span>${a.nearCount === 1 ? 'один ответ был' : (a.nearCount < 5 ? 'ответа были' : 'ответов были')} в одном шаге от верного (опечатка или один пункт) — они не пошли в балл, но это почти попадание.</span>
+      </div>` : '';
+
+    // ── Слабые темы чипами ──
+    const weak = a.byCategory.filter(c => c.pct < 100).slice(0, 8);
     const weakBlock = weak.length ? `
       <div class="exam-weak">
         <span class="exam-weak-label">Стоит повторить</span>
@@ -422,34 +631,77 @@
         <span class="exam-weak-label">Слабых тем нет — результат ровный по всем разделам 👏</span>
       </div>`;
 
-    // Полная разбивка по всем ~50 темам спрятана в свёрнутый блок, чтобы не «простыня»
-    const fullDetails = `
+    // ── Свёрнутая аналитика: по формату вопроса + полная разбивка по темам ──
+    const typeRows = a.byType.map(t => `
+      <div class="exam-cat-row exam-tone-${toneFor(t.pct)}">
+        <span class="exam-cat-name">${examEsc(t.label)}</span>
+        <span class="exam-cat-bar"><span class="exam-cat-fill" style="width:${t.pct}%"></span></span>
+        <span class="exam-cat-pct">${t.pct}% · ${t.correct}/${t.total}</span>
+      </div>`).join('');
+    // Полная разбивка — сгруппирована по 4 разделам курса; темы на 100% свёрнуты
+    // в компактные чипы, полосами показаны только темы с ошибками (стены из
+    // одинаковых зелёных полос на 100% больше нет).
+    const perfectTotal = a.byCategory.filter(c => c.pct === 100).length;
+    const catGroups = SECTION_ORDER.map(sec => {
+      const cats = a.byCategory.filter(c => c.sec === sec);
+      if (!cats.length) return '';
+      const perfect = cats.filter(c => c.pct === 100).sort((x, y) => x.cat.localeCompare(y.cat));
+      const rest = cats.filter(c => c.pct < 100); // byCategory уже отсортирован по возрастанию
+      const avg = Math.round(cats.reduce((s, c) => s + c.pct, 0) / cats.length);
+      const rows = rest.map(c => `
+        <div class="exam-cat-row exam-tone-${toneFor(c.pct)}">
+          <span class="exam-cat-name">${examEsc(c.cat)}</span>
+          <span class="exam-cat-bar"><span class="exam-cat-fill" style="width:${c.pct}%"></span></span>
+          <span class="exam-cat-pct">${c.pct}%</span>
+        </div>`).join('');
+      const perfectHtml = perfect.length ? `
+        <div class="exam-catgroup-perfect">
+          <span class="exam-catgroup-perfect-label">Освоено на 100% · ${perfect.length}</span>
+          <div class="exam-catgroup-chips">${perfect.map(c => `<span class="exam-perfect-chip">${examEsc(c.cat)}</span>`).join('')}</div>
+        </div>` : '';
+      return `
+        <div class="exam-catgroup exam-tone-${toneFor(avg)}">
+          <div class="exam-catgroup-head">
+            <span class="exam-catgroup-name">${examEsc(sec)}</span>
+            <span class="exam-catgroup-meta"><b>${avg}%</b> · тем: ${cats.length}</span>
+          </div>
+          ${rest.length ? `<div class="exam-cat-list">${rows}</div>` : '<p class="exam-catgroup-clean">Все темы раздела без единой ошибки</p>'}
+          ${perfectHtml}
+        </div>`;
+    }).join('');
+    const details = `
       <details class="exam-cat-details">
-        <summary>Подробная разбивка по всем темам (${byCategory.length})</summary>
-        <div class="exam-cat-list">
-          ${byCategory.map(c => `
-            <div class="exam-cat-row exam-tone-${toneFor(c.pct)}">
-              <span class="exam-cat-name">${examEsc(c.cat)}</span>
-              <span class="exam-cat-bar"><span class="exam-cat-fill" style="width:${c.pct}%"></span></span>
-              <span class="exam-cat-pct">${c.pct}%</span>
-            </div>
-          `).join('')}
-        </div>
+        <summary>Аналитика по формату вопросов (${a.byType.length})</summary>
+        <div class="exam-cat-list">${typeRows}</div>
+      </details>
+      <details class="exam-cat-details">
+        <summary>Полная разбивка по всем темам (${a.byCategory.length}${perfectTotal ? ` · идеально ${perfectTotal}` : ''})</summary>
+        <div class="exam-catgroups">${catGroups}</div>
       </details>`;
 
     return `
       <div class="exam-score-head exam-badge-${badge.cls}">
-        <div class="exam-score-num">${pct}%</div>
-        <div class="exam-score-sub">${correct} из ${total} верно</div>
-        <div class="exam-score-badge">${examEsc(badge.label)}</div>
-        <p class="exam-score-note">${examEsc(badge.note)}</p>
+        <div class="exam-score-ring" data-ring-pct="${a.pct}">
+          <div class="exam-score-num">${a.pct}<i>%</i></div>
+        </div>
+        <div class="exam-score-info">
+          <div class="exam-score-badge">${examEsc(badge.label)}${deltaChip(a.pct, prevPct, true)}</div>
+          <div class="exam-score-sub">${a.totalCorrect} из ${a.totalGraded} верно${prevPct != null ? ` · прошлый раз ${prevPct}%` : ''}</div>
+          <p class="exam-score-note">${examEsc(badge.note)}</p>
+        </div>
+      </div>
+      <div class="exam-verdict exam-verdict-${verdict.cls}">
+        <span class="exam-verdict-icon">${verdict.icon}</span>
+        <div><b>${examEsc(verdict.title)}</b><span>${examEsc(verdict.text)}</span></div>
       </div>
       <div class="exam-sec-grid">${sectionCards}</div>
+      ${profile}
+      ${nearBlock}
       ${weakBlock}
       <div class="exam-ai-feedback" data-exam-ai>
         <div class="exam-ai-loading"><span class="exam-spinner"></span>ИИ анализирует твой результат…</div>
       </div>
-      ${fullDetails}
+      ${details}
       <button type="button" class="exam-restart-btn" data-role="exam-restart">Пройти заново</button>
     `;
   }
@@ -463,44 +715,71 @@
     return `<div class="exam-ai-head">${tag}Персональный вывод</div>${paras}`;
   }
 
-  // Офлайн-вывод: короткий, структурный, по разделам — не выдаёт себя за ИИ.
-  function buildOfflineExamFeedback(bySection, byCategory, essays) {
-    const overall = bySection.reduce((a, s) => a + s.correct, 0);
-    const totalQ = bySection.reduce((a, s) => a + s.total, 0);
-    const pct = totalQ ? Math.round((overall / totalQ) * 100) : 0;
-    const strongSec = bySection.filter(s => s.pct >= 85).map(s => s.cat.toLowerCase());
-    const weakSec = [...bySection].sort((a, b) => a.pct - b.pct).filter(s => s.pct < 75).slice(0, 2);
-    const weakTopics = byCategory.filter(c => c.pct < 60).slice(0, 3).map(c => c.cat);
+  // Офлайн-вывод: связный разбор из собранной аналитики (не выдаёт себя за ИИ).
+  function buildOfflineExamFeedback(a) {
+    const verdict = cefrVerdict(a);
+    const strongSec = a.bySection.filter(s => s.pct >= 85).map(s => s.cat.toLowerCase());
+    const weakSec = [...a.bySection].sort((x, y) => x.pct - y.pct).filter(s => s.pct < 75).slice(0, 2);
+    const weakTopics = a.byCategory.filter(c => c.pct < 60).slice(0, 3).map(c => c.cat);
     const lines = [];
 
-    if (pct >= 85) lines.push(`Сильный результат — ${pct}%. Уровень A2 подтверждён: база курса усвоена уверенно.`);
-    else if (pct >= 60) lines.push(`Хороший результат — ${pct}%. Основа прочная, осталось закрыть несколько точечных пробелов.`);
-    else lines.push(`Результат ${pct}% — базу стоит укрепить, прежде чем закрывать курс. Это нормальный этап, а не провал.`);
+    // 1) вердикт по уровню
+    lines.push(`${verdict.title} — итог ${a.pct}%. ${verdict.text}`);
 
-    if (strongSec.length) lines.push(`Крепче всего держится: ${strongSec.join(', ')}.`);
+    // 2) сильное + приоритеты
+    let l2 = '';
+    if (strongSec.length) l2 += `Крепче всего держится: ${strongSec.join(', ')}. `;
     if (weakSec.length) {
-      lines.push(`Приоритет для повторения — ${weakSec.map(s => `${s.cat.toLowerCase()} (${s.pct}%)`).join(' и ')}.` +
-        (weakTopics.length ? ` Конкретно просели темы: ${weakTopics.join(', ')} — вернись к соответствующим урокам.` : ''));
-    } else {
-      lines.push('Проваленных разделов нет — картина ровная, добивай отдельные темы из списка ниже.');
-    }
+      l2 += `Приоритет для повторения — ${weakSec.map(s => `${s.cat.toLowerCase()} (${s.pct}%)`).join(' и ')}.`;
+      if (weakTopics.length) l2 += ` Точечно просели темы: ${weakTopics.join(', ')} — вернись к соответствующим урокам.`;
+    } else l2 += 'Проваленных разделов нет — картина ровная, добери отдельные темы из списка ниже.';
+    lines.push(l2.trim());
 
-    const filled = essays.filter(e => e.text.length > 0).length;
-    if (essays.length) {
-      lines.push(filled < essays.length
-        ? `Открытых письменных заданий заполнено ${filled} из ${essays.length} — допиши остальные: в балл они не идут, но это лучшая тренировка речи перед финалом.`
-        : `Все ${essays.length} письменных задания написаны — отличная финальная практика речи.`);
+    // 3) профиль навыка + скорость + «почти»
+    let l3 = '';
+    const gap = a.recognition - a.production;
+    if (a.skillTotals.production.total && gap >= 15) l3 += `Формы узнаёшь (${a.recognition}%) заметно лучше, чем пишешь сама (${a.production}%) — тренируй активный вызов из памяти, а не выбор варианта. `;
+    else if (gap <= -15) l3 += `Активно пишешь формы (${a.production}%) даже увереннее, чем выбираешь из вариантов (${a.recognition}%) — сильный признак. `;
+    else l3 += `Узнавание (${a.recognition}%) и активная продукция (${a.production}%) сбалансированы. `;
+    if (a.nearCount) l3 += `${a.nearCount} ${a.nearCount === 1 ? 'ответ был' : 'ответов было'} в шаге от верного (опечатки/один пункт) — почти попадания. `;
+    if (a.durationMs) l3 += `Прошла тест за ${fmtDuration(a.durationMs)}.`;
+    lines.push(l3.trim());
+
+    // 4) эссе
+    const filled = a.essays.filter(e => e.text.length > 0).length;
+    if (a.essays.length) {
+      const shortOnes = a.essays.filter(e => e.text && e.words < 25).length;
+      lines.push(filled < a.essays.length
+        ? `Открытых письменных заданий заполнено ${filled} из ${a.essays.length} — допиши остальные: в балл они не идут, но это лучшая тренировка речи перед финалом.`
+        : (shortOnes ? `Все ${a.essays.length} письменных задания написаны, но некоторые коротковаты — стоит развернуть мысль подробнее.` : `Все ${a.essays.length} письменных задания написаны развёрнуто — отличная финальная практика речи.`));
     }
     return lines.join('\n');
   }
 
-  async function loadExamFeedback(box, byCategory, bySection, essays) {
-    const overall = bySection.reduce((a, s) => a + s.correct, 0);
-    const totalQ = bySection.reduce((a, s) => a + s.total, 0);
-    const overallPct = totalQ ? Math.round((overall / totalQ) * 100) : 0;
-    const sections = bySection.map(s => ({ name: s.cat, pct: s.pct, correct: s.correct, total: s.total }));
-    const weak = byCategory.filter(c => c.pct < 100).slice(0, 8).map(c => `${c.cat} (${c.pct}%)`);
-    const strong = byCategory.filter(c => c.pct >= 90).map(c => c.cat);
+  async function loadExamFeedback(box, a, prevLast) {
+    const verdict = cefrVerdict(a);
+    const sections = a.bySection.map(s => ({ name: s.cat, pct: s.pct, correct: s.correct, total: s.total }));
+    const weak = a.byCategory.filter(c => c.pct < 100).slice(0, 8).map(c => `${c.cat} (${c.pct}%)`);
+    const strong = a.byCategory.filter(c => c.pct >= 90).map(c => c.cat);
+    const byType = a.byType.map(t => ({ format: t.label, pct: t.pct, correct: t.correct, total: t.total }));
+    const wrongSamples = a.wrongText.slice(0, 8).map(w => `${w.cat}: «${w.your}» → «${w.correct}»`);
+    const nearSamples = a.nearMisses.slice(0, 6).map(w => `${w.cat}: «${w.your}» ≈ «${w.correct}»`);
+    const essays = a.essays.map(e => ({ prompt: e.prompt, text: e.text, words: e.words }));
+    const payload = {
+      overallPct: a.pct,
+      verdict: { level: verdict.cls, title: verdict.title },
+      sections,
+      weakCategories: weak,
+      strongCategories: strong,
+      byType,
+      recognitionPct: a.recognition,
+      productionPct: a.production,
+      nearMisses: nearSamples,
+      wrongTextSamples: wrongSamples,
+      durationLabel: a.durationMs ? fmtDuration(a.durationMs) : null,
+      deltaVsPrev: prevLast ? a.pct - prevLast.pct : null,
+      essays,
+    };
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 25000);
@@ -508,7 +787,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: ctrl.signal,
-        body: JSON.stringify({ overallPct, sections, weakCategories: weak, strongCategories: strong, essays }),
+        body: JSON.stringify(payload),
       });
       clearTimeout(timer);
       if (!r.ok) throw new Error('server ' + r.status);
@@ -516,16 +795,26 @@
       if (!d.feedback) throw new Error('empty feedback');
       box.innerHTML = renderAiFeedbackBox(d.feedback, true);
     } catch (e) {
-      box.innerHTML = renderAiFeedbackBox(buildOfflineExamFeedback(bySection, byCategory, essays), false);
+      box.innerHTML = renderAiFeedbackBox(buildOfflineExamFeedback(a), false);
     }
   }
 
-  function wireResults(state, resultsEl, byCategory, bySection, essays) {
+  function wireResults(state, resultsEl, analytics, prevLast) {
     resultsEl.querySelector('[data-role="exam-restart"]').addEventListener('click', () => {
       buildFinalExam(state.holder, state.bank);
     });
+    // Кольцо счёта: --p анимируется CSS-transition (см. @property --p в styles.css).
+    // Не rAF: в фоновой вкладке rAF заморожен и цель никогда не выставится.
+    const ring = resultsEl.querySelector('.exam-score-ring');
+    if (ring) {
+      void ring.offsetWidth; // фиксация стартового кадра с --p:0
+      setTimeout(() => ring.style.setProperty('--p', ring.getAttribute('data-ring-pct') || '0'), 60);
+    }
+    // Полосы разделов/навыков заполняются сразу inline-шириной из разметки, БЕЗ
+    // отложенной JS-анимации: transition по width замораживается в фоновых вкладках
+    // (как и rAF у кольца), и полосы навсегда застревали на нуле.
     const box = resultsEl.querySelector('[data-exam-ai]');
-    loadExamFeedback(box, byCategory, bySection, essays);
+    loadExamFeedback(box, analytics, prevLast);
   }
 
   window.initFinalExam = initFinalExam;

@@ -327,37 +327,56 @@ app.get('/api/explain', async (req, res) => {
 //  заданий и просит ИИ написать связный комментарий-рекомендацию ПО-РУССКИ: что уже
 //  отлично, что подтянуть, без выдумывания фактов, которых нет во входных данных.
 // ============================================================================
-function buildExamFeedbackPrompt(overallPct, sections, weakCategories, strongCategories, essays) {
+function buildExamFeedbackPrompt(d) {
+  const {
+    overallPct, sections, weakCategories, strongCategories, essays,
+    byType, recognitionPct, productionPct, nearMisses, wrongTextSamples,
+    durationLabel, deltaVsPrev, verdict,
+  } = d;
+
   const system =
 `Sei un'insegnante d'italiano madrelingua per una studentessa russofona di livello A2 che ha appena finito l'esame scritto finale del corso.
-COMPITO: scrivere un commento-raccomandazione IN RUSSO, caldo ma concreto, basato SOLO sui dati forniti (voto totale, percentuali per sezione e per categoria, tre testi liberi).
-STRUTTURA OBBLIGATORIA — esattamente 3 paragrafi separati da "\\n" (nessun titolo, nessun elenco puntato):
-1) Verdetto generale in una frase, ancorato al voto totale (%): dì con onestà e calore se il livello A2 è raggiunto o cosa manca.
-2) Punti di forza e priorità: nomina 1-2 sezioni/categorie forti concrete E le 2-3 categorie deboli concrete PIÙ importanti da ripassare (con il loro %), suggerendo di tornare alle lezioni corrispondenti.
-3) Una frase sui tre testi liberi: impressione generale di fluidità e uso della grammatica (NON correggere frase per frase); se un testo è vuoto o troppo corto, dillo con gentilezza.
+COMPITO: scrivere un'ANALISI-raccomandazione IN RUSSO, calda ma concreta e analitica, basata SOLO sui dati forniti.
+STRUTTURA OBBLIGATORIA — esattamente 4 paragrafi separati da "\\n" (nessun titolo, nessun elenco puntato, niente markdown):
+1) Verdetto sul livello A2 in 1-2 frasi, ancorato al voto totale (%) e, se presente, al progresso rispetto al tentativo precedente (delta). Onesto e caloroso.
+2) Profilo di apprendimento: confronta RICONOSCIMENTO (scelta/vero-falso/ascolto) e PRODUZIONE ATTIVA (scrivere la forma da sé) usando le due percentuali; spiega in modo semplice cosa dice questo divario su come studiare. Se disponibili, commenta i formati di domanda più deboli.
+3) Priorità concrete: 2-3 categorie deboli PIÙ importanti (con il loro %) e, se ci sono, 1-2 PATTERN di errore ricorrenti visibili dagli esempi di risposte sbagliate (es. desinenze, accordo, ausiliare, preposizioni) — nomina la regola, non correggere ogni frase. Consiglia di tornare alle lezioni relative.
+4) Una frase sui testi liberi (produzione scritta): impressione di fluidità/lunghezza; se qualcuno è vuoto o corto, dillo con gentilezza.
 REGOLE FERREE:
-- NON inventare fatti sulla studentessa (età, paese, motivazioni) non presenti nei dati.
+- NON inventare fatti sulla studentessa (età, paese, motivazioni).
 - Cita i nomi delle categorie ESATTAMENTE come forniti.
-- Concreto, niente frasi generiche di riempimento. Ogni paragrafo 1-2 frasi.
-- Tono di sostegno, non un voto scolastico: sta per concludere un corso intero.
+- Concreto, niente riempitivi. Ogni paragrafo 1-2 frasi.
+- Tono di sostegno: sta concludendo un corso intero, non è una pagella.
 - TUTTO in RUSSO semplice e naturale.
 Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo.`;
 
   const secLine = Array.isArray(sections) && sections.length
     ? sections.map(s => `${s.name}: ${s.pct}% (${s.correct}/${s.total})`).join('; ')
     : 'nessun dato';
+  const typeLine = Array.isArray(byType) && byType.length
+    ? byType.map(t => `${t.format}: ${t.pct}% (${t.correct}/${t.total})`).join('; ')
+    : 'nessun dato';
+  const deltaLine = Number.isFinite(deltaVsPrev)
+    ? (deltaVsPrev > 0 ? `+${deltaVsPrev}% rispetto al tentativo precedente` : (deltaVsPrev < 0 ? `${deltaVsPrev}% rispetto al tentativo precedente` : 'uguale al tentativo precedente'))
+    : 'primo tentativo (nessun confronto)';
 
   const user =
-`Voto totale dell'esame: ${overallPct}%.
+`Voto totale dell'esame: ${overallPct}%${verdict && verdict.title ? ` — verdetto sistema: ${verdict.title}` : ''}.
+Progresso: ${deltaLine}.
+Tempo impiegato: ${durationLabel || 'sconosciuto'}.
+Profilo abilità: riconoscimento ${recognitionPct ?? '?'}%, produzione attiva ${productionPct ?? '?'}%.
 Risultato per sezione: ${secLine}.
-Categorie con percentuale più bassa (dalla più debole): ${weakCategories.join('; ') || 'nessuna'}.
-Categorie forti (>=90%): ${strongCategories.join('; ') || 'nessuna in particolare'}.
+Accuratezza per formato di domanda: ${typeLine}.
+Categorie più deboli (dalla più debole): ${(weakCategories || []).join('; ') || 'nessuna'}.
+Categorie forti (>=90%): ${(strongCategories || []).join('; ') || 'nessuna in particolare'}.
+Esempi di risposte scritte SBAGLIATE (risposta studentessa → corretta): ${(wrongTextSamples || []).join(' | ') || 'nessuno'}.
+Risposte QUASI corrette (a un passo): ${(nearMisses || []).join(' | ') || 'nessuna'}.
 
-Tre testi liberi scritti dalla studentessa:
-${essays.map((e, i) => `${i + 1}. Consegna: ${e.prompt}\nTesto: ${e.text ? e.text : '(vuoto — non scritto)'}`).join('\n\n')}
+Testi liberi scritti dalla studentessa:
+${(essays || []).map((e, i) => `${i + 1}. Consegna: ${e.prompt}\nTesto (${e.words || 0} parole): ${e.text ? e.text : '(vuoto — non scritto)'}`).join('\n\n')}
 
 Rispondi con questo JSON ESATTO:
-{"feedback":"<commento in russo, 3 paragrafi separati da \\n>"}`;
+{"feedback":"<analisi in russo, 4 paragrafi separati da \\n>"}`;
 
   return [
     { role: 'system', content: system },
@@ -391,11 +410,25 @@ app.post('/api/exam-feedback', async (req, res) => {
     const weakCategories = Array.isArray(body.weakCategories) ? body.weakCategories.slice(0, 8).map(String) : [];
     const strongCategories = Array.isArray(body.strongCategories) ? body.strongCategories.slice(0, 8).map(String) : [];
     const essays = Array.isArray(body.essays)
-      ? body.essays.slice(0, 3).map((e) => ({ prompt: String(e?.prompt || '').slice(0, 300), text: String(e?.text || '').slice(0, 2000) }))
+      ? body.essays.slice(0, 4).map((e) => ({ prompt: String(e?.prompt || '').slice(0, 300), text: String(e?.text || '').slice(0, 2000), words: Number.isFinite(e?.words) ? e.words : undefined }))
       : [];
+    const byType = Array.isArray(body.byType)
+      ? body.byType.slice(0, 8).map((t) => ({ format: String(t?.format || '').slice(0, 40), pct: Number.isFinite(t?.pct) ? Math.round(t.pct) : 0, correct: Number.isFinite(t?.correct) ? t.correct : 0, total: Number.isFinite(t?.total) ? t.total : 0 }))
+      : [];
+    const recognitionPct = Number.isFinite(body.recognitionPct) ? Math.round(body.recognitionPct) : null;
+    const productionPct = Number.isFinite(body.productionPct) ? Math.round(body.productionPct) : null;
+    const nearMisses = Array.isArray(body.nearMisses) ? body.nearMisses.slice(0, 6).map(s => String(s).slice(0, 120)) : [];
+    const wrongTextSamples = Array.isArray(body.wrongTextSamples) ? body.wrongTextSamples.slice(0, 8).map(s => String(s).slice(0, 120)) : [];
+    const durationLabel = body.durationLabel ? String(body.durationLabel).slice(0, 30) : null;
+    const deltaVsPrev = Number.isFinite(body.deltaVsPrev) ? Math.round(body.deltaVsPrev) : null;
+    const verdict = body.verdict && typeof body.verdict === 'object'
+      ? { level: String(body.verdict.level || '').slice(0, 20), title: String(body.verdict.title || '').slice(0, 60) } : null;
 
-    console.log(`🎓 Exam feedback: итог ${overallPct ?? '?'}% · ${weakCategories.length} слабых тем · ${essays.filter(e => e.text).length}/3 эссе заполнено · ${providerLabel()}`);
-    const { content, provider } = await callAI(buildExamFeedbackPrompt(overallPct, sections, weakCategories, strongCategories, essays), 0.6);
+    console.log(`🎓 Exam feedback: итог ${overallPct ?? '?'}% · узнав ${recognitionPct ?? '?'}%/продукц ${productionPct ?? '?'}% · ${weakCategories.length} слабых тем · ${essays.filter(e => e.text).length}/${essays.length} эссе · ${providerLabel()}`);
+    const { content, provider } = await callAI(buildExamFeedbackPrompt({
+      overallPct, sections, weakCategories, strongCategories, essays,
+      byType, recognitionPct, productionPct, nearMisses, wrongTextSamples, durationLabel, deltaVsPrev, verdict,
+    }), 0.6);
     const feedback = parseExamFeedback(content);
     if (!feedback) {
       console.error('✗ Exam feedback: не удалось разобрать JSON ИИ');
