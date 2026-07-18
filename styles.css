@@ -85,59 +85,61 @@
     --sand: #EDE3CF;
     --sand-soft: rgba(150, 122, 82, 0.16);
 
-    /* ── Тема экзамена (только type:"exam" — lesson 42+): полночная синева,
-       гранатовый акцент вместо оливы, золото прибавляет яркости на тёмном.
-       Живёт отдельно от тёплой v5-палитры урока, не подменяет её переменные. ── */
-    --exam-ink: #06070d;
-    --exam-navy: #171d38;
-    --exam-navy-deep: #0d1226;
-    --exam-navy-bright: #2b3766;
-    --exam-gold: #d9b25c;
-    --exam-gold-bright: #f3d791;
-    --exam-gold-deep: #a67f34;
-    --exam-wine: #7a2035;
-    --exam-wine-bright: #ab3a54;
-    --exam-wine-deep: #440e1c;
-    --exam-ivory: #f6f1e2;
-    --exam-ivory-soft: rgba(246, 241, 226, 0.78);
-    --exam-ivory-mute: rgba(246, 241, 226, 0.52);
-    --exam-line: rgba(217, 178, 92, 0.22);
+    /* ── Тема экзамена (только type:"exam" — lesson 42+): полночный аметист,
+       пурпурно-розовый акцент вместо оливы/граната, светлый лавандовый вместо
+       золота — согласовано с фиолетовыми бейджами типа "экзамен" в сайдбаре/
+       на главной (см. .nav-type-tile-exam и соседей). Живёт отдельно от тёплой
+       v5-палитры урока, не подменяет её переменные. ── */
+    --exam-ink: #0a0714;
+    --exam-navy: #201638;
+    --exam-navy-deep: #140d24;
+    --exam-navy-bright: #4b3378;
+    --exam-gold: #9D74DF;
+    --exam-gold-bright: #C9A8F5;
+    --exam-gold-deep: #6A3FB5;
+    --exam-wine: #7A2F6B;
+    --exam-wine-bright: #B23A94;
+    --exam-wine-deep: #3D1638;
+    --exam-ivory: #F3ECFF;
+    --exam-ivory-soft: rgba(243, 236, 255, 0.78);
+    --exam-ivory-mute: rgba(243, 236, 255, 0.52);
+    --exam-line: rgba(157, 116, 223, 0.22);
     /* RGB-триплеты тех же акцентов — для rgba(var(...), α) внутри темы.
        Держать синхронно с hex-значениями выше (и в вариантах тем ниже). */
-    --exam-gold-rgb: 217, 178, 92;
-    --exam-gold-bright-rgb: 243, 215, 145;
-    --exam-wine-rgb: 122, 32, 53;
-    --exam-wine-bright-rgb: 171, 58, 84;
-    --exam-wine-deep-rgb: 68, 14, 28;
-    --exam-navy-bright-rgb: 43, 55, 102;
-    --exam-ivory-rgb: 246, 241, 226;
+    --exam-gold-rgb: 157, 116, 223;
+    --exam-gold-bright-rgb: 201, 168, 245;
+    --exam-wine-rgb: 122, 47, 107;
+    --exam-wine-bright-rgb: 178, 58, 148;
+    --exam-wine-deep-rgb: 61, 22, 56;
+    --exam-navy-bright-rgb: 75, 51, 120;
+    --exam-ivory-rgb: 243, 236, 255;
     /* Тёмные поверхности темы: фон страницы, корпус урока, карточки, таблицы… */
-    --exam-page-0: #0b0d18;
-    --exam-page-1: #0d0f1c;
-    --exam-page-2: #07080f;
-    --exam-header-deep: #0a0d1c;
-    --exam-surface-0: #131628;
-    --exam-panel: #10131f;
-    --exam-card-0: #151827;
-    --exam-card-1: #0f1220;
-    --exam-card-2: #12141f;
-    --exam-card-3: #0d0f1a;
-    --exam-quote-0: #14161f;
-    --exam-quote-1: #0f1119;
-    --exam-code-bg: #1a1d2c;
+    --exam-page-0: #120c1e;
+    --exam-page-1: #150f22;
+    --exam-page-2: #0a0712;
+    --exam-header-deep: #170f26;
+    --exam-surface-0: #1d1530;
+    --exam-panel: #170f26;
+    --exam-card-0: #1c1430;
+    --exam-card-1: #160f24;
+    --exam-card-2: #1a1228;
+    --exam-card-3: #140e20;
+    --exam-quote-0: #1a1424;
+    --exam-quote-1: #140f1e;
+    --exam-code-bg: #221935;
     /* Поверхности второго акцента (шапки таблиц, заметка экзаменатора, итоги) */
-    --exam-th-0: #5C1D2F;
-    --exam-th-1: #2E0A13;
-    --exam-note-0: #26121c;
-    --exam-note-1: #1a0c14;
-    --exam-note-text: #F0DFC9;
-    --exam-sum-0: #3D1522;
-    --exam-sum-1: #260F1A;
-    --exam-sum-2: #140810;
+    --exam-th-0: #5C2050;
+    --exam-th-1: #2E0F28;
+    --exam-note-0: #2A1830;
+    --exam-note-1: #1C0F20;
+    --exam-note-text: #EFDFF0;
+    --exam-sum-0: #3D1538;
+    --exam-sum-1: #26102A;
+    --exam-sum-2: #140816;
     /* Светлые кремовые акценты поверх тёмного */
-    --exam-cream: #FBF4E6;
-    --exam-accent-cream: #F9E8EC;
-    --exam-gold-pale: #FCE9BC;
+    --exam-cream: #F7F0FF;
+    --exam-accent-cream: #F5E5F0;
+    --exam-gold-pale: #E4D3FC;
 
     /* ── Общие SVG-иконки (mask-image) дизайн-системы урока ── */
     --bulb-ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.3 1.1 2.2h5a3.5 3.5 0 0 1 1.1-2.2A6 6 0 0 0 12 3z'/></svg>");
