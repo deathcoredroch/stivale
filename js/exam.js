@@ -140,7 +140,33 @@
     return list;
   }
 
+  function shuffleArray(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  // Перемешивает порядок вариантов ответа (single/multi/listen) — в банке верный
+  // вариант почти всегда написан первым, иначе экзамен решается по позиции без
+  // знания языка. Мутирует вопрос на месте, поэтому рендер и проверка видят один
+  // и тот же порядок; match/truefalse/text не трогаем — у них нет q.options.
+  function shuffleQuestionOptions(q) {
+    if (!Array.isArray(q.options)) return;
+    const order = shuffleArray(q.options.map((_, i) => i)); // order[newIndex] = oldIndex
+    const oldToNew = {};
+    order.forEach((oldIdx, newIdx) => { oldToNew[oldIdx] = newIdx; });
+    q.options = order.map(i => q.options[i]);
+    if (Array.isArray(q.correct)) q.correct = q.correct.map(i => oldToNew[i]);
+    else if (typeof q.correct === 'number') q.correct = oldToNew[q.correct];
+  }
+
   function buildFinalExam(holder, bank) {
+    // Реshuffle при каждом заходе (в т.ч. «Пройти заново») — заодно и от заучивания позиции спасает.
+    bank.questions.forEach(shuffleQuestionOptions);
+    bank.lettura.forEach(l => l.questions.forEach(shuffleQuestionOptions));
+    bank.ascolto.forEach(shuffleQuestionOptions);
     const state = { holder, bank, gradedList: buildGradedList(bank) };
     holder.innerHTML = renderExamShell(bank, state.gradedList.length);
     wireExamShell(state);

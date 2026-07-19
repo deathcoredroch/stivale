@@ -875,9 +875,42 @@
   .lesson-card-num-wrap .nav-type { margin-top: 0; }
   .lesson-card-num-wrap .nav-type-tile { width: 30px; height: 30px; border-radius: 9px; }
   .lesson-card-num-wrap .nav-type-tile svg { width: 17px; height: 17px; }
-  .lesson-card-practice   { box-shadow: var(--shadow-lg), var(--inner-light), inset 4px 0 0 var(--olive); }
-  .lesson-card-assessment { box-shadow: var(--shadow-lg), var(--inner-light), inset 4px 0 0 var(--gold); }
-  .lesson-card-exam {
+  /* Наборы акцентов карточки по типу занятия (переменные объявлены в .lesson-card):
+     красят пилюлю номера, CTA-кнопку, верхнюю кромку, водяной номер и тени.
+     Селектор двойной (.lesson-card.lesson-card-*) намеренно: базовый .lesson-card
+     с дефолтами переменных идёт в файле ПОЗЖЕ этой секции, и при одиночном классе
+     (та же специфичность) затирал бы эти значения. */
+  .lesson-card.lesson-card-practice {
+    --lc-accent: var(--olive);
+    --lc-accent-rgb: 107, 122, 77;
+    --lc-btn-0: #7C8D58;
+    --lc-btn-1: #5E6E3C;
+    --lc-btn-h0: #6F8049;
+    --lc-btn-h1: #526336;
+    --lc-edge-mid: #93A768;
+    --lc-edge-hi: #C6D39A;
+    box-shadow: var(--shadow-lg), var(--inner-light), inset 4px 0 0 var(--olive);
+  }
+  .lesson-card.lesson-card-assessment {
+    --lc-accent: #B7842A;
+    --lc-accent-rgb: 201, 154, 61;
+    --lc-btn-0: #D9AC4C;
+    --lc-btn-1: #A87E22;
+    --lc-btn-h0: #C99A3D;
+    --lc-btn-h1: #94701C;
+    --lc-edge-mid: #E2B457;
+    --lc-edge-hi: #F3D791;
+    box-shadow: var(--shadow-lg), var(--inner-light), inset 4px 0 0 var(--gold);
+  }
+  .lesson-card.lesson-card-exam {
+    --lc-accent: #7C4FC6;
+    --lc-accent-rgb: 124, 79, 198;
+    --lc-btn-0: #9D74DF;
+    --lc-btn-1: #6A3FB5;
+    --lc-btn-h0: #8A5FD3;
+    --lc-btn-h1: #5B34A0;
+    --lc-edge-mid: #B08FE8;
+    --lc-edge-hi: #D6C2F5;
     box-shadow: var(--shadow-lg), var(--inner-light), inset 4px 0 0 #7C4FC6, 0 0 30px -14px rgba(124,79,198,0.55);
   }
 
@@ -1343,6 +1376,277 @@
   .header-exam .header-meta .hw-open-btn:hover {
     background: var(--exam-gold-pale);
     box-shadow: 0 16px 32px -12px rgba(0,0,0,0.7);
+  }
+
+  /* ============================================================
+     ПЕЧАТЬ ЭКЗАМЕНА — медальон в шапке занятий без домашки (уроки 42–43).
+     Заменяет кнопку ДЗ (renderExamSeal в js/app.js): клик ставит ту же
+     отметку hw_status, что и домашка, поэтому точка на карте пути и дневник
+     загораются сами. Состояния: .is-pending (звезда, зовущее дыхание) →
+     .is-done (галочка, золото, живое сияние). Класс .is-fresh вешается
+     на один раз в момент отметки: штамп + ударная волна + золотой салют. */
+  .exam-seal {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 9px 22px 9px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(var(--exam-gold-rgb), 0.35);
+    background:
+      linear-gradient(155deg, rgba(var(--exam-gold-rgb),0.16) 0%, rgba(var(--exam-wine-rgb),0.12) 55%, rgba(0,0,0,0.28) 100%);
+    color: var(--exam-ivory);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: 0 14px 30px -14px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: transform .28s cubic-bezier(.2,.9,.3,1.3), box-shadow .28s ease, border-color .28s ease, background .28s ease;
+  }
+  .exam-seal:hover {
+    transform: translateY(-2px);
+    border-color: rgba(var(--exam-gold-bright-rgb), 0.6);
+    box-shadow:
+      0 20px 42px -16px rgba(0,0,0,0.8),
+      0 0 28px -6px rgba(var(--exam-gold-rgb), 0.45),
+      inset 0 1px 0 rgba(255,255,255,0.12);
+  }
+  .exam-seal:active { transform: translateY(0) scale(0.98); }
+  .exam-seal:focus-visible {
+    outline: 2px solid var(--exam-gold-bright);
+    outline-offset: 3px;
+  }
+  .exam-seal.is-done {
+    border-color: rgba(var(--exam-gold-bright-rgb), 0.55);
+    background:
+      linear-gradient(155deg, rgba(var(--exam-gold-rgb),0.3) 0%, rgba(var(--exam-wine-rgb),0.18) 60%, rgba(0,0,0,0.25) 100%);
+  }
+
+  /* ── Медальон ── */
+  .exam-seal-medal {
+    position: relative;
+    width: 54px;
+    height: 54px;
+    flex-shrink: 0;
+  }
+  /* Внешнее кольцо — бегущая по орбите золотая искра (conic-gradient в тонкой
+     кольцевой маске). У pending едва тлеет, у done горит в полную силу. */
+  .exam-seal-ring {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+      transparent 0deg,
+      rgba(var(--exam-gold-rgb), 0.25) 40deg,
+      var(--exam-gold-bright) 78deg,
+      #fff 92deg,
+      var(--exam-gold-bright) 106deg,
+      rgba(var(--exam-gold-rgb), 0.25) 150deg,
+      transparent 210deg);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+    opacity: 0.5;
+    animation: sealOrbit 7s linear infinite;
+  }
+  .exam-seal.is-done .exam-seal-ring {
+    opacity: 1;
+    animation-duration: 3.6s;
+    filter: drop-shadow(0 0 6px rgba(var(--exam-gold-bright-rgb), 0.8));
+  }
+  @keyframes sealOrbit { to { transform: rotate(360deg); } }
+
+  /* Ядро печати: тёмный аверс со звездой → золотой аверс с галочкой */
+  .exam-seal-core {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(120% 120% at 30% 22%, #2c1d48 0%, var(--exam-header-deep) 68%, var(--exam-ink) 100%);
+    border: 1.5px solid rgba(var(--exam-gold-rgb), 0.55);
+    color: var(--exam-gold-bright);
+    box-shadow: inset 0 0 14px rgba(0,0,0,0.6), 0 6px 16px -6px rgba(0,0,0,0.7);
+    transition: background .3s ease, color .3s ease, box-shadow .3s ease;
+  }
+  /* Гравировка: медленно вращающийся пунктирный ободок внутри ядра */
+  .exam-seal-core::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    border: 1px dashed rgba(var(--exam-gold-bright-rgb), 0.4);
+    animation: sealOrbit 26s linear infinite reverse;
+  }
+  .exam-seal.is-done .exam-seal-core {
+    background:
+      radial-gradient(130% 130% at 30% 20%, #fff 0%, var(--exam-gold-bright) 22%, var(--exam-gold) 58%, var(--exam-gold-deep) 100%);
+    border-color: rgba(255,255,255,0.55);
+    color: var(--exam-navy-deep);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.6),
+      inset 0 -6px 12px rgba(var(--exam-wine-deep-rgb), 0.35),
+      0 0 22px -2px rgba(var(--exam-gold-bright-rgb), 0.55);
+    animation: sealGlow 2.8s ease-in-out infinite;
+  }
+  .exam-seal.is-done .exam-seal-core::before { border-color: rgba(20,13,36,0.35); }
+  @keyframes sealGlow {
+    0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -6px 12px rgba(var(--exam-wine-deep-rgb),0.35), 0 0 16px -2px rgba(var(--exam-gold-bright-rgb),0.45); }
+    50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -6px 12px rgba(var(--exam-wine-deep-rgb),0.35), 0 0 30px 0   rgba(var(--exam-gold-bright-rgb),0.75); }
+  }
+  .exam-seal-glyph { display: flex; }
+  .exam-seal-glyph svg { width: 26px; height: 26px; display: block; }
+  /* Пульс-приглашение: звезда мягко дышит, пока печать не поставлена */
+  .exam-seal.is-pending .exam-seal-glyph { animation: sealBeckon 2.4s ease-in-out infinite; }
+  @keyframes sealBeckon {
+    0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 0 rgba(var(--exam-gold-bright-rgb), 0)); }
+    50%      { transform: scale(1.12); filter: drop-shadow(0 0 7px rgba(var(--exam-gold-bright-rgb), 0.85)); }
+  }
+
+  /* Скользящий блик по стеклу медальона */
+  .exam-seal-shine {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .exam-seal-shine::after {
+    content: '';
+    position: absolute;
+    top: -30%;
+    bottom: -30%;
+    left: -80%;
+    width: 45%;
+    background: linear-gradient(105deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%);
+    transform: skewX(-18deg);
+    animation: sealShine 4.8s ease-in-out infinite;
+  }
+  @keyframes sealShine {
+    0%, 64% { left: -80%; }
+    88%, 100% { left: 160%; }
+  }
+
+  /* ── Подпись ── */
+  .exam-seal-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .exam-seal-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 16.5px;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+    line-height: 1.15;
+    color: var(--exam-cream);
+    white-space: nowrap;
+  }
+  .exam-seal.is-done .exam-seal-title {
+    background: linear-gradient(92deg, var(--exam-cream) 0%, var(--exam-gold-bright) 45%, #fff 55%, var(--exam-gold-bright) 68%, var(--exam-cream) 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+            background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: sealTitleFoil 5.5s ease-in-out infinite;
+  }
+  @keyframes sealTitleFoil {
+    0%, 55% { background-position: 110% 0; }
+    90%, 100% { background-position: -60% 0; }
+  }
+  .exam-seal-sub {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: rgba(var(--exam-gold-bright-rgb), 0.75);
+    white-space: nowrap;
+  }
+  .exam-seal.is-done .exam-seal-sub { color: rgba(var(--exam-ivory-rgb), 0.72); }
+
+  /* ── Момент отметки (.is-fresh): штамп, ударная волна, золотой салют ── */
+  .exam-seal.is-fresh .exam-seal-core {
+    animation: sealStamp .6s cubic-bezier(.18,1.5,.32,1) both, sealGlow 2.8s ease-in-out .6s infinite;
+  }
+  @keyframes sealStamp {
+    0%   { transform: scale(2.2) rotate(-16deg); opacity: 0; }
+    55%  { transform: scale(0.92) rotate(2deg);  opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+  .exam-seal.is-fresh .exam-seal-medal::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(var(--exam-gold-bright-rgb), 0.9);
+    animation: sealShockwave .8s cubic-bezier(.2,.7,.3,1) .12s both;
+    pointer-events: none;
+  }
+  @keyframes sealShockwave {
+    0%   { transform: scale(0.6); opacity: 1; border-width: 3px; }
+    100% { transform: scale(2.4); opacity: 0; border-width: 1px; }
+  }
+  /* Салют: 10 частиц разлетаются веером; направление каждой задаёт --a,
+     дистанцию — --d, нечётные частицы — ромбики (поворот 45°) */
+  .exam-seal-burst {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .exam-seal-burst i {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: var(--exam-gold-bright);
+    opacity: 0;
+  }
+  .exam-seal-burst i:nth-child(odd) {
+    border-radius: 1px;
+    background: var(--exam-ivory);
+  }
+  .exam-seal-burst i:nth-child(3n) { background: var(--exam-wine-bright); }
+  .exam-seal-burst i:nth-child(1)  { --a: 0deg;   --d: 40px; }
+  .exam-seal-burst i:nth-child(2)  { --a: 36deg;  --d: 52px; }
+  .exam-seal-burst i:nth-child(3)  { --a: 72deg;  --d: 42px; }
+  .exam-seal-burst i:nth-child(4)  { --a: 108deg; --d: 55px; }
+  .exam-seal-burst i:nth-child(5)  { --a: 144deg; --d: 44px; }
+  .exam-seal-burst i:nth-child(6)  { --a: 180deg; --d: 50px; }
+  .exam-seal-burst i:nth-child(7)  { --a: 216deg; --d: 41px; }
+  .exam-seal-burst i:nth-child(8)  { --a: 252deg; --d: 54px; }
+  .exam-seal-burst i:nth-child(9)  { --a: 288deg; --d: 45px; }
+  .exam-seal-burst i:nth-child(10) { --a: 324deg; --d: 51px; }
+  .exam-seal.is-fresh .exam-seal-burst i {
+    animation: sealSpark .85s cubic-bezier(.16,.8,.3,1) .1s both;
+  }
+  @keyframes sealSpark {
+    0%   { transform: rotate(var(--a)) translateY(0) rotate(45deg) scale(0.4); opacity: 0; }
+    18%  { opacity: 1; }
+    100% { transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) rotate(45deg) scale(1); opacity: 0; }
+  }
+
+  /* Узкие экраны: медальон компактнее, подпись не распирает шапку */
+  @media (max-width: 640px) {
+    .exam-seal { gap: 11px; padding: 8px 16px 8px 8px; }
+    .exam-seal-medal { width: 46px; height: 46px; }
+    .exam-seal-glyph svg { width: 22px; height: 22px; }
+    .exam-seal-title { font-size: 15px; }
+    .exam-seal-sub { font-size: 9px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exam-seal-ring,
+    .exam-seal-core::before,
+    .exam-seal-shine::after,
+    .exam-seal.is-pending .exam-seal-glyph,
+    .exam-seal.is-done .exam-seal-core,
+    .exam-seal.is-done .exam-seal-title,
+    .exam-seal.is-fresh .exam-seal-core,
+    .exam-seal.is-fresh .exam-seal-burst i { animation: none; }
+    .exam-seal.is-fresh .exam-seal-medal::after { display: none; }
   }
 
   /* ============================================================
@@ -4141,6 +4445,20 @@
   }
 
   .lesson-card {
+    /* Акцент карточки зависит от типа занятия: обычный урок — терракота,
+       practice — олива, assessment — золото, exam — фиолетовый.
+       Переопределяются в .lesson-card-{type} ниже (секция «Спец-занятие
+       на главной карточке урока») — все элементы карточки (пилюля номера,
+       CTA-кнопка, верхняя кромка, водяной номер, тени) красятся только
+       через эти переменные. */
+    --lc-accent: var(--terracotta);
+    --lc-accent-rgb: 193, 84, 58;
+    --lc-btn-0: #CE6144;
+    --lc-btn-1: #A8442E;
+    --lc-btn-h0: #C1543A;
+    --lc-btn-h1: #963C28;
+    --lc-edge-mid: #E07A5F;
+    --lc-edge-hi: var(--gold-bright);
     background: var(--paper);
     border: 1px solid var(--line);
     border-radius: 20px;
@@ -4158,7 +4476,7 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--terracotta), #E07A5F);
+    background: linear-gradient(90deg, var(--lc-accent), var(--lc-edge-mid));
     border-radius: 18px 18px 0 0;
   }
   .lesson-card .hw-toggle-card { margin-top: auto; }
@@ -4175,7 +4493,7 @@
     text-transform: uppercase;
     letter-spacing: 0.07em;
     color: #fff;
-    background: var(--terracotta);
+    background: var(--lc-accent);
     padding: 4px 11px;
     border-radius: 100px;
     margin-bottom: 14px;
@@ -4223,15 +4541,15 @@
     font-size: 15.5px;
     font-weight: 700;
     color: #fff;
-    background: linear-gradient(150deg, #CE6144, #A8442E);
-    box-shadow: 0 10px 24px -8px rgba(193,84,58,0.65), inset 0 1px 0 rgba(255,255,255,0.25);
+    background: linear-gradient(150deg, var(--lc-btn-0), var(--lc-btn-1));
+    box-shadow: 0 10px 24px -8px rgba(var(--lc-accent-rgb),0.65), inset 0 1px 0 rgba(255,255,255,0.25);
     transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
   }
   .lesson-continue-btn .ico { width: 17px; height: 17px; transition: transform var(--dur-fast) var(--ease-out); }
   .lesson-continue-btn:hover {
-    background: linear-gradient(150deg, #C1543A, #963C28);
+    background: linear-gradient(150deg, var(--lc-btn-h0), var(--lc-btn-h1));
     transform: translateY(-1px);
-    box-shadow: 0 14px 30px -10px rgba(193,84,58,0.75), inset 0 1px 0 rgba(255,255,255,0.25);
+    box-shadow: 0 14px 30px -10px rgba(var(--lc-accent-rgb),0.75), inset 0 1px 0 rgba(255,255,255,0.25);
   }
   .lesson-continue-btn:hover .ico { transform: translateX(4px); }
   .lesson-continue-btn:active { transform: translateY(0) scale(.99); }
@@ -4740,6 +5058,8 @@
       justify-content: center;
       padding: 6px 16px 6px 6px;
     }
+    /* Печать экзамена в сложенной шапке — тоже во всю ширину, текст по центру */
+    .exam-seal { width: 100%; justify-content: center; }
 
     .hw-modal-panel { padding: 24px 18px 28px; }
     .hw-modal-head h2 { font-size: 19px; }
@@ -6154,9 +6474,10 @@
   .lesson-card {
     padding: 30px 32px 24px;
     border-radius: 24px;
+    /* верхний правый отсвет — в акценте типа занятия, нижний левый — нейтральный тёплый */
     background:
-      radial-gradient(95% 90% at 100% 0%, rgba(240,220,211,0.40) 0%, rgba(240,220,211,0) 52%),
-      radial-gradient(80% 90% at 0% 100%, rgba(228,233,216,0.35) 0%, rgba(228,233,216,0) 58%),
+      radial-gradient(95% 90% at 100% 0%, rgba(var(--lc-accent-rgb),0.10) 0%, rgba(var(--lc-accent-rgb),0) 52%),
+      radial-gradient(80% 90% at 0% 100%, rgba(235,228,212,0.35) 0%, rgba(235,228,212,0) 58%),
       #FFFFFF;
     box-shadow: 0 20px 48px -20px rgba(60,42,24,0.30), 0 4px 12px -6px rgba(60,42,24,0.08), inset 0 1px 0 #fff;
   }
@@ -6168,14 +6489,14 @@
   }
   .lesson-card:hover {
     transform: translateY(-5px);
-    border-color: rgba(193,84,58,0.35);
-    box-shadow: 0 28px 56px -22px rgba(150,60,40,0.32), 0 8px 18px -8px rgba(60,42,24,0.12), inset 0 1px 0 #fff;
+    border-color: rgba(var(--lc-accent-rgb),0.35);
+    box-shadow: 0 28px 56px -22px rgba(var(--lc-accent-rgb),0.30), 0 8px 18px -8px rgba(60,42,24,0.12), inset 0 1px 0 #fff;
   }
-  /* верхняя кромка: медленно текущий градиент */
+  /* верхняя кромка: медленно текущий градиент в акценте типа занятия */
   .lesson-card::before {
     height: 4px;
     border-radius: 22px 22px 0 0;
-    background: linear-gradient(90deg, var(--terracotta), #E07A5F 40%, var(--gold-bright) 75%, var(--terracotta));
+    background: linear-gradient(90deg, var(--lc-accent), var(--lc-edge-mid) 40%, var(--lc-edge-hi) 75%, var(--lc-accent));
     background-size: 220% 100%;
     animation: heroTopbarFlow 9s linear infinite;
   }
@@ -6194,7 +6515,7 @@
     font-weight: 700;
     line-height: 1;
     letter-spacing: -6px;
-    color: rgba(193,84,58,0.07);
+    color: rgba(var(--lc-accent-rgb),0.07);
     pointer-events: none;
     z-index: 0;
   }
@@ -7540,3 +7861,524 @@
 
 /* Компактные результаты экзамена (карточки-разделы, чипы, свёрнутая разбивка, ИИ-вывод)
    живут в основном блоке «ФИНАЛЬНЫЙ ПИСЬМЕННЫЙ ЭКЗАМЕН» выше — вся тема тёмная, --exam-*. */
+
+/* ═══════════════════════ УСТНЫЙ ЭКЗАМЕН (lesson-42, js/oral-exam.js) ═══════════════════════
+   Холдер .oral-exam[data-oral-exam] рендерится целиком через JS. Переиспользует общие классы
+   письменного экзамена (.exam-intro, .exam-part-head, .exam-start-btn, .exam-restart-btn,
+   .exam-prev-pill) и палитру --exam-*; всё своё — с префиксом .oe-*. */
+
+.oral-exam {
+  --oe-card: #10152b;
+  --oe-card-2: #171d38;
+  --oe-field: #0b0f20;
+  margin: 18px 0 4px;
+  color-scheme: dark;
+}
+
+/* ── Степпер частей ── */
+.oe-stepper {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin: 0 0 18px;
+}
+.oe-step {
+  display: flex; align-items: center; gap: 7px;
+  flex: 1 1 0; min-width: 96px;
+  background: var(--oe-card);
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-pill);
+  padding: 7px 12px;
+  opacity: 0.55;
+}
+.oe-step.is-active {
+  opacity: 1;
+  border-color: rgba(var(--exam-gold-rgb), 0.65);
+  box-shadow: 0 0 18px -6px rgba(var(--exam-gold-rgb), 0.5);
+}
+.oe-step.is-done { opacity: 0.85; }
+.oe-step-dot {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  width: 24px; height: 24px;
+  font-family: Georgia, serif; font-size: 12px; font-weight: 700;
+  color: var(--exam-ink);
+  background: linear-gradient(165deg, var(--exam-gold-bright), var(--exam-gold));
+  border-radius: 50%;
+}
+.oe-step.is-done .oe-step-dot { background: linear-gradient(165deg, #7dc98f, #4e8f60); color: #06130a; }
+.oe-step-name {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--exam-ivory-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.oe-step.is-active .oe-step-name { color: var(--exam-gold-bright); }
+
+.oe-instr {
+  font-size: 14.5px; line-height: 1.65;
+  color: var(--exam-ivory-soft);
+  background: rgba(var(--exam-navy-bright-rgb), 0.18);
+  border-left: 3px solid var(--exam-gold);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  padding: 12px 16px;
+  margin: 0 0 16px;
+}
+.oe-instr b { color: var(--exam-ivory); }
+
+/* ── Карточка вопроса колоквиума ── */
+.oe-qcard {
+  position: relative;
+  background: linear-gradient(165deg, var(--oe-card-2), var(--oe-card));
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-lg);
+  padding: 22px 24px 18px;
+  margin: 0 0 12px;
+}
+.oe-qnum {
+  display: inline-block;
+  font-size: 11.5px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--exam-gold-bright);
+  margin: 0 0 10px;
+}
+.oe-qit {
+  font-family: Georgia, serif;
+  font-size: 23px; line-height: 1.4; font-weight: 600;
+  color: var(--exam-ivory);
+  margin: 0 0 12px;
+}
+.oe-qfocus {
+  display: inline-block;
+  font-size: 12.5px; font-weight: 600;
+  color: var(--exam-ivory-mute);
+  background: rgba(var(--exam-gold-rgb), 0.1);
+  border: 1px solid rgba(var(--exam-gold-rgb), 0.25);
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  margin: 0 0 6px;
+}
+.oe-qnav { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; }
+.oe-qdone { font-size: 14px; font-weight: 700; color: var(--exam-gold-bright); }
+
+.oe-ghost-btn {
+  appearance: none; cursor: pointer;
+  font-family: inherit; font-size: 14px; font-weight: 700;
+  color: var(--exam-gold-bright);
+  background: rgba(var(--exam-gold-rgb), 0.1);
+  border: 1px solid rgba(var(--exam-gold-rgb), 0.45);
+  border-radius: var(--r-pill);
+  padding: 10px 18px;
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast), border-color var(--dur-fast);
+}
+.oe-ghost-btn:hover { transform: translateY(-1px); background: rgba(var(--exam-gold-rgb), 0.2); border-color: var(--exam-gold); }
+.oe-ghost-mute { color: var(--exam-ivory-mute); border-color: rgba(var(--exam-ivory-rgb), 0.2); background: rgba(var(--exam-ivory-rgb), 0.05); }
+
+/* ── Перевод/подсказки для комиссии ── */
+.oe-ru {
+  margin: 8px 0 0;
+  border: 1px dashed rgba(var(--exam-ivory-rgb), 0.22);
+  border-radius: var(--r-md);
+  background: rgba(var(--exam-ivory-rgb), 0.03);
+}
+.oe-ru summary {
+  cursor: pointer;
+  font-size: 12.5px; font-weight: 700; letter-spacing: 0.03em;
+  color: var(--exam-ivory-mute);
+  padding: 8px 14px;
+  user-select: none;
+}
+.oe-ru[open] summary { color: var(--exam-ivory-soft); border-bottom: 1px dashed rgba(var(--exam-ivory-rgb), 0.15); }
+.oe-ru-body { padding: 10px 16px 12px; font-size: 14px; line-height: 1.65; color: var(--exam-ivory-soft); }
+.oe-ru-body p, .oe-ru-body ul { margin: 0; }
+.oe-ru-body ul { padding-left: 18px; display: grid; gap: 6px; }
+.oe-li-it { font-style: italic; color: var(--exam-gold-pale); }
+
+/* ── Вытягивание билета / сцены / роли ── */
+.oe-tickets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 4px 0 8px;
+}
+.oe-ticket {
+  appearance: none; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  font-family: inherit;
+  background:
+    radial-gradient(90% 70% at 50% 0%, rgba(var(--exam-gold-rgb), 0.14) 0%, transparent 60%),
+    linear-gradient(165deg, var(--oe-card-2), var(--oe-card));
+  border: 1px solid rgba(var(--exam-gold-rgb), 0.35);
+  border-radius: var(--r-md);
+  padding: 18px 12px 14px;
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.oe-ticket:hover {
+  transform: translateY(-4px) rotate(-1deg);
+  border-color: var(--exam-gold);
+  box-shadow: 0 14px 30px -12px rgba(var(--exam-gold-rgb), 0.55);
+}
+.oe-ticket-n {
+  font-family: Georgia, serif; font-size: 15px; font-weight: 700;
+  color: var(--exam-gold-bright);
+}
+.oe-ticket-icon { font-size: 30px; line-height: 1; }
+.oe-ticket-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--exam-ivory-mute);
+}
+
+/* ── Билет (развёрнутый) ── */
+.oe-bcard {
+  position: relative; overflow: hidden;
+  background: linear-gradient(165deg, var(--oe-card-2), var(--oe-card));
+  border: 1px solid rgba(var(--exam-gold-rgb), 0.4);
+  border-radius: var(--r-lg);
+  padding: 20px 22px 16px;
+  margin: 0 0 14px;
+}
+.oe-bhead { display: flex; align-items: center; gap: 14px; margin: 0 0 14px; }
+.oe-bemoji { font-size: 40px; line-height: 1; }
+.oe-btitles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.oe-btitle { font-family: Georgia, serif; font-size: 24px; font-weight: 700; color: var(--exam-ivory); line-height: 1.2; }
+.oe-bru { font-size: 13.5px; color: var(--exam-ivory-mute); }
+.oe-bstamp {
+  margin-left: auto; align-self: flex-start;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--exam-gold-bright);
+  border: 1.5px solid rgba(var(--exam-gold-rgb), 0.6);
+  border-radius: 4px;
+  padding: 5px 10px;
+  transform: rotate(4deg);
+}
+.oe-punti {
+  margin: 0 0 12px; padding: 0 0 0 22px;
+  display: grid; gap: 9px;
+}
+.oe-punti li::marker { color: var(--exam-gold); font-weight: 700; }
+.oe-punto-it { display: block; font-size: 16.5px; font-weight: 600; font-style: italic; color: var(--exam-gold-pale); line-height: 1.45; }
+.oe-punto-ru { display: block; font-size: 13px; color: var(--exam-ivory-mute); }
+
+/* ── Таймер подготовки/монолога ── */
+.oe-timer {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  background: var(--oe-field);
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-lg);
+  padding: 18px 18px 16px;
+  margin: 0 0 12px;
+}
+.oe-timer-display {
+  font-family: Georgia, serif;
+  font-size: 52px; font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--exam-ivory);
+  letter-spacing: 0.04em;
+}
+.oe-timer-display.is-talk { color: var(--exam-gold-bright); text-shadow: 0 0 24px rgba(var(--exam-gold-rgb), 0.45); }
+.oe-timer-display.is-over { color: var(--exam-wine-bright); }
+.oe-timer-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.oe-timer-note { font-size: 13px; color: var(--exam-ivory-mute); text-align: center; max-width: 480px; line-height: 1.55; }
+
+/* ── Сцена ── */
+.oe-scenecard {
+  text-align: center;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(var(--exam-navy-bright-rgb), 0.5) 0%, transparent 65%),
+    linear-gradient(165deg, var(--oe-card-2), var(--oe-card));
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-lg);
+  padding: 24px 18px 18px;
+  margin: 0 0 12px;
+}
+.oe-scene-emoji { font-size: 46px; line-height: 1.35; letter-spacing: 0.1em; margin: 0 0 10px; }
+.oe-scene-title { font-family: Georgia, serif; font-size: 20px; font-weight: 700; color: var(--exam-ivory); }
+.oe-scene-title i { font-size: 14px; font-weight: 400; color: var(--exam-ivory-mute); font-style: normal; }
+
+.oe-beats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px;
+  margin: 0 0 12px;
+}
+.oe-beat {
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--oe-card);
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+.oe-beat-tag {
+  align-self: flex-start;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.16em;
+  color: var(--exam-ink);
+  background: linear-gradient(165deg, var(--exam-gold-bright), var(--exam-gold));
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
+}
+.oe-beat-it { font-size: 15px; font-weight: 600; font-style: italic; color: var(--exam-gold-pale); line-height: 1.4; }
+.oe-beat-ru { font-size: 12.5px; color: var(--exam-ivory-mute); line-height: 1.45; }
+
+/* ── Ролевая сцена ── */
+.oe-roles {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin: 0 0 12px;
+}
+.oe-rolecard {
+  background: linear-gradient(165deg, var(--oe-card-2), var(--oe-card));
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+}
+.oe-rolecard-cand { border-color: rgba(var(--exam-gold-rgb), 0.45); }
+.oe-rolecard-esam { border-color: rgba(var(--exam-wine-bright-rgb), 0.45); }
+.oe-rolelabel {
+  display: inline-block;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--exam-ink);
+  background: linear-gradient(165deg, var(--exam-gold-bright), var(--exam-gold));
+  border-radius: var(--r-pill);
+  padding: 4px 11px;
+  margin: 0 0 10px;
+}
+.oe-rolecard-esam .oe-rolelabel { background: linear-gradient(165deg, var(--exam-wine-bright), var(--exam-wine)); color: var(--exam-cream); }
+.oe-role-it { font-size: 16px; font-weight: 600; font-style: italic; color: var(--exam-gold-pale); line-height: 1.5; margin: 0 0 4px; }
+.oe-role-ru { font-size: 13px; color: var(--exam-ivory-mute); line-height: 1.5; margin: 0 0 10px; }
+.oe-role-hint { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--exam-ivory-mute); margin: 10px 0 4px; }
+.oe-role-lines { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
+.oe-role-lines li { font-size: 14px; line-height: 1.5; color: var(--exam-ivory-soft); }
+.oe-role-lines i { display: block; font-style: normal; font-size: 12.5px; color: var(--exam-ivory-mute); }
+.oe-twist {
+  font-size: 13.5px; line-height: 1.6;
+  color: var(--exam-accent-cream);
+  background: rgba(var(--exam-wine-rgb), 0.25);
+  border: 1px solid rgba(var(--exam-wine-bright-rgb), 0.4);
+  border-radius: var(--r-md);
+  padding: 10px 13px;
+  margin: 12px 0 0;
+}
+
+.oe-goals-label { display: block; font-size: 12.5px; font-weight: 700; color: var(--exam-ivory-soft); margin: 8px 0 8px; }
+.oe-goals { display: grid; gap: 8px; }
+.oe-goal {
+  display: flex; align-items: flex-start; gap: 10px;
+  cursor: pointer;
+  background: rgba(var(--exam-ivory-rgb), 0.04);
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.oe-goal:hover { border-color: rgba(var(--exam-gold-rgb), 0.5); }
+.oe-goal input {
+  appearance: none; cursor: pointer;
+  flex: 0 0 auto;
+  width: 19px; height: 19px; margin-top: 1px;
+  border: 2px solid rgba(var(--exam-gold-rgb), 0.6);
+  border-radius: 6px;
+  display: grid; place-items: center;
+  background: transparent;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+}
+.oe-goal input::after {
+  content: '✓';
+  font-size: 12px; font-weight: 900; line-height: 1;
+  color: var(--exam-ink);
+  opacity: 0;
+}
+.oe-goal input:checked { background: linear-gradient(165deg, var(--exam-gold-bright), var(--exam-gold)); border-color: var(--exam-gold); }
+.oe-goal input:checked::after { opacity: 1; }
+.oe-goal span { font-size: 14px; line-height: 1.45; color: var(--exam-ivory-soft); }
+.oe-goal span i { display: block; font-style: normal; font-size: 12px; color: var(--exam-ivory-mute); }
+.oe-goal.is-done span { opacity: 0.75; }
+.oe-goal.is-done .oe-li-it { text-decoration: line-through; text-decoration-color: rgba(var(--exam-gold-rgb), 0.6); }
+
+/* ── Оценка части: звёзды ── */
+.oe-rate {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  background: rgba(var(--exam-gold-rgb), 0.07);
+  border: 1px solid rgba(var(--exam-gold-rgb), 0.3);
+  border-radius: var(--r-md);
+  padding: 12px 16px;
+  margin: 14px 0 0;
+}
+.oe-rate-label { font-size: 13.5px; font-weight: 800; color: var(--exam-gold-bright); }
+.oe-rate-label:empty { display: none; }
+.oe-stars { display: flex; align-items: center; gap: 2px; }
+.oe-star {
+  appearance: none; cursor: pointer;
+  font-size: 27px; line-height: 1;
+  color: rgba(var(--exam-ivory-rgb), 0.22);
+  background: none; border: none; padding: 2px 3px;
+  transition: color var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+}
+.oe-star:hover { transform: scale(1.18); }
+.oe-star.is-on {
+  color: var(--exam-gold-bright);
+  text-shadow: 0 0 14px rgba(var(--exam-gold-rgb), 0.6);
+}
+.oe-star-word { font-size: 13px; font-style: italic; color: var(--exam-ivory-mute); margin-left: 8px; }
+
+/* ── Совещание комиссии ── */
+.oe-crits { display: grid; gap: 10px; margin: 0 0 14px; }
+.oe-crit {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px;
+  background: var(--oe-card);
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-md);
+  padding: 12px 16px;
+}
+.oe-crit .oe-rate { margin: 0; padding: 0; background: none; border: none; }
+.oe-crit-name { display: flex; flex-direction: column; gap: 2px; min-width: 220px; flex: 1 1 220px; }
+.oe-crit-name b { font-family: Georgia, serif; font-size: 16.5px; color: var(--exam-ivory); }
+.oe-crit-name span { font-size: 12.5px; color: var(--exam-ivory-mute); line-height: 1.45; }
+
+.oe-heard { margin: 0 0 4px; }
+.oe-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.oe-chip {
+  appearance: none; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  color: var(--exam-ivory-mute);
+  background: rgba(var(--exam-ivory-rgb), 0.05);
+  border: 1px solid rgba(var(--exam-ivory-rgb), 0.2);
+  border-radius: var(--r-pill);
+  padding: 7px 13px;
+  transition: color var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast);
+}
+.oe-chip:hover { border-color: rgba(var(--exam-gold-rgb), 0.5); }
+.oe-chip.is-on {
+  color: var(--exam-ink);
+  background: linear-gradient(165deg, var(--exam-gold-bright), var(--exam-gold));
+  border-color: var(--exam-gold);
+  font-weight: 700;
+}
+.oe-chip-static { cursor: default; }
+
+/* ── Протокол (заметки комиссии) ── */
+.oe-notes { display: block; margin: 12px 0 0; }
+.oe-notes > span { display: block; font-size: 12.5px; font-weight: 700; color: var(--exam-ivory-mute); margin: 0 0 6px; }
+.oe-notes textarea {
+  width: 100%; resize: vertical; min-height: 64px;
+  font-family: inherit; font-size: 14px; line-height: 1.55;
+  color: var(--exam-ivory);
+  background: var(--oe-field);
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-md);
+  padding: 10px 13px;
+}
+.oe-notes textarea:focus { outline: none; border-color: rgba(var(--exam-gold-rgb), 0.6); }
+
+/* ── Кнопки перехода ── */
+.oe-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0 0; }
+.oe-next {
+  appearance: none; cursor: pointer;
+  font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: 0.02em;
+  color: var(--exam-ink);
+  background: linear-gradient(165deg, var(--exam-gold-bright), var(--exam-gold) 55%, var(--exam-gold-deep));
+  border: none; border-radius: var(--r-pill);
+  padding: 13px 26px;
+  box-shadow: 0 10px 26px -10px rgba(var(--exam-gold-rgb), 0.6);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast), opacity var(--dur-fast);
+}
+.oe-next:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 14px 32px -10px rgba(var(--exam-gold-rgb), 0.75); }
+.oe-next:disabled { cursor: default; opacity: 0.35; box-shadow: none; }
+.oe-gate-hint { font-size: 12.5px; color: var(--exam-ivory-mute); font-style: italic; }
+.oe-gate-hint[hidden] { display: none; }
+
+/* ── Сертификат ── */
+.oe-cert {
+  --oc-accent: var(--exam-gold);
+  --oc-accent-bright: var(--exam-gold-bright);
+  position: relative;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(var(--exam-navy-bright-rgb), 0.55) 0%, transparent 60%),
+    linear-gradient(165deg, #151b36 0%, #0d1226 70%, #0a0e1e 100%);
+  border: 1px solid rgba(var(--exam-gold-rgb), 0.45);
+  border-radius: var(--r-lg);
+  padding: 10px;
+  margin: 0 0 16px;
+}
+.oe-cert-redo { --oc-accent: var(--exam-wine-bright); --oc-accent-bright: #E3A8D2; border-color: rgba(var(--exam-wine-bright-rgb), 0.5); }
+.oe-cert-inner {
+  text-align: center;
+  border: 1.5px solid rgba(var(--exam-gold-rgb), 0.35);
+  border-radius: calc(var(--r-lg) - 6px);
+  padding: 26px 20px 22px;
+}
+.oe-cert .exam-intro-laurel { color: var(--oc-accent-bright); }
+.oe-cert-eyebrow {
+  display: block;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--exam-ivory-mute);
+  margin: 0 0 10px;
+}
+.oe-cert-title {
+  font-family: Georgia, serif;
+  font-size: 27px; font-weight: 700;
+  color: var(--exam-ivory);
+  margin: 0 0 4px;
+}
+.oe-cert-sub { font-size: 13px; color: var(--exam-ivory-mute); margin: 0 0 14px; }
+.oe-cert-name { font-size: 15px; color: var(--exam-ivory-soft); margin: 0 0 14px; }
+.oe-cert-name b { font-family: Georgia, serif; font-size: 19px; color: var(--oc-accent-bright); }
+.oe-cert-score { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0 0 12px; }
+.oe-cert-score > b {
+  font-family: Georgia, serif; font-size: 46px; font-weight: 700; line-height: 1;
+  color: var(--oc-accent-bright);
+  text-shadow: 0 0 30px rgba(var(--exam-gold-rgb), 0.4);
+}
+.oe-cert-score > b i { font-style: normal; font-size: 24px; }
+.oe-cert-score > span { font-size: 12.5px; color: var(--exam-ivory-mute); }
+.oe-cert-verdict {
+  display: inline-flex; flex-direction: column; gap: 1px;
+  font-family: Georgia, serif; font-size: 21px; font-weight: 700;
+  color: var(--exam-ink);
+  background: linear-gradient(165deg, var(--oc-accent-bright), var(--oc-accent));
+  border-radius: var(--r-md);
+  padding: 10px 24px;
+  margin: 0 0 12px;
+}
+.oe-cert-verdict span { font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+.oe-cert-note { max-width: 520px; margin: 0 auto 16px; font-size: 14px; line-height: 1.6; color: var(--exam-ivory-soft); }
+.oe-cert-foot {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+  border-top: 1px dashed rgba(var(--exam-ivory-rgb), 0.2);
+  padding: 12px 6px 0;
+}
+.oe-cert-date { font-size: 13px; font-style: italic; color: var(--exam-ivory-mute); }
+.oe-cert-sign { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--exam-ivory-mute); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.oe-cert-sign i { font-style: normal; font-size: 18px; color: var(--oc-accent-bright); }
+
+/* ── Разбивка результата ── */
+.oe-break { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 14px; }
+.oe-break-col {
+  background: var(--oe-card);
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+}
+.oe-break-title { display: block; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--exam-gold-bright); margin: 0 0 10px; }
+.oe-break-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 14px; color: var(--exam-ivory-soft);
+  padding: 5px 0;
+}
+.oe-break-row + .oe-break-row { border-top: 1px solid rgba(var(--exam-ivory-rgb), 0.07); }
+.oe-break-row i { font-size: 12px; color: var(--exam-ivory-mute); }
+.oe-break-row b { color: var(--exam-gold-bright); }
+.oe-mini-stars { font-size: 13.5px; letter-spacing: 0.12em; color: var(--exam-gold-bright); margin-left: auto; }
+.oe-break-extra { margin-top: 4px; }
+
+.oe-protocol {
+  background: rgba(var(--exam-wine-rgb), 0.16);
+  border: 1px solid rgba(var(--exam-wine-bright-rgb), 0.35);
+  border-radius: var(--r-lg);
+  padding: 14px 18px;
+  margin: 0 0 16px;
+}
+.oe-protocol p { margin: 0; font-size: 14px; line-height: 1.65; color: var(--exam-ivory-soft); white-space: pre-wrap; }
+
+/* ── Адаптив ── */
+@media (max-width: 760px) {
+  .oe-roles, .oe-break { grid-template-columns: 1fr; }
+  .oe-step { min-width: 0; flex: 1 1 30%; }
+  .oe-step-name { display: none; }
+  .oe-qit { font-size: 19px; }
+  .oe-timer-display { font-size: 42px; }
+  .oe-cert-inner { padding: 20px 14px 18px; }
+  .oe-cert-title { font-size: 22px; }
+}

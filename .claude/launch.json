@@ -28,6 +28,13 @@
       "runtimeArgs": ["-m", "http.server", "8420"],
       "port": 8420,
       "autoPort": true
+    },
+    {
+      "name": "web-server-oral",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8466"],
+      "port": 8466,
+      "autoPort": false
     }
   ]
 }

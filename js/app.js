@@ -2747,6 +2747,10 @@ function mergeGameBest(a, b) {
 // Строковый литерал ключа продублирован в exam.js (EXAM_STORAGE_KEY) — оба места должны
 // совпадать, но именно app.js — источник правды для самого механизма синхронизации.
 const FINAL_EXAM_KEY = 'final_exam';
+// Устный экзамен (lesson-42, js/oral-exam.js): та же форма { last:{pct,t}, best:{pct} },
+// поэтому переиспользуем mergeFinalExam. Литерал ключа продублирован в oral-exam.js
+// (ORAL_STORAGE_KEY) — при переименовании менять в обоих местах.
+const ORAL_EXAM_KEY = 'oral_exam';
 function mergeFinalExam(a, b) {
   a = a || {}; b = b || {};
   const pickLast = (x, y) => { if (!x) return y || null; if (!y) return x; return (y.t || 0) > (x.t || 0) ? y : x; };
@@ -2760,6 +2764,7 @@ const CLOUD_KEYS = {
   [VOCAB_AUTO_RU_KEY]:  mergeVocabAutoRu,   // общий кэш автопереводов слов
   [GAME_BEST_KEY]:      mergeGameBest,      // рекорды блиц-игры «Ripasso lampo» по урокам
   [FINAL_EXAM_KEY]:     mergeFinalExam,     // последняя/лучшая попытка финального письменного экзамена
+  [ORAL_EXAM_KEY]:      mergeFinalExam,     // последняя/лучшая сессия устного экзамена (та же форма записи)
 };
 
 // Пишет текущее локальное значение ключа в общий узел (если облако включено и мы не в
@@ -3129,13 +3134,14 @@ function renderNav(activeId) {
     }
 
     const done = isHwDone(lesson.id);
+    const noHw = !lessonHasHomework(lesson); // экзамены: отметка про сам урок, не про ДЗ
     const special = specialMetaFor(lesson.type);
     const item = document.createElement('div');
     item.className = 'nav-item' + (lesson.id === activeId ? ' active' : '') + (special ? ' nav-item-' + special.key : '');
     item.innerHTML = `
       <div class="nav-item-row">
         <span class="nav-item-lesson">${special ? specialTileHTML(special.key) : ''}Урок ${lesson.number}</span>
-        <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + ' ДЗ готово' : 'ДЗ не сдано'}</span>
+        <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + (noHw ? ' Сдан' : ' ДЗ готово') : (noHw ? 'Не сдан' : 'ДЗ не сдано')}</span>
       </div>
       <span class="nav-sub">${lesson.title}</span>
       ${special ? `<span class="nav-type nav-type-${special.key}">${specialGlyphHTML(special.key)}${special.label}</span>` : ''}
@@ -3158,6 +3164,7 @@ function renderLessonGrid() {
     return;
   }
   const done = isHwDone(lesson.id);
+  const noHw = !lessonHasHomework(lesson); // экзамен: вместо «домашки» отмечаем сдачу самого урока
   const special = specialMetaFor(lesson.type);
   const stage = getLessonStage(lesson.number);
   const card = document.createElement('div');
@@ -3166,7 +3173,7 @@ function renderLessonGrid() {
   card.innerHTML = `
     <div class="nav-item-row" style="margin-bottom:14px;">
       <span class="lesson-card-num-wrap">${special ? specialTileHTML(special.key) : ''}<span class="lesson-card-num" style="margin-bottom:0;">Урок ${lesson.number} из ${PLANNED_TOTAL}</span>${special ? `<span class="nav-type nav-type-${special.key}">${specialGlyphHTML(special.key)}${special.label}</span>` : ''}</span>
-      <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + ' ДЗ готово' : 'ДЗ не сдано'}</span>
+      <span class="hw-badge ${done ? 'done' : 'pending'}">${done ? ICON_CHECK_HTML + (noHw ? ' Сдан' : ' ДЗ готово') : (noHw ? 'Не сдан' : 'ДЗ не сдано')}</span>
     </div>
     <h3>${lesson.title}</h3>
     <p>${lesson.subtitle}</p>
@@ -3179,7 +3186,7 @@ function renderLessonGrid() {
     </button>
     <div class="hw-toggle-card ${done ? 'is-done' : ''}" data-role="hw-toggle">
       <span class="hw-checkbox ${done ? 'checked' : ''}">${done ? ICON_CHECK_HTML : ''}</span>
-      <span class="hw-label ${done ? 'done-label' : ''}">${done ? 'Домашка сделана' : 'Отметить домашку сделанной'}</span>
+      <span class="hw-label ${done ? 'done-label' : ''}">${done ? (noHw ? 'Экзамен сдан' : 'Домашка сделана') : (noHw ? 'Отметить экзамен сданным' : 'Отметить домашку сделанной')}</span>
     </div>
   `;
   card.addEventListener('click', (e) => {
@@ -3315,7 +3322,46 @@ function showWelcome() {
   renderNav(null);
 }
 
+// Экзаменационные занятия (уроки 42–43) идут без домашнего задания — у их файлов
+// просто нет части data-lesson-part="homework". Вместо кнопки ДЗ такие уроки
+// получают «печать экзамена» (renderExamSeal ниже): она пишет в тот же hw_status,
+// поэтому карта пути, дневник, огонёк и облачная синхронизация работают как есть.
+function lessonHasHomework(lesson) {
+  return !!(lesson.homeworkHTML && lesson.homeworkHTML.trim());
+}
+
+// Центральные глифы медальона: звезда «на кону» и жирная галочка «сдано»
+const SEAL_STAR_SVG  = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 3.4l2.45 4.96 5.48.8-3.97 3.86.94 5.46L12 15.9l-4.9 2.58.94-5.46-3.97-3.86 5.48-.8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+const SEAL_CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 12.6l4.4 4.4L19 7.6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// «Печать экзамена» — церемониальный медальон в шапке вместо кнопки ДЗ.
+// Клик ставит/снимает печать (тот же toggleHwDone). Частицы .exam-seal-burst
+// и штамп-анимация оживают только с классом is-fresh — его добавляет обработчик
+// в attachHwButtonListener сразу после отметки, чтобы салют не повторялся
+// при каждом открытии урока.
+function renderExamSeal(lesson) {
+  const done = isHwDone(lesson.id);
+  return `
+    <button class="exam-seal ${done ? 'is-done' : 'is-pending'}" data-role="exam-seal-toggle" type="button"
+            aria-pressed="${done}" title="${done ? 'Печать стоит — клик снимет отметку' : 'Поставить печать о сдаче экзамена'}">
+      <span class="exam-seal-medal" aria-hidden="true">
+        <span class="exam-seal-ring"></span>
+        <span class="exam-seal-core">
+          <span class="exam-seal-glyph">${done ? SEAL_CHECK_SVG : SEAL_STAR_SVG}</span>
+        </span>
+        <span class="exam-seal-shine"></span>
+        <span class="exam-seal-burst"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </span>
+      <span class="exam-seal-text">
+        <span class="exam-seal-title">${done ? 'Экзамен сдан!' : 'Засчитать экзамен'}</span>
+        <span class="exam-seal-sub">${done ? 'Печать стоит на карте пути' : 'Печать ляжет на карту пути'}</span>
+      </span>
+    </button>
+  `;
+}
+
 function renderHwButton(lesson) {
+  if (!lessonHasHomework(lesson)) return renderExamSeal(lesson);
   const done = isHwDone(lesson.id);
   return `
     <button class="hw-open-btn ${done ? 'done' : 'pending'}" data-role="open-hw-modal">
@@ -3566,6 +3612,22 @@ function attachHwButtonListener(lessonId) {
   if (!btnHolder) return;
   const btn = btnHolder.querySelector('[data-role="open-hw-modal"]');
   if (btn) btn.addEventListener('click', () => openHwModal(lessonId));
+  // Печать экзамена (уроки без ДЗ): клик — та же отметка hw_status, что и у домашки,
+  // поэтому маршрут на главной и дневник пересчитываются штатными renderNav/renderLessonGrid.
+  const seal = btnHolder.querySelector('[data-role="exam-seal-toggle"]');
+  if (seal) seal.addEventListener('click', () => {
+    const nowDone = toggleHwDone(lessonId);
+    const lesson = lessons.find(l => l.id === lessonId);
+    if (lesson) btnHolder.innerHTML = renderHwButton(lesson);
+    attachHwButtonListener(lessonId);
+    if (nowDone) {
+      // is-fresh запускает штамп + золотой салют один раз, только в момент отметки
+      const stamped = btnHolder.querySelector('.exam-seal');
+      if (stamped) stamped.classList.add('is-fresh');
+    }
+    renderNav(lessonId);
+    renderLessonGrid();
+  });
 }
 
 // Оборачивает каждую <table> внутри container в .table-scroll,
@@ -3677,6 +3739,7 @@ function showLesson(id) {
   wrapResponsiveTables(contentEl);
   initLessonGames(contentEl, lesson);
   if (window.initFinalExam) window.initFinalExam(contentEl, lesson);
+  if (window.initOralExam) window.initOralExam(contentEl, lesson);
 }
 
 // ============ БЛИЦ-ИГРА «RIPASSO LAMPO» (быстрое повторение правил) ============
