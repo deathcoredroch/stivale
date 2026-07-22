@@ -9380,104 +9380,182 @@
 
 /* ============ ФРАЗОВЫЙ КОНСТРУКТОР «COSTRUISCI LA FRASE» ============ */
 /* Карточка в правой колонке главной + полноэкранная модалка-игра.
-   Дизайн-язык — как у словарного тренажёра: крем, терракота, золото. */
+   Собственный акцент фичи — шалфей + золото (готовые токены v5 --sage-*/--gold-*),
+   отдельно от чистой оливы словарного тренажёра и терракоты историй/CTA. */
 
-.frase-stats-row {
-  display: flex; flex-wrap: wrap; gap: 8px 14px;
-  margin: 10px 0 12px;
-}
-.frase-stats-row-center { justify-content: center; margin: 18px 0 22px; }
+.frase-stats-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 12px; }
 .frase-stat {
-  font-size: 12.5px; color: #9a8f80;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--cream-deep); border: 1px solid var(--line);
+  padding: 6px 12px; border-radius: var(--r-pill);
 }
-.frase-stat b { color: #75695a; font-weight: 700; }
+.frase-stat b { font-family: var(--font-sans); font-size: 13px; font-weight: 800; color: var(--sage-deep); }
+.frase-stat-label {
+  font-family: var(--font-sans); font-size: 10.5px; font-weight: 600;
+  color: var(--ink-mute);
+}
+/* Интро/результат: та же статистика — крупным «трио» на карточке-подложке */
+.frase-stats-row-center {
+  display: inline-flex; align-self: center; gap: 0;
+  margin: 20px auto 26px; padding: 5px 3px;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs), var(--inner-light);
+}
+.frase-stats-row-center .frase-stat {
+  flex-direction: column; align-items: center; gap: 4px;
+  background: none; border: none; padding: 11px 24px;
+  position: relative; border-radius: 0;
+}
+.frase-stats-row-center .frase-stat:not(:first-child)::before {
+  content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 1px; background: var(--line);
+}
+.frase-stats-row-center .frase-stat b { font-family: var(--font-serif); font-size: 21px; font-weight: 700; color: var(--ink); }
+.frase-stats-row-center .frase-stat-label { font-size: 10px; letter-spacing: .02em; }
 
 .frase-modal-panel { max-width: 720px; }
 
-.frase-wrap { padding: 34px 38px 30px; }
-.frase-intro { text-align: center; padding-top: 46px; }
+/* ── Каркас: мягкая шалфейно-золотая аура по углам, как у флип-карточки тренажёра ── */
+.frase-wrap { position: relative; overflow: hidden; padding: 36px 40px 32px; }
+.frase-wrap::before {
+  content: ''; position: absolute; width: 260px; height: 260px; border-radius: 50%;
+  top: -110px; left: -90px; pointer-events: none;
+  background: radial-gradient(circle, rgba(140,156,96,0.16), transparent 70%);
+}
+.frase-wrap::after {
+  content: ''; position: absolute; width: 240px; height: 240px; border-radius: 50%;
+  bottom: -100px; right: -80px; pointer-events: none;
+  background: radial-gradient(circle, rgba(201,154,61,0.14), transparent 70%);
+}
+.frase-wrap > * { position: relative; z-index: 1; }
+
+.frase-intro { text-align: center; padding-top: 40px; }
+.frase-kicker {
+  display: inline-block; font-family: var(--font-sans); font-size: 11px; font-weight: 800;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--sage);
+  margin-bottom: 12px;
+}
 .frase-logo {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 58px; height: 58px; border-radius: 18px;
-  background: linear-gradient(135deg, #F6EEDD, #EFE3C9);
-  border: 1px solid var(--line);
-  color: var(--terra);
-  margin-bottom: 14px;
+  width: 72px; height: 72px; border-radius: var(--r-lg);
+  background: linear-gradient(150deg, var(--sage-tint), var(--sage-tint-2));
+  border: 1px solid rgba(140,156,96,0.35);
+  color: var(--sage-deep);
+  margin-bottom: 18px;
+  box-shadow: 0 12px 28px -14px rgba(111,125,72,0.5), inset 0 1px 0 rgba(255,255,255,0.7);
+  animation: fraseLogoIn .5s var(--ease-spring) both;
 }
-.frase-logo .ico, .frase-logo svg { width: 28px; height: 28px; }
-.frase-logo-done { background: linear-gradient(135deg, #EDF2E0, #E0E9CC); color: var(--olive-deep); }
+.frase-logo .ico, .frase-logo svg { width: 34px; height: 34px; }
+.frase-logo-done {
+  background: linear-gradient(150deg, var(--gold-tint), #F2DFAE);
+  border-color: rgba(201,154,61,0.4);
+  color: var(--gold-deep);
+  box-shadow: 0 12px 30px -14px rgba(201,154,61,0.5), inset 0 1px 0 rgba(255,255,255,0.7);
+}
+@keyframes fraseLogoIn {
+  from { opacity: 0; transform: scale(.55) rotate(-14deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0); }
+}
 .frase-title {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 26px; color: #3E3427; margin: 0 0 10px;
+  font-family: var(--font-serif); font-weight: 700;
+  font-size: 27px; color: var(--ink); margin: 0 0 10px; line-height: 1.22;
 }
 .frase-sub {
-  font-size: 14.5px; line-height: 1.55; color: #8a7c66;
-  max-width: 440px; margin: 0 auto 6px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans); font-size: 14.5px; line-height: 1.6; color: var(--ink-mute);
+  max-width: 440px; margin: 0 auto 4px;
 }
 .frase-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 13px 34px; border-radius: 14px; border: none; cursor: pointer;
-  background: linear-gradient(135deg, var(--terra-bright), var(--terra));
-  color: #FFF7EA; font-size: 15px; font-weight: 700;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  box-shadow: 0 6px 18px rgba(180, 74, 47, 0.28);
-  transition: transform .16s ease, box-shadow .16s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 14px 36px; border-radius: var(--r-pill); border: none; cursor: pointer;
+  background: linear-gradient(150deg, var(--sage-bright), var(--sage-deep));
+  color: #FBFCF6; font-family: var(--font-sans); font-size: 15px; font-weight: 800;
+  box-shadow: 0 10px 24px -8px rgba(73,84,47,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
-.frase-btn:hover { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(180, 74, 47, 0.34); }
+.frase-btn .ico, .frase-btn svg { width: 17px; height: 17px; }
+.frase-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -8px rgba(73,84,47,0.58), inset 0 1px 0 rgba(255,255,255,0.2); }
+.frase-btn:active { transform: translateY(0) scale(.98); }
 .frase-btn-ghost {
-  padding: 11px 20px; border-radius: 12px; cursor: pointer;
-  background: transparent; border: 1px solid var(--line);
-  color: #8a7c66; font-size: 13.5px; font-weight: 600;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  transition: background .16s ease, border-color .16s ease;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 20px; border-radius: var(--r-pill); cursor: pointer;
+  background: var(--paper); border: 1px solid var(--line);
+  color: var(--ink-mute); font-family: var(--font-sans); font-size: 13.5px; font-weight: 700;
+  box-shadow: var(--shadow-xs);
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
-.frase-btn-ghost:hover { background: rgba(255,255,255,0.7); border-color: #d3c5a8; }
+.frase-btn-ghost .ico { width: 14px; height: 14px; }
+.frase-btn-ghost:hover { border-color: #c9bfae; color: var(--ink); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.frase-btn-ghost:active { transform: translateY(0) scale(.98); }
 
 .frase-head-row {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
   padding-right: 46px; /* не заезжать под круглую кнопку закрытия модалки */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
 }
-.frase-progress { font-size: 13px; font-weight: 700; color: #75695a; }
+.frase-progress { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
 .frase-run {
-  font-size: 12px; color: #9a8f80;
-  padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line);
-  background: rgba(255,255,255,0.6);
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 700; color: var(--ink-mute);
+  padding: 4px 11px; border-radius: var(--r-pill); border: 1px solid var(--line);
+  background: var(--cream-deep);
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.frase-run.is-hot { color: #a3552f; border-color: #E4C48A; background: #FBF3DF; }
+.frase-run .ico { width: 12px; height: 12px; }
+.frase-run.is-hot { color: var(--gold-deep); border-color: rgba(201,154,61,.45); background: var(--gold-tint); }
 .frase-lesson-tag {
-  margin-left: auto; font-size: 11.5px; letter-spacing: .04em;
-  color: #a3947f; text-transform: uppercase; font-weight: 700;
+  margin-left: auto; font-size: 10.5px; font-weight: 800;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--sage-deep); background: var(--sage-tint);
+  padding: 5px 11px; border-radius: var(--r-pill);
 }
 .frase-bar {
-  height: 5px; border-radius: 999px; background: #EFE7D6;
-  overflow: hidden; margin-bottom: 20px;
+  height: 6px; border-radius: var(--r-pill); background: var(--cream-deep);
+  overflow: hidden; margin-bottom: 22px;
 }
 .frase-bar-fill {
-  display: block; height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, var(--gold), var(--terra-bright));
-  transition: width .35s ease;
+  display: block; height: 100%; border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--sage-bright), var(--gold-hot));
+  box-shadow: 0 0 10px rgba(140,156,96,.5);
+  transition: width .4s var(--ease-out);
+}
+
+/* ── Карточка-подсказка с переводом: та же грамматика мини-лейбла, что у vocab-fc-lang ── */
+.frase-prompt {
+  position: relative; text-align: center;
+  background: linear-gradient(160deg, var(--paper) 0%, var(--sage-tint) 140%);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 26px 26px 22px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-xs), var(--inner-light);
+}
+.frase-prompt-label {
+  display: block; font-family: var(--font-sans); font-size: 10.5px; font-weight: 800;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-mute);
+  margin-bottom: 10px;
 }
 .frase-ru {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-style: italic; font-size: 19px; line-height: 1.45;
-  color: #4A3F30; margin: 0 0 18px;
+  font-family: var(--font-serif); font-style: italic; font-weight: 600;
+  font-size: 20px; line-height: 1.5; color: var(--ink); margin: 0;
 }
+
+/* ── Зона сборки: занятые слова + пустые «слоты» на оставшиеся места (видно, сколько ещё собирать) ── */
 .frase-built {
-  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-  min-height: 58px; padding: 12px;
-  border: 1.6px dashed #d8ccb4; border-radius: 14px;
+  position: relative;
+  display: flex; flex-wrap: wrap; gap: 9px; align-items: center;
+  min-height: 60px; padding: 13px;
+  border: 1.6px dashed #d8ccb4; border-radius: var(--r-md);
   background: rgba(255,255,255,0.55);
-  margin-bottom: 16px;
-  transition: border-color .2s ease, background .2s ease;
+  margin-bottom: 18px;
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
 }
-.frase-built-hint {
-  font-size: 13px; color: #b6ab99;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+.frase-built-hint { font-family: var(--font-sans); font-size: 13px; color: #b6ab99; }
+.frase-slot-empty {
+  width: 32px; height: 38px; flex: 0 0 auto;
+  border-radius: 9px; border: 1.5px dashed #dcd0ba; background: rgba(255,255,255,.4);
 }
-.frase-built.is-ok { border-color: var(--olive); background: #F2F5E8; border-style: solid; }
+.frase-built.is-ok { border-color: var(--olive); background: #F2F5E8; border-style: solid; box-shadow: 0 0 0 4px rgba(107,122,77,0.12); }
 .frase-built.is-wrong { animation: fraseShake .4s ease; border-color: #C96A4A; background: #FAEEE7; }
 @keyframes fraseShake {
   0%, 100% { transform: translateX(0); }
@@ -9485,27 +9563,58 @@
   55% { transform: translateX(5px); }
   80% { transform: translateX(-3px); }
 }
-.frase-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.frase-chip {
-  padding: 9px 14px; border-radius: 11px; cursor: pointer;
-  background: #FFFDF7; border: 1px solid #DDD2BC;
-  box-shadow: 0 2px 0 rgba(160, 140, 100, 0.18);
-  font-size: 15.5px; color: #3E3427;
-  font-family: Georgia, 'Times New Roman', serif;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+/* Бейдж «Perfetto» — только когда фраза собрана с первой попытки и без подсказки */
+.frase-clean-badge {
+  position: absolute; top: -13px; right: 16px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-sans); font-size: 11px; font-weight: 800;
+  color: #fff; background: linear-gradient(135deg, var(--gold-hot), var(--gold-deep));
+  padding: 5px 12px; border-radius: var(--r-pill);
+  box-shadow: 0 6px 14px -6px rgba(185,138,47,0.6);
+  animation: fraseBadgeIn .35s var(--ease-spring) both;
 }
-.frase-chip:hover { transform: translateY(-1px); background: #FFF; box-shadow: 0 3px 0 rgba(160, 140, 100, 0.22); }
+.frase-clean-badge .ico, .frase-clean-badge svg { width: 11px; height: 11px; }
+@keyframes fraseBadgeIn {
+  from { opacity: 0; transform: translateY(4px) scale(.7); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.frase-chips { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 22px; }
+.frase-chip {
+  padding: 10px 16px; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(180deg, #FFFEFA, #FBF5E9); border: 1px solid #DDD2BC;
+  box-shadow: 0 2px 0 rgba(160, 140, 100, 0.22), var(--shadow-xs);
+  font-family: var(--font-serif); font-size: 16px; font-weight: 600; color: var(--ink);
+  animation: fraseChipIn .22s var(--ease-out) both;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+@keyframes fraseChipIn {
+  from { opacity: 0; transform: scale(.85) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.frase-chip:hover { transform: translateY(-2px); background: #FFF; box-shadow: 0 4px 0 rgba(160, 140, 100, 0.24), var(--shadow-sm); }
 .frase-chip:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(160, 140, 100, 0.18); }
-.frase-chip.is-placed { background: #F6EEDD; border-color: #D9C9A6; }
-.frase-built.is-ok .frase-chip.is-placed { background: #EDF2E0; border-color: #B9C79A; color: #3F4A2A; }
+.frase-chip.is-placed { background: linear-gradient(180deg, #FBF7EC, #F6EEDD); border-color: #D9C9A6; }
+.frase-built.is-ok .frase-chip.is-placed { background: linear-gradient(180deg, #F2F6E7, #EBF1DC); border-color: #B9C79A; color: #3F4A2A; }
 .frase-actions { display: flex; gap: 10px; }
 .frase-actions-center { justify-content: center; }
 
 @media (max-width: 640px) {
-  .frase-wrap { padding: 26px 18px 24px; }
+  .frase-wrap { padding: 28px 20px 26px; }
   .frase-title { font-size: 22px; }
-  .frase-ru { font-size: 17px; }
-  .frase-chip { font-size: 14.5px; padding: 8px 12px; }
+  .frase-ru { font-size: 17.5px; }
+  .frase-prompt { padding: 20px 18px 18px; }
+  .frase-chip { font-size: 14.5px; padding: 9px 13px; }
+  .frase-logo { width: 60px; height: 60px; border-radius: var(--r-md); }
+  .frase-logo .ico, .frase-logo svg { width: 28px; height: 28px; }
+  .frase-stats-row-center { margin: 16px auto 20px; }
+  .frase-stats-row-center .frase-stat { padding: 9px 15px; }
+  .frase-stats-row-center .frase-stat b { font-size: 18px; }
+  .frase-slot-empty { width: 26px; height: 32px; }
+  .frase-btn { padding: 13px 28px; font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .frase-logo, .frase-chip, .frase-clean-badge { animation: none; }
 }
 
 /* ============ ГЛАВНАЯ v6 (2026-07-21): полка на всю ширину, рутина дня, скайлайн ============ */

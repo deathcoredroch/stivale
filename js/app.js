@@ -2593,6 +2593,9 @@ function renderVocabIdea2() { loadStory(false); }
 const PHRASE_RUN = 8; // фраз в одной партии
 
 const ICON_PHRASE_PUZZLE = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 4.5H6.5C5.4 4.5 4.5 5.4 4.5 6.5V10c1.7 0 2.6.9 2.6 2s-.9 2-2.6 2v3.5c0 1.1.9 2 2 2H10c0-1.7.9-2.6 2-2.6s2 .9 2 2.6h3.5c1.1 0 2-.9 2-2V14c-1.7 0-2.6-.9-2.6-2s.9-2 2.6-2V6.5c0-1.1-.9-2-2-2H14c0 1.7-.9 2.6-2 2.6s-2-.9-2-2.6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+const ICON_FRASE_HINT = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18.5h6M10 21.3h4M12 3a6.6 6.6 0 0 0-3.85 11.95c.6.44 1.02 1.1 1.1 1.83l.05.47h5.4l.05-.47c.08-.73.5-1.4 1.1-1.83A6.6 6.6 0 0 0 12 3Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_FRASE_SKIP = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 6.3v11.4c0 .7.78 1.13 1.37.75l8.9-5.7a.9.9 0 0 0 0-1.5l-8.9-5.7C5.78 5.17 5 5.6 5 6.3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M17.5 5.5v13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const ICON_FRASE_BOLT = '<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.7 2.4 4.6 13.6a.8.8 0 0 0 .65 1.27H10l-1.1 7.1a.8.8 0 0 0 1.42.6l8.1-11.2a.8.8 0 0 0-.65-1.27H14l1.1-6.66a.8.8 0 0 0-1.4-.63Z"/></svg>';
 
 // Убираем имя говорящего («Anna: Ciao!» → «Ciao!») и ведущие тире диалога
 function phraseStripSpeaker(s) {
@@ -2675,8 +2678,8 @@ function renderPhraseBuilder() {
     <div class="vocab-card-body">
       <p class="vocab-trainer-sub">Собери итальянскую фразу из слов по переводу — как пазл. Колода растёт с каждым пройденным уроком.</p>
       <div class="frase-stats-row">
-        <span class="frase-stat">Сегодня: <b>${today}</b></span>
-        <span class="frase-stat">Лучшая серия: <b>${best || '—'}</b></span>
+        <span class="frase-stat"><b>${today}</b><span class="frase-stat-label">сегодня</span></span>
+        <span class="frase-stat"><b>${best || '—'}</b><span class="frase-stat-label">лучшая серия</span></span>
       </div>
       <button class="vocab-open-btn" id="fraseOpenBtn" type="button"><span class="ico">${ICON_PHRASE_PUZZLE}</span>Играть</button>
     </div>
@@ -2715,15 +2718,16 @@ function renderPhraseIntro() {
   const today = phraseToday(); const best = phraseStats().bestRun;
   phraseContent().innerHTML = `
     <div class="frase-wrap frase-intro">
+      <span class="frase-kicker">Puzzle di parole</span>
       <span class="frase-logo"><span class="ico">${ICON_PHRASE_PUZZLE}</span></span>
       <h3 class="frase-title">Costruisci la frase</h3>
       <p class="frase-sub">Партия — ${PHRASE_RUN} ${storyPlural(PHRASE_RUN, 'фраза', 'фразы', 'фраз')} из диалогов твоих уроков. Читай перевод, собирай итальянскую фразу из слов по порядку. Собранная фраза озвучивается.</p>
       <div class="frase-stats-row frase-stats-row-center">
-        <span class="frase-stat">В колоде: <b>${pool.length}</b></span>
-        <span class="frase-stat">Сегодня: <b>${today}</b></span>
-        <span class="frase-stat">Лучшая серия: <b>${best || '—'}</b></span>
+        <span class="frase-stat"><b>${pool.length}</b><span class="frase-stat-label">в колоде</span></span>
+        <span class="frase-stat"><b>${today}</b><span class="frase-stat-label">сегодня</span></span>
+        <span class="frase-stat"><b>${best || '—'}</b><span class="frase-stat-label">лучшая серия</span></span>
       </div>
-      <button type="button" class="frase-btn frase-btn-start">Играть</button>
+      <button type="button" class="frase-btn frase-btn-start"><span class="ico">${ICON_PHRASE_PUZZLE}</span>Играть</button>
     </div>
   `;
   phraseContent().querySelector('.frase-btn-start').addEventListener('click', startPhraseRun);
@@ -2749,16 +2753,19 @@ function renderPhraseQuestion() {
     <div class="frase-wrap">
       <div class="frase-head-row">
         <span class="frase-progress">Фраза ${g.idx + 1} из ${g.queue.length}</span>
-        <span class="frase-run${g.run >= 3 ? ' is-hot' : ''}">Серия: ${g.run}</span>
+        <span class="frase-run${g.run >= 3 ? ' is-hot' : ''}">${g.run >= 3 ? `<span class="ico">${ICON_FRASE_BOLT}</span>` : ''}Серия: ${g.run}</span>
         <span class="frase-lesson-tag">Урок ${q.lesson}</span>
       </div>
       <div class="frase-bar"><span class="frase-bar-fill" style="width:${Math.round(g.idx / g.queue.length * 100)}%"></span></div>
-      <p class="frase-ru">${esc(q.ru)}</p>
+      <div class="frase-prompt">
+        <span class="frase-prompt-label">Переведи на итальянский</span>
+        <p class="frase-ru">${esc(q.ru)}</p>
+      </div>
       <div class="frase-built" id="fraseBuilt" aria-label="Собранная фраза"></div>
       <div class="frase-chips" id="fraseChips"></div>
       <div class="frase-actions">
-        <button type="button" class="frase-btn-ghost" id="fraseHintBtn">Подсказка</button>
-        <button type="button" class="frase-btn-ghost" id="fraseSkipBtn">Пропустить</button>
+        <button type="button" class="frase-btn-ghost" id="fraseHintBtn"><span class="ico">${ICON_FRASE_HINT}</span>Подсказка</button>
+        <button type="button" class="frase-btn-ghost" id="fraseSkipBtn"><span class="ico">${ICON_FRASE_SKIP}</span>Пропустить</button>
       </div>
     </div>
   `;
@@ -2772,8 +2779,10 @@ function renderPhraseChips() {
   const builtEl = document.getElementById('fraseBuilt');
   const chipsEl = document.getElementById('fraseChips');
   if (!builtEl || !chipsEl) return;
+  const emptySlots = Math.max(0, q.words.length - g.built.length);
   builtEl.innerHTML = g.built.length
     ? g.built.map((c, k) => `<button type="button" class="frase-chip is-placed" data-k="${k}">${c.w}</button>`).join('')
+      + Array.from({ length: emptySlots }).map(() => '<span class="frase-slot-empty" aria-hidden="true"></span>').join('')
     : '<span class="frase-built-hint">Нажимай на слова внизу по порядку</span>';
   chipsEl.innerHTML = g.pool.map((c, k) => `<button type="button" class="frase-chip" data-k="${k}">${c.w}</button>`).join('');
   builtEl.querySelectorAll('.frase-chip').forEach(btn => btn.addEventListener('click', () => {
@@ -2805,6 +2814,10 @@ function checkPhrase() {
     g.run = clean ? g.run + 1 : 0;
     bumpPhraseStats(1, g.run);
     builtEl.classList.add('is-ok');
+    if (clean) {
+      builtEl.classList.add('is-clean');
+      builtEl.insertAdjacentHTML('beforeend', `<span class="frase-clean-badge">${ICON_VOCAB_CHECK}Perfetto</span>`);
+    }
     gamePlaySound('ok');
     if (typeof window.speakIt === 'function') window.speakIt(q.it);
     setTimeout(() => { g.idx++; renderPhraseQuestion(); }, 1400);
@@ -2861,12 +2874,12 @@ function renderPhraseResult() {
       <span class="frase-logo frase-logo-done"><span class="ico">${ICON_PHRASE_PUZZLE}</span></span>
       <h3 class="frase-title">${bravo}</h3>
       <div class="frase-stats-row frase-stats-row-center">
-        <span class="frase-stat">С первой попытки: <b>${g.perfect} из ${total}</b></span>
-        <span class="frase-stat">Сегодня собрано: <b>${phraseToday()}</b></span>
-        <span class="frase-stat">Лучшая серия: <b>${best || '—'}</b></span>
+        <span class="frase-stat"><b>${g.perfect} из ${total}</b><span class="frase-stat-label">с первой попытки</span></span>
+        <span class="frase-stat"><b>${phraseToday()}</b><span class="frase-stat-label">сегодня собрано</span></span>
+        <span class="frase-stat"><b>${best || '—'}</b><span class="frase-stat-label">лучшая серия</span></span>
       </div>
       <div class="frase-actions frase-actions-center">
-        <button type="button" class="frase-btn frase-btn-start">Ещё партию</button>
+        <button type="button" class="frase-btn frase-btn-start"><span class="ico">${ICON_PHRASE_PUZZLE}</span>Ещё партию</button>
         <button type="button" class="frase-btn-ghost" id="fraseCloseBtn2">Закрыть</button>
       </div>
     </div>
