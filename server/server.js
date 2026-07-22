@@ -442,6 +442,73 @@ app.post('/api/exam-feedback', async (req, res) => {
   }
 });
 
+// ============================================================================
+//  РАЗБОР МИНИ-СОЧИНЕНИЯ УРОКА  —  POST /api/writing-feedback
+//  Блок «Scrivi tu» в конце каждого обычного урока (initLessonWriting, js/app.js):
+//  3-4 предложения ученицы по теме урока → короткий тёплый разбор ПО-РУССКИ.
+//  Тот же callAI-механизм, что у финального экзамена, но формат компактнее.
+// ============================================================================
+function buildWritingFeedbackPrompt(d) {
+  const system =
+`Sei un'insegnante d'italiano madrelingua per una studentessa russofona di livello A1-A2.
+Ha scritto un mini-testo libero (3-4 frasi) alla fine di una lezione del corso.
+COMPITO: un breve commento IN RUSSO — caldo, concreto, utile.
+STRUTTURA — esattamente 3 paragrafi separati da "\\n" (niente titoli, elenchi o markdown):
+1) Una frase di lode CONCRETA: che cosa è già riuscito bene (struttura, parole della lezione, tempo verbale).
+2) Correzioni: SOLO gli errori reali, ciascuno nel formato «sbagliato → corretto (perché, in 3-6 parole)». Se non ci sono errori, dillo con gioia. Massimo 4 correzioni, le più importanti.
+3) UN consiglio pratico per il prossimo testo, legato al tema della lezione.
+REGOLE FERREE:
+- NON inventare errori: se la frase è corretta, non toccarla.
+- Livello A1-A2: non pretendere grammatica avanzata non ancora studiata.
+- Tono di sostegno, mai da pagella.
+- LINGUA DELLA RISPOSTA: RUSSO. La studentessa legge solo il russo. Un commento
+  scritto in italiano è NON VALIDO. Solo gli esempi «sbagliato → corretto» restano in italiano.
+Rispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo prima o dopo.`;
+
+  const user =
+`Lezione ${d.lessonNumber}: «${d.title}»${d.subtitle ? ` — ${d.subtitle}` : ''}.
+Parole suggerite della lezione: ${d.words.join(', ') || 'nessuna'}.
+
+Testo della studentessa:
+${d.text}
+
+ВАЖНО: весь комментарий пиши ПО-РУССКИ (примеры исправлений — по-итальянски).
+Rispondi con questo JSON ESATTO:
+{"feedback":"<комментарий на русском языке, 3 абзаца, разделённые \\n>"}`;
+
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
+  ];
+}
+
+app.post('/api/writing-feedback', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const text = String(body.text || '').trim().slice(0, 1500);
+    if (!text) return res.status(400).json({ error: 'no text' });
+    const d = {
+      lessonNumber: Number.isFinite(body.lessonNumber) ? body.lessonNumber : '?',
+      title: String(body.title || '').slice(0, 120),
+      subtitle: String(body.subtitle || '').slice(0, 200),
+      words: Array.isArray(body.words) ? body.words.slice(0, 8).map((w) => String(w).slice(0, 40)) : [],
+      text,
+    };
+    console.log(`✍ Writing feedback: урок ${d.lessonNumber} · ${text.split(/\s+/).length} слов · ${providerLabel()}`);
+    const { content, provider } = await callAI(buildWritingFeedbackPrompt(d), 0.5);
+    const feedback = parseExamFeedback(content); // тот же формат {"feedback": "..."}
+    if (!feedback) {
+      console.error('✗ Writing feedback: не удалось разобрать JSON ИИ');
+      return res.status(502).json({ error: 'bad AI output' });
+    }
+    console.log(`✓ Writing feedback готов (${provider})`);
+    res.json({ feedback, provider });
+  } catch (e) {
+    console.error('✗ Writing feedback error:', e.message);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🎤 Сервер запущен на порту ${PORT}`);
   console.log(`📁 Кэш озвучки: ${CACHE_DIR}`);

@@ -3,16 +3,25 @@
 //   <div class="oral-exam" data-oral-exam>
 //     <script type="application/json">{"colloquio":[…],"biglietti":[…],"scene":[…],"ruoli":[…]}</script>
 //   </div>
-// Движок ведёт экзамен по шагам: интро → Parte I Colloquio (случайные вопросы) →
-// Parte II Il biglietto (тянет билет, таймер подготовки/монолога) → Parte III La scena
-// (случайная эмодзи-сцена) → Parte IV Il gioco di ruolo (случайная ролевая ситуация) →
-// вердикт комиссии (5 критериев + чек-лист грамматики) → сертификат.
+// Движок ведёт экзамен по шагам: интро → Parte I Colloquio (умный жребий вопросов с
+// гарантией покрытия времён) → Parte II Il biglietto (тянет билет, таймер подготовки/
+// монолога со звуковыми сигналами) → Parte III La scena (случайная эмодзи-сцена) →
+// Parte IV Il gioco di ruolo (случайная ролевая ситуация) → вердикт комиссии
+// (5 критериев + чек-лист грамматики) → сертификат.
 // Оценки выставляет живой экзаменатор (преподаватель); движок только считает балл.
+// Итальянские реплики озвучиваются через window.speakIt (см. js/audio.js).
+//
+// Сессия в процессе хранится в sessionStorage (SESSION_KEY) и автоматически
+// восстанавливается при пересоздании холдера — облачная синхронизация умеет
+// перерисовать открытый урок посреди занятия, и без этого весь прогресс
+// 85-минутного экзамена слетал бы на интро.
+//
 // Результат (последняя/лучшая попытка) хранится под ключом 'oral_exam' и синхронизируется
 // через CLOUD_KEYS в app.js (ORAL_EXAM_KEY там же; форма записи как у final_exam).
 
 (function () {
   const ORAL_STORAGE_KEY = 'oral_exam';
+  const SESSION_KEY = 'stivale_oe_session';
   const CANDIDATE = 'Vika';
 
   const PARTS = [
@@ -47,6 +56,13 @@
     { tag: 'E TU?',  it: 'Ti piacerebbe essere lì? Perché?',          ru: 'хотела бы ты там оказаться и почему (condizionale)' },
   ];
 
+  const SOS = [
+    { it: 'Può ripetere, per favore?', ru: 'Повторите, пожалуйста?' },
+    { it: 'Non ho capito bene.', ru: 'Я не совсем поняла.' },
+    { it: 'Come si dice… in italiano?', ru: 'Как сказать… по-итальянски?' },
+    { it: 'Un attimo, ci penso.', ru: 'Секунду, я подумаю.' },
+  ];
+
   function verdictFor(pct) {
     if (pct >= 90) return { cls: 'lode',    title: 'Superato con lode', ru: 'Сдано с отличием',   note: 'Комиссия аплодирует: свободная, живая речь уровня A2. Курс можно закрывать с гордостью.' };
     if (pct >= 75) return { cls: 'pass',    title: 'Superato',          ru: 'Сдано',              note: 'Экзамен сдан уверенно. Отдельные шероховатости — в протоколе, разберите их вместе.' };
@@ -66,6 +82,12 @@
     '<path d="M49.2 30.5c-3.1-.4-5.6.8-7 3.1 3.1.5 5.6-.7 7-3.1z" fill="currentColor"/>' +
     '<path d="M48.4 37.4c-3-.1-5.4 1.3-6.5 3.8 3.1.2 5.4-1.2 6.5-3.8z" fill="currentColor"/></svg>';
 
+  // Компактный динамик для кнопок озвучки (как LISTEN_ICON письменного экзамена)
+  const SAY_ICON = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' +
+    '<path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '<path d="M18.07 5.93a9 9 0 0 1 0 12.14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
   }
@@ -80,6 +102,75 @@
       [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
+  }
+
+  // ── Звуковые сигналы экзаменационной аудитории (Web Audio, без внешних файлов).
+  // Контекст создаётся лениво по первому пользовательскому клику (autoplay policy). ──
+  let audioCtx = null;
+  function chime(kind) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const notes = kind === 'via' ? [[660, 0], [880, 0.18]] : [[660, 0]];
+      notes.forEach(([freq, delay]) => {
+        const t0 = audioCtx.currentTime + delay;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.3);
+      });
+    } catch (e) { /* звук — только украшение, не роняем экзамен */ }
+  }
+
+  // ── Сессия в процессе: переживает пересоздание холдера (облачная синхронизация
+  // перерисовывает урок) и случайный F5 в той же вкладке. ──
+  function saveSession(state) {
+    if (state.step === 'intro' || state.step === 'result') return;
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+        step: state.step, sub: state.sub,
+        p1: state.p1, maps: state.maps, picked: state.picked,
+        ratings: state.ratings, criteria: state.criteria,
+        heard: [...state.heard], goals: [...state.goals],
+        notes: state.notes, startedAt: state.startedAt,
+      }));
+    } catch (e) { /* приватный режим и т.п. — просто без восстановления */ }
+  }
+  function loadSession() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function clearSession() {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+  }
+
+  // Сессия могла быть сохранена под другой версией банка (урок отредактировали посреди
+  // незаконченного экзамена) — не восстанавливаем индексы, которых в банке больше нет,
+  // иначе рендер упадёт на undefined и экзамен станет неоткрываемым.
+  function sessionFits(saved, bank) {
+    const inRange = (v, arr) => v == null || (Number.isInteger(v) && v >= 0 && v < arr.length);
+    const p1 = saved.p1 || {};
+    const order = Array.isArray(p1.order) ? p1.order : [];
+    if (!order.every(i => Number.isInteger(i) && i >= 0 && i < bank.colloquio.length)) return false;
+    if (order.length && !(Number.isInteger(p1.idx) && p1.idx >= 0 && p1.idx < order.length)) return false;
+    if (saved.step === 'p1' && !order.length) return false;
+    const picked = saved.picked || {};
+    if (!inRange(picked.biglietto, bank.biglietti) || !inRange(picked.scena, bank.scene) || !inRange(picked.ruolo, bank.ruoli)) return false;
+    // Шаг «работа с материалом» без вытянутого материала восстановить нельзя
+    if (saved.step === 'p2' && saved.sub !== 'pick' && picked.biglietto == null) return false;
+    if (saved.step === 'p3' && saved.sub !== 'pick' && picked.scena == null) return false;
+    if (saved.step === 'p4' && saved.sub !== 'pick' && picked.ruolo == null) return false;
+    return true;
   }
 
   // ── Точка входа: вызывается из showLesson() в app.js, как initFinalExam ──
@@ -108,15 +199,51 @@
       heard: new Set(),        // отмеченная грамматика
       goals: new Set(),        // выполненные задачи ролевой сцены
       notes: '',
-      timer: null,
+      timer: null,             // таймер подготовки/монолога Parte II
+      clockInt: null,          // общие часы сессии в степпере
       startedAt: 0,
     };
+    // Автовосстановление незаконченной сессии (пересоздание холдера / перезагрузка вкладки)
+    const saved = loadSession();
+    const canRestore = saved && saved.step && saved.step !== 'intro' && saved.step !== 'result' && sessionFits(saved, bank);
+    if (saved && !canRestore) clearSession();
+    if (canRestore) {
+      state.step = saved.step;
+      state.sub = saved.sub || null;
+      state.p1 = saved.p1 || state.p1;
+      state.maps = saved.maps || {};
+      state.picked = saved.picked || {};
+      state.ratings = saved.ratings || {};
+      state.criteria = saved.criteria || {};
+      state.heard = new Set(saved.heard || []);
+      state.goals = new Set(saved.goals || []);
+      state.notes = saved.notes || '';
+      state.startedAt = saved.startedAt || Date.now();
+    }
     holder._oralState = state;
     if (!holder.dataset.oralWired) {
       wire(holder);
       holder.dataset.oralWired = '1';
     }
     render(state);
+  }
+
+  // ── Умный жребий колоквиума: 7 вопросов с гарантией, что прозвучат прошедшее,
+  // imperfetto, будущее и condizionale (по одному из каждой группы + 3 любых). ──
+  function drawColloquio(bank) {
+    const byG = {};
+    bank.colloquio.forEach((q, i) => {
+      const g = q.g || 'base';
+      (byG[g] = byG[g] || []).push(i);
+    });
+    const picked = [];
+    ['passato', 'imperfetto', 'futuro', 'cond'].forEach(g => {
+      const pool = (byG[g] || []).filter(i => !picked.includes(i));
+      if (pool.length) picked.push(pool[Math.floor(Math.random() * pool.length)]);
+    });
+    const rest = shuffle(bank.colloquio.map((_, i) => i).filter(i => !picked.includes(i)))
+      .slice(0, Math.max(0, 7 - picked.length));
+    return shuffle(picked.concat(rest));
   }
 
   // ══════════════════════════ ОБЩИЕ КУСКИ РАЗМЕТКИ ══════════════════════════
@@ -127,7 +254,9 @@
       <div class="oe-step${i < activeIdx ? ' is-done' : ''}${i === activeIdx ? ' is-active' : ''}">
         <span class="oe-step-dot">${i < activeIdx ? '✓' : p.roman}</span>
         <span class="oe-step-name">${esc(p.it)}</span>
-      </div>`).join('')}</div>`;
+      </div>`).join('')}
+      <span class="oe-elapsed" data-elapsed title="Время с начала экзамена">⏱ --:--</span>
+    </div>`;
   }
 
   function renderPartHead(part) {
@@ -138,6 +267,10 @@
         <span class="exam-part-sub">${esc(part.ru)} · ${esc(part.time)}</span>
       </div>
     </div>`;
+  }
+
+  function sayBtn(text) {
+    return `<button type="button" class="oe-say" data-role="say" data-say="${esc(text)}" aria-label="Озвучить по-итальянски" title="Озвучить">${SAY_ICON}</button>`;
   }
 
   function renderStars(group, val, label) {
@@ -167,6 +300,11 @@
 
   function ruDetails(summary, innerHtml) {
     return `<details class="oe-ru"><summary>${esc(summary)}</summary><div class="oe-ru-body">${innerHtml}</div></details>`;
+  }
+
+  function renderSos() {
+    return ruDetails('🆘 Фразы-спасатели кандидатки', `<ul>${SOS.map(s =>
+      `<li><span class="oe-li-it">${esc(s.it)}</span> — ${esc(s.ru)}</li>`).join('')}</ul>`);
   }
 
   // ══════════════════════════ ЭКРАНЫ ══════════════════════════
@@ -204,14 +342,19 @@
     return `
       ${renderStepper(state)}
       ${renderPartHead(part)}
-      <p class="oe-instr">Комиссия беседует с кандидаткой: задавай вопросы по одному, вслух, по-итальянски. На каждый вопрос — развёрнутый ответ, минимум 2–3 фразы. Уточняй и переспрашивай, как в живом разговоре.</p>
+      <p class="oe-instr">Комиссия беседует с кандидаткой: задавай вопросы по одному, вслух, по-итальянски (или нажми 🔊 — вопрос прозвучит сам). На каждый вопрос — развёрнутый ответ, минимум 2–3 фразы. Уточняй и переспрашивай, как в живом разговоре.</p>
+      ${renderSos()}
       <div class="oe-qcard">
         <span class="oe-qnum">Domanda ${state.p1.idx + 1} / ${state.p1.order.length}</span>
-        <p class="oe-qit">${esc(q.it)}</p>
+        <div class="oe-qrow">
+          <p class="oe-qit">${esc(q.it)}</p>
+          ${sayBtn(q.it)}
+        </div>
         <span class="oe-qfocus">комиссия слушает: ${esc(q.focus)}</span>
         ${ruDetails('Перевод — только для комиссии', `<p>${esc(q.ru)}</p>`)}
       </div>
       <div class="oe-qnav">
+        ${state.p1.idx > 0 ? '<button type="button" class="oe-ghost-btn oe-ghost-mute" data-role="p1-prev">← Назад</button>' : ''}
         ${last
           ? '<span class="oe-qdone">Вопросы закончились — комиссия выставляет оценку за часть ↓</span>'
           : '<button type="button" class="oe-ghost-btn" data-role="p1-next">Следующий вопрос →</button>'}
@@ -246,7 +389,8 @@
     return `
       ${renderStepper(state)}
       ${renderPartHead(part)}
-      <p class="oe-instr">Порядок части: <b>1 минута подготовки</b> (можно думать, нельзя писать) → монолог <b>2–3 минуты</b> по пунктам билета → вопросы комиссии. Во время монолога не перебивай — только слушай и фиксируй.</p>
+      <p class="oe-instr">Порядок части: <b>1 минута подготовки</b> (можно думать, нельзя писать) → монолог <b>2–3 минуты</b> по пунктам билета → вопросы комиссии. Во время монолога не перебивай — только слушай и фиксируй. Сигнал прозвучит, когда подготовка закончится и когда будут взяты две минуты.</p>
+      ${renderSos()}
       <div class="oe-bcard">
         <div class="oe-bhead">
           <span class="oe-bemoji">${b.emoji}</span>
@@ -270,7 +414,7 @@
         </div>
         <div class="oe-timer-note" data-role="timer-note">Сначала минута подготовки, затем — монолог. Цель монолога: 2–3 минуты.</div>
       </div>
-      ${ruDetails('Domande extra — вопросы комиссии после монолога', `<ul>${b.extra.map(x => `<li><span class="oe-li-it">${esc(x.it)}</span> — ${esc(x.ru)}</li>`).join('')}</ul>`)}
+      ${ruDetails('Domande extra — вопросы комиссии после монолога', `<ul>${b.extra.map(x => `<li><span class="oe-li-it">${esc(x.it)}</span> ${sayBtn(x.it)} — ${esc(x.ru)}</li>`).join('')}</ul>`)}
       ${renderStars('p2', state.ratings.p2, 'Оценка комиссии за Parte II')}
       ${renderNotes(state)}
       ${renderNext('Дальше → Parte III · La scena', 'p3', 'p2')}`;
@@ -290,6 +434,7 @@
       ${renderStepper(state)}
       ${renderPartHead(part)}
       <p class="oe-instr">Кандидатка описывает сцену по четырём шагам — от настоящего к прошлому и будущему. Комиссия помогает вопросами, только если рассказ совсем остановился.</p>
+      ${renderSos()}
       <div class="oe-scenecard">
         <div class="oe-scene-emoji">${s.emoji}</div>
         <div class="oe-scene-title">${esc(s.title)} <i>· ${esc(s.ru)}</i></div>
@@ -302,7 +447,7 @@
             <span class="oe-beat-ru">${esc(bt.ru)}</span>
           </div>`).join('')}
       </div>
-      ${ruDetails('Вопросы-помощники для комиссии', `<ul>${s.domande.map(d => `<li><span class="oe-li-it">${esc(d.it)}</span> — ${esc(d.ru)}</li>`).join('')}</ul>`)}
+      ${ruDetails('Вопросы-помощники для комиссии', `<ul>${s.domande.map(d => `<li><span class="oe-li-it">${esc(d.it)}</span> ${sayBtn(d.it)} — ${esc(d.ru)}</li>`).join('')}</ul>`)}
       ${renderStars('p3', state.ratings.p3, 'Оценка комиссии за Parte III')}
       ${renderNotes(state)}
       ${renderNext('Дальше → Parte IV · Il gioco di ruolo', 'p4', 'p3')}`;
@@ -321,7 +466,8 @@
     return `
       ${renderStepper(state)}
       ${renderPartHead(part)}
-      <p class="oe-instr">${r.emoji} <b>${esc(r.title)}</b> · ${esc(r.ru)}. Сцена играется целиком по-итальянски, от приветствия до прощания. Отмечай выполненные задачи по ходу.</p>
+      <p class="oe-instr">${r.emoji} <b>${esc(r.title)}</b> · ${esc(r.ru)}. Сцена играется целиком по-итальянски, от приветствия до прощания. Свои реплики можешь озвучивать кнопками 🔊 — пусть звучит настоящий итальянский. Отмечай выполненные задачи по ходу.</p>
+      ${renderSos()}
       <div class="oe-roles">
         <div class="oe-rolecard oe-rolecard-cand">
           <span class="oe-rolelabel">Кандидатка</span>
@@ -339,11 +485,14 @@
         <div class="oe-rolecard oe-rolecard-esam">
           <span class="oe-rolelabel">${esc(r.esam.role)}</span>
           <p class="oe-role-hint">Начни сцену словами:</p>
-          <p class="oe-role-it">«${esc(r.esam.opening.it)}»</p>
+          <div class="oe-qrow">
+            <p class="oe-role-it">«${esc(r.esam.opening.it)}»</p>
+            ${sayBtn(r.esam.opening.it)}
+          </div>
           <p class="oe-role-ru">${esc(r.esam.opening.ru)}</p>
           <p class="oe-role-hint">Реплики-опоры по ходу сцены:</p>
           <ul class="oe-role-lines">
-            ${r.esam.lines.map(l => `<li><span class="oe-li-it">${esc(l.it)}</span><i>${esc(l.ru)}</i></li>`).join('')}
+            ${r.esam.lines.map(l => `<li><span class="oe-li-it">${esc(l.it)}</span> ${sayBtn(l.it)}<i>${esc(l.ru)}</i></li>`).join('')}
           </ul>
           <p class="oe-twist">⚡ ${esc(r.esam.twist)}</p>
         </div>
@@ -355,10 +504,11 @@
 
   function renderVerdictStep(state) {
     const part = PARTS[4];
+    const partsSum = RATED_PARTS.reduce((s, k) => s + (state.ratings[k] || 0), 0);
     return `
       ${renderStepper(state)}
       ${renderPartHead(part)}
-      <p class="oe-instr">«La commissione si ritira per deliberare». Кандидатка выходит за воображаемую дверь (или делает себе чай). Комиссия честно выставляет пять итоговых критериев и отмечает, какая грамматика реально прозвучала за экзамен.</p>
+      <p class="oe-instr">«La commissione si ritira per deliberare». Кандидатка выходит за воображаемую дверь (или делает себе чай). За части уже набрано <b>${partsSum} из 20</b> — пять итоговых критериев добавят остальное (максимум 45). Выставляй честно и отметь, какая грамматика реально прозвучала за экзамен.</p>
       <div class="oe-crits">
         ${CRITERIA.map(c => `
           <div class="oe-crit">
@@ -392,6 +542,7 @@
     return `
       <div class="oe-cert oe-cert-${v.cls}">
         <div class="oe-cert-inner">
+          <span class="oe-cert-stamp">${esc(v.title)}</span>
           <div class="exam-intro-laurel">${MIC_ICON}</div>
           <span class="oe-cert-eyebrow">Commissione d'esame «Stivale» · Sessione ${new Date().getFullYear()}</span>
           <h3 class="oe-cert-title">Certificato d'esame orale</h3>
@@ -423,13 +574,17 @@
         <div class="oe-chips">${heardChips}</div>
       </div>
       ${notes ? `<div class="oe-protocol"><span class="oe-break-title">🖋 Протокол комиссии — разберите вместе</span><p>${esc(notes)}</p></div>` : ''}
-      <button type="button" class="exam-restart-btn" data-role="restart">Назначить новую сессию</button>`;
+      <div class="oe-final-actions">
+        <button type="button" class="exam-restart-btn" data-role="print-cert">🖨 Распечатать сертификат</button>
+        <button type="button" class="exam-restart-btn" data-role="restart">Назначить новую сессию</button>
+      </div>`;
   }
 
   // ══════════════════════════ РЕНДЕР И ЛОГИКА ══════════════════════════
 
   function render(state) {
     clearTimer(state);
+    clearClock(state);
     let html = '';
     if (state.step === 'intro') html = renderIntro(state);
     else if (state.step === 'p1') html = renderP1(state);
@@ -440,6 +595,7 @@
     else if (state.step === 'result') html = renderResult(state, state.result);
     state.holder.innerHTML = html;
     updateGates(state);
+    if (state.startedAt && state.step !== 'intro' && state.step !== 'result') startClock(state);
   }
 
   function updateGates(state) {
@@ -457,6 +613,21 @@
   function clearTimer(state) {
     if (state.timer && state.timer.int) clearInterval(state.timer.int);
     state.timer = null;
+  }
+
+  function clearClock(state) {
+    if (state.clockInt) clearInterval(state.clockInt);
+    state.clockInt = null;
+  }
+
+  function startClock(state) {
+    const tick = () => {
+      const el = state.holder.querySelector('[data-elapsed]');
+      if (!el) { clearClock(state); return; }
+      el.textContent = '⏱ ' + fmtClock(Math.floor((Date.now() - state.startedAt) / 1000));
+    };
+    tick();
+    state.clockInt = setInterval(tick, 1000);
   }
 
   function setTimerNote(state, text) {
@@ -481,6 +652,7 @@
           clearTimer(state);
           d.textContent = 'VIA!';
           d.classList.add('is-over');
+          chime('via');
           setTimerNote(state, 'Время подготовки вышло — слово кандидатке. Жми «Монолог · старт».');
         } else {
           d.textContent = fmtClock(left);
@@ -496,7 +668,7 @@
         if (!d) { clearTimer(state); return; }
         sec++;
         d.textContent = fmtClock(sec);
-        if (sec === 120) setTimerNote(state, '✓ Две минуты — цель взята. Можно красиво закончить к 3:00.');
+        if (sec === 120) { chime('goal'); setTimerNote(state, '✓ Две минуты — цель взята. Можно красиво закончить к 3:00.'); }
         if (sec === 180) setTimerNote(state, 'Три минуты! Отличная выдержка — можно мягко закруглять монолог.');
       }, 1000) };
     }
@@ -514,6 +686,7 @@
       if (word) word.textContent = STAR_WORDS[v];
     }
     updateGates(state);
+    saveSession(state);
   }
 
   function computeResult(state) {
@@ -536,6 +709,7 @@
     clearTimer(state);
     state.step = step;
     state.sub = sub || null;
+    saveSession(state);
     render(state);
     state.holder.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -550,7 +724,7 @@
 
       if (role === 'start') {
         state.startedAt = Date.now();
-        state.p1 = { order: shuffle(state.bank.colloquio.map((_, i) => i)).slice(0, 7), idx: 0 };
+        state.p1 = { order: drawColloquio(state.bank), idx: 0 };
         state.maps = {
           biglietti: shuffle(state.bank.biglietti.map((_, i) => i)),
           scene: shuffle(state.bank.scene.map((_, i) => i)),
@@ -559,19 +733,30 @@
         goStep(state, 'p1');
       }
       else if (role === 'p1-next') {
-        if (state.p1.idx < state.p1.order.length - 1) { state.p1.idx++; render(state); }
+        if (state.p1.idx < state.p1.order.length - 1) { state.p1.idx++; saveSession(state); render(state); }
       }
-      else if (role === 'pick-ticket') { state.picked.biglietto = state.maps.biglietti[+btn.getAttribute('data-i')]; state.sub = 'work'; render(state); }
-      else if (role === 'pick-scene')  { state.picked.scena = state.maps.scene[+btn.getAttribute('data-i')]; state.sub = 'work'; render(state); }
-      else if (role === 'pick-ruolo')  { state.picked.ruolo = state.maps.ruoli[+btn.getAttribute('data-i')]; state.sub = 'work'; render(state); }
+      else if (role === 'p1-prev') {
+        if (state.p1.idx > 0) { state.p1.idx--; saveSession(state); render(state); }
+      }
+      else if (role === 'pick-ticket') { state.picked.biglietto = state.maps.biglietti[+btn.getAttribute('data-i')]; state.sub = 'work'; saveSession(state); render(state); }
+      else if (role === 'pick-scene')  { state.picked.scena = state.maps.scene[+btn.getAttribute('data-i')]; state.sub = 'work'; saveSession(state); render(state); }
+      else if (role === 'pick-ruolo')  { state.picked.ruolo = state.maps.ruoli[+btn.getAttribute('data-i')]; state.sub = 'work'; saveSession(state); render(state); }
       else if (role === 'timer-prep') startTimer(state, 'prep');
       else if (role === 'timer-talk') startTimer(state, 'talk');
       else if (role === 'timer-stop') { clearTimer(state); setTimerNote(state, 'Таймер остановлен.'); }
+      else if (role === 'say') {
+        const text = btn.getAttribute('data-say');
+        btn.classList.add('is-playing');
+        const done = () => btn.classList.remove('is-playing');
+        if (window.speakIt) window.speakIt(text).then(done).catch(done);
+        else done();
+      }
       else if (role === 'star') applyStar(state, btn.getAttribute('data-group'), +btn.getAttribute('data-v'));
       else if (role === 'chip') {
         const i = +btn.getAttribute('data-i');
         if (state.heard.has(i)) state.heard.delete(i); else state.heard.add(i);
         btn.classList.toggle('is-on', state.heard.has(i));
+        saveSession(state);
       }
       else if (role === 'next-part') {
         if (btn.disabled) return;
@@ -581,15 +766,28 @@
       else if (role === 'finish') {
         if (btn.disabled) return;
         state.result = computeResult(state);
+        clearSession();
         goStep(state, 'result');
+        // Сдано (Superato и выше) — конфетти-салют приложения
+        if (state.result.pct >= 75 && typeof window.launchConfetti === 'function') {
+          setTimeout(() => { try { window.launchConfetti(); } catch (err) {} }, 600);
+        }
       }
-      else if (role === 'restart') build(holder, state.bank);
+      else if (role === 'print-cert') {
+        // Печать: body.oe-print-cert оставляет на бумаге только сертификат (светлая версия, см. @media print)
+        const cleanup = () => { document.body.classList.remove('oe-print-cert'); window.removeEventListener('afterprint', cleanup); };
+        document.body.classList.add('oe-print-cert');
+        window.addEventListener('afterprint', cleanup);
+        try { window.print(); } catch (err) { cleanup(); return; }
+        setTimeout(cleanup, 3000); // страховка для браузеров без afterprint (печать там асинхронная)
+      }
+      else if (role === 'restart') { clearSession(); build(holder, state.bank); }
     });
 
     holder.addEventListener('input', (e) => {
       const state = holder._oralState;
       if (!state) return;
-      if (e.target.matches('[data-role="notes"]')) state.notes = e.target.value;
+      if (e.target.matches('[data-role="notes"]')) { state.notes = e.target.value; saveSession(state); }
     });
 
     holder.addEventListener('change', (e) => {
@@ -601,6 +799,7 @@
       if (cb.checked) state.goals.add(i); else state.goals.delete(i);
       const label = cb.closest('.oe-goal');
       if (label) label.classList.toggle('is-done', cb.checked);
+      saveSession(state);
     });
   }
 

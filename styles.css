@@ -938,6 +938,13 @@
     background: rgba(193,84,58,0.25);
     color: #e0876e;
   }
+  /* Тихий вариант «не сдано» для всех уроков, кроме текущего: сорок красных меток
+     в сайдбаре создавали шум и чувство вины — оставляем информацию, убираем тревогу */
+  .hw-badge.pending.quiet {
+    background: rgba(120,100,75,0.10);
+    color: #a89c8c;
+    font-weight: 600;
+  }
 
   .hw-toggle-card {
     display: flex;
@@ -3052,20 +3059,73 @@
   .vocab-tool-btn:hover { border-color: #c9bfae; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
   .vocab-tool-btn:active { transform: translateY(0) scale(.98); }
   .vocab-tool-btn.is-active { background: var(--terracotta-soft); border-color: rgba(193,84,58,.4); color: var(--terracotta); }
-  .vocab-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
-  .vocab-chip {
-    font: inherit; font-size: 12px; font-weight: 600; font-family: var(--font-sans);
-    padding: 7px 13px; border-radius: 100px; cursor: pointer;
-    border: 1px solid var(--line); background: var(--paper); color: #75695a;
+  /* ── Меню-фильтр по уроку (заменяет длинную ленту из 40+ чипов) ── */
+  .vocab-lesson-picker { position: relative; margin-left: auto; }
+  .vocab-lesson-trigger {
+    display: inline-flex; align-items: center; gap: 8px;
+    font: inherit; font-size: 13px; font-weight: 600; font-family: var(--font-sans);
+    padding: 9px 12px 9px 14px; border-radius: 100px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--cream); color: var(--ink);
+    box-shadow: var(--shadow-xs), var(--inner-light);
+    transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+  .vocab-lesson-trigger .ico { width: 15px; height: 15px; display: inline-flex; color: var(--olive-deep); }
+  .vocab-lesson-triglabel { white-space: nowrap; }
+  .vocab-lesson-caret { width: 14px; height: 14px; display: inline-flex; color: #b0a794; transition: transform var(--dur-mid) var(--ease-out); }
+  .vocab-lesson-trigger:hover { border-color: #c9bfae; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .vocab-lesson-trigger:active { transform: translateY(0) scale(.98); }
+  .vocab-lesson-picker.is-open .vocab-lesson-trigger { border-color: rgba(94,110,60,.5); background: var(--olive-soft); }
+  .vocab-lesson-picker.is-open .vocab-lesson-caret { transform: rotate(180deg); }
+
+  .vocab-lesson-menu {
+    position: absolute; top: calc(100% + 8px); right: 0; z-index: 40;
+    width: 330px; max-width: calc(100vw - 40px);
+    max-height: min(60vh, 440px); overflow-y: auto;
+    padding: 12px; border-radius: 18px;
+    background: var(--paper); border: 1px solid var(--line);
+    box-shadow: 0 24px 60px -18px rgba(70,50,30,0.42), 0 4px 14px -8px rgba(70,50,30,0.22);
+    opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none;
+    transform-origin: top right;
+    transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+    scrollbar-width: thin; scrollbar-color: #d9d0c0 transparent;
+  }
+  .vocab-lesson-menu::-webkit-scrollbar { width: 8px; }
+  .vocab-lesson-menu::-webkit-scrollbar-thumb { background: #d9d0c0; border-radius: 8px; border: 2px solid var(--paper); }
+  .vocab-lesson-picker.is-open .vocab-lesson-menu { opacity: 1; transform: none; pointer-events: auto; }
+  .vocab-lesson-menu-head {
+    font-family: var(--font-sans); font-size: 10.5px; font-weight: 800;
+    letter-spacing: .08em; text-transform: uppercase; color: #a89b89;
+    padding: 2px 6px 10px;
+  }
+  .vocab-lesson-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .vocab-lesson-opt {
+    display: flex; flex-direction: column; gap: 5px;
+    position: relative; overflow: hidden;
+    padding: 9px 10px 10px; border-radius: 12px; cursor: pointer; font: inherit; text-align: left;
+    border: 1px solid var(--line); background: var(--cream); color: var(--ink);
     transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out),
                 border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   }
-  .vocab-chip:hover { border-color: #c9bfae; transform: translateY(-1px); }
-  .vocab-chip.is-active {
+  .vocab-lesson-opt.is-all { grid-column: 1 / -1; gap: 3px; padding: 11px 14px; margin-bottom: 3px; }
+  .vocab-lesson-opt:hover { border-color: #c9bfae; transform: translateY(-1px); background: #fffaf2; }
+  .vlo-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .vlo-name { font-family: var(--font-sans); font-size: 12.5px; font-weight: 700; }
+  .vocab-lesson-opt.is-all .vlo-name { font-size: 13.5px; }
+  .vlo-count { font-family: var(--font-sans); font-size: 10.5px; font-weight: 600; color: #a89b89; }
+  .vlo-check { width: 13px; height: 13px; color: var(--olive); display: inline-flex; flex-shrink: 0; }
+  .vlo-bar { height: 3px; border-radius: 3px; background: rgba(94,110,60,0.12); overflow: hidden; }
+  .vlo-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--olive), var(--gold)); }
+  .vocab-lesson-opt.is-active {
     background: linear-gradient(150deg, #7C8D58, #5E6E3C);
     border-color: transparent; color: #fff;
-    box-shadow: 0 4px 12px -5px rgba(94,110,60,0.65), inset 0 1px 0 rgba(255,255,255,0.25);
+    box-shadow: 0 6px 16px -7px rgba(94,110,60,0.6), inset 0 1px 0 rgba(255,255,255,0.2);
   }
+  .vocab-lesson-opt.is-active .vlo-count { color: rgba(255,255,255,0.85); }
+  .vocab-lesson-opt.is-active .vlo-check { color: #fff; }
+  .vocab-lesson-opt.is-active .vlo-bar { background: rgba(255,255,255,0.25); }
+  .vocab-lesson-opt.is-active .vlo-bar i { background: rgba(255,255,255,0.92); }
+
   .vocab-reader-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 26px 32px; }
 
   /* ── Флеш-карточка с настоящим 3D-переворотом ── */
@@ -3231,14 +3291,10 @@
     .vocab-reader-toolbar { padding: 0 20px 14px; }
     .vocab-reader-body { padding: 18px 16px 22px; }
     .vocab-reader-foot { padding: 12px 20px 16px; }
-    /* фильтры-уроки: горизонтальная лента вместо высокой «шапки» из чипов */
-    .vocab-chips {
-      margin-left: 0; width: 100%;
-      flex-wrap: nowrap; overflow-x: auto; padding-bottom: 3px;
-      scrollbar-width: none; -webkit-overflow-scrolling: touch;
-    }
-    .vocab-chips::-webkit-scrollbar { display: none; }
-    .vocab-chip { flex-shrink: 0; }
+    /* меню-фильтр: поповер уже, тянется во всю доступную ширину при нехватке места */
+    .vocab-lesson-menu { width: min(300px, calc(100vw - 32px)); max-height: 54vh; padding: 10px; }
+    .vocab-lesson-grid { gap: 6px; }
+    .vocab-lesson-opt { padding: 8px 9px 9px; }
     .vocab-flashcard { height: 236px; }
     .vocab-fc-face { padding: 42px 18px 36px; }
     .vocab-fc-word { font-size: 28px; }
@@ -3851,13 +3907,41 @@
   @media (prefers-reduced-motion: reduce) {
     .waving-flag-svg { animation: none; }
   }
+  .welcome-eyebrow {
+    display: block;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 2.4px;
+    text-transform: uppercase;
+    color: rgba(255,240,225,0.72);
+    margin-bottom: 12px;
+  }
   .welcome-title {
-    font-size: 52px;
-    margin: 0 0 14px;
+    font-size: 54px;
+    margin: 0 0 6px;
     font-weight: 700;
     letter-spacing: -0.5px;
     text-shadow: 0 2px 12px rgba(0,0,0,0.15);
   }
+  /* Орнаментальный разделитель со звездой — редакционный акцент под заголовком */
+  .welcome-ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 4px auto 16px;
+    color: rgba(255,232,200,0.68);
+  }
+  .welcome-ornament i {
+    display: block;
+    width: 46px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,232,200,0.55));
+  }
+  .welcome-ornament i:last-child {
+    background: linear-gradient(90deg, rgba(255,232,200,0.55), transparent);
+  }
+  .welcome-ornament svg { width: 17px; height: 17px; flex-shrink: 0; }
   .welcome-subtitle {
     font-size: 17px;
     opacity: 0.8;
@@ -3927,6 +4011,8 @@
     .welcome-badge { gap: 8px; font-size: 12px; padding: 8px 14px; border-radius: 10px; }
     .welcome-badge-icon { width: 26px; height: 26px; border-radius: 8px; }
     .welcome-badge-icon .ico { width: 13px; height: 13px; }
+    .welcome-eyebrow { font-size: 10.5px; letter-spacing: 1.6px; margin-bottom: 10px; }
+    .welcome-ornament i { width: 34px; }
   }
 
   /* ── Стрик-чип в шапке дня ── */
@@ -4362,6 +4448,26 @@
   .vocab-progress-label { font-size: 11px; color: #9a8f80; margin-top: 7px; text-align: center; }
   .vocab-trainer-empty { font-size: 12.5px; color: #8a7d6e; line-height: 1.5; }
 
+  /* ── «Сегодня к повторению»: закреплённые слова, не повторявшиеся 4+ дней.
+     Золотая строка появляется только когда такие слова есть — интервальное
+     повторение поверх коробок Лейтнера (vocab_seen хранит день последней встречи). ── */
+  .vocab-due-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(226,180,87,0.16), rgba(201,154,61,0.10));
+    border: 1px solid rgba(201,154,61,0.35);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #8a6a1e;
+  }
+  .vocab-due-row .ico { width: 15px; height: 15px; color: #C99A3D; flex-shrink: 0; }
+  .vocab-due-row b { font-variant-numeric: tabular-nums; }
+
   /* ── Идея №2: живой тизер вместо тусклой заглушки ── */
   .vocab-idea2-text { font-size: 12.5px; color: #9a8f80; line-height: 1.45; margin: 0 0 14px; }
   .vocab-idea2-preview {
@@ -4403,36 +4509,44 @@
     .welcome-side-rail { width: 100%; position: static; }
   }
 
+  /* Ярлык секции — «редакционный» eyebrow: короткая акцентная риска
+     (бренд-градиент), плотно набранная прописная подпись и тонкая
+     линия-хвост, тающая вправо. Без стеклянного чипа/тени — плоско,
+     чисто, читается как заголовок раздела, а не наклейка. */
   .welcome-section-label {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--terracotta);
-    margin-bottom: 16px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .welcome-section-label::before {
+    content: '';
+    flex: none;
+    width: 4px;
+    height: 18px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--terracotta), var(--gold-bright));
   }
   .welcome-section-label-text {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    background: rgba(255,250,243,0.85);
-    backdrop-filter: blur(10px) saturate(140%);
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
-    padding: 7px 16px 7px 13px;
-    border-radius: 8px;
-    border-left: 3px solid var(--terracotta);
-    box-shadow: 0 3px 14px rgba(35,25,15,0.14);
+    gap: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: var(--terracotta-deep);
     white-space: nowrap;
   }
+  .welcome-section-label-text .ico { color: var(--terracotta); }
   .welcome-section-label::after {
     content: '';
-    flex: 1;
+    order: 1;
+    flex: 1 1 auto;
+    min-width: 18px;
     height: 1px;
-    background: var(--line);
+    background: linear-gradient(90deg, var(--line), rgba(227,218,203,0));
   }
   .welcome-intro { font-size: 16px; color: #5c5347; margin-bottom: 28px; }
 
@@ -4592,6 +4706,21 @@
   }
   @media (prefers-reduced-motion: reduce) { .lesson-next-dot { animation: none; } }
 
+  /* Тизер, за которым уже лежит готовый урок: кликабелен, рамка сплошная */
+  .lesson-next-strip.is-ready {
+    cursor: pointer;
+    border-style: solid;
+    border-color: #d3c5a8;
+    color: #8a7c66;
+    transition: background .18s ease, border-color .18s ease, transform .18s ease;
+  }
+  .lesson-next-strip.is-ready:hover {
+    background: rgba(255,255,255,0.85);
+    border-color: var(--gold);
+    transform: translateY(-1px);
+  }
+  .lesson-next-strip.is-ready .lesson-next-icon { color: var(--terra, #a3552f); }
+
   .lesson-card-future {
     cursor: default;
     background: var(--cream);
@@ -4665,6 +4794,18 @@
      край попал бы в блюр — гасим блюр, чтобы последняя карточка была резкой
      (класс ставит initVideoRail при достижении конца). */
   .video-viewport.rail-end .video-edge-blur { opacity: 0; }
+
+  /* На узких экранах (телефон/планшет) вместо стеклянного блюра — мягкое затухание
+     самих карточек у правого края через mask: работает поверх любого фона (градиент
+     хиро, крем) без «повязки» и шва. Затухание — намёк «дальше есть ещё», поэтому
+     в самом конце прокрутки маска снимается (.rail-end ставит initVideoRail). */
+  @media (max-width: 1280px) {
+    .video-grid {
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 52px), rgba(0,0,0,0.25) calc(100% - 12px), transparent 100%);
+              mask-image: linear-gradient(to right, #000 calc(100% - 52px), rgba(0,0,0,0.25) calc(100% - 12px), transparent 100%);
+    }
+    .video-viewport.rail-end .video-grid { -webkit-mask-image: none; mask-image: none; }
+  }
 
   /* Двухколоночный режим: рельс уезжает под правую колонку, блюр — точно у её края */
   @media (min-width: 1281px) {
@@ -5194,7 +5335,7 @@
   .welcome-badge-icon .ico{ width:15px; height:15px; }
   .vocab-card-icon .ico, .vocab-card-icon-muted .ico{ width:18px; height:18px; }
   .video-tag .ico{ width:13px; height:13px; margin-right:3px; }
-  .welcome-section-label-text .ico{ width:14px; height:14px; margin-right:2px; }
+  .welcome-section-label-text .ico{ width:15px; height:15px; }
   .hw-task-icon{ display:inline-flex; width:13px; height:13px; vertical-align:-2px; margin-right:6px; }
   .lesson-card-future-icon .ico,
   .vocab-idea2-lock .ico{ width:1em; height:1em; }
@@ -6430,21 +6571,9 @@
     from { opacity: 0; transform: scale(0.25); }
   }
 
-  /* ══ ЯРЛЫКИ СЕКЦИЙ: чип с градиентной каймой ══ */
-  .welcome-section-label-text {
-    border: 1px solid transparent;
-    border-left-width: 3px;
-    border-radius: 9px;
-    padding: 8px 16px 8px 14px;
-    background:
-      linear-gradient(rgba(255,250,243,0.92), rgba(255,250,243,0.92)) padding-box,
-      linear-gradient(140deg, var(--terracotta), var(--gold-bright)) border-box;
-    box-shadow: 0 4px 16px rgba(35,25,15,0.12);
-  }
-  .welcome-section-label::after {
-    order: 1;
-    background: linear-gradient(90deg, var(--line), rgba(227,218,203,0));
-  }
+  /* ══ ЯРЛЫКИ СЕКЦИЙ ══
+     Оформление eyebrow целиком в базовом блоке (.welcome-section-label*).
+     Здесь — только навигация полки видео, что живёт в этом же ряду. */
   .rail-nav {
     order: 2;
     display: inline-flex;
@@ -6452,7 +6581,7 @@
     margin-left: 4px;
   }
   .rail-btn {
-    width: 32px; height: 32px;
+    width: 38px; height: 38px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
@@ -6465,7 +6594,7 @@
     transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
                 border-color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
   }
-  .rail-btn svg { width: 16px; height: 16px; }
+  .rail-btn svg { width: 18px; height: 18px; }
   .rail-btn:hover { border-color: rgba(193,84,58,0.45); color: var(--terracotta); transform: translateY(-1px); }
   .rail-btn:active { transform: scale(0.94); }
   .rail-btn.is-off { opacity: 0.32; pointer-events: none; box-shadow: none; }
@@ -8372,13 +8501,1393 @@
 }
 .oe-protocol p { margin: 0; font-size: 14px; line-height: 1.65; color: var(--exam-ivory-soft); white-space: pre-wrap; }
 
+/* ── Кнопка озвучки итальянской реплики (🔊 через window.speakIt) ── */
+.oe-say {
+  appearance: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  color: var(--exam-gold-bright);
+  background: rgba(var(--exam-gold-rgb), 0.12);
+  border: 1px solid rgba(var(--exam-gold-rgb), 0.45);
+  border-radius: 50%;
+  padding: 0;
+  vertical-align: middle;
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast), border-color var(--dur-fast);
+}
+.oe-say svg { width: 15px; height: 15px; }
+.oe-say:hover { transform: scale(1.12); background: rgba(var(--exam-gold-rgb), 0.22); border-color: var(--exam-gold); }
+.oe-say.is-playing {
+  background: linear-gradient(165deg, var(--exam-gold-bright), var(--exam-gold));
+  color: var(--exam-ink);
+  border-color: var(--exam-gold);
+}
+.oe-qrow { display: flex; align-items: flex-start; gap: 10px; }
+.oe-qrow .oe-qit, .oe-qrow .oe-role-it { flex: 1 1 auto; min-width: 0; }
+.oe-qrow .oe-say { margin-top: 4px; }
+.oe-ru-body li { line-height: 1.7; }
+.oe-ru-body .oe-say { width: 24px; height: 24px; margin: 0 2px; }
+.oe-ru-body .oe-say svg { width: 12px; height: 12px; }
+
+/* ── Часы сессии в степпере ── */
+.oe-elapsed {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: auto;
+  font-size: 12.5px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--exam-ivory-mute);
+  background: var(--oe-card);
+  border: 1px solid var(--exam-line);
+  border-radius: var(--r-pill);
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+/* ── Штамп вердикта и вариации сертификата ── */
+.oe-cert-inner { position: relative; }
+.oe-cert-stamp {
+  position: absolute; top: 16px; right: 14px;
+  font-size: 10.5px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--oc-accent-bright);
+  border: 2px solid var(--oc-accent-bright);
+  border-radius: 6px;
+  padding: 6px 10px;
+  transform: rotate(8deg);
+  opacity: 0.75;
+  pointer-events: none;
+  max-width: 40%;
+  text-align: center;
+}
+.oe-cert-lode { animation: oeCertGlow 2.8s ease-in-out infinite; }
+.oe-cert-lode .oe-cert-inner { border-color: rgba(var(--exam-gold-rgb), 0.65); }
+@keyframes oeCertGlow {
+  0%, 100% { box-shadow: 0 0 24px -8px rgba(var(--exam-gold-rgb), 0.4); }
+  50%      { box-shadow: 0 0 42px -6px rgba(var(--exam-gold-rgb), 0.75); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oe-cert-lode { animation: none; }
+}
+
 /* ── Адаптив ── */
 @media (max-width: 760px) {
   .oe-roles, .oe-break { grid-template-columns: 1fr; }
   .oe-step { min-width: 0; flex: 1 1 30%; }
   .oe-step-name { display: none; }
+  .oe-elapsed { flex-basis: 100%; text-align: center; margin-left: 0; }
   .oe-qit { font-size: 19px; }
   .oe-timer-display { font-size: 42px; }
   .oe-cert-inner { padding: 20px 14px 18px; }
   .oe-cert-title { font-size: 22px; }
+  .oe-cert-stamp { position: static; display: inline-block; margin: 0 0 10px; transform: rotate(-2deg); }
 }
+
+/* ═══════════════════════ ЭКЗАМЕНЫ · ДОРАБОТКА 19.07 ═══════════════════════
+   Предохранитель отправки и штурман по ошибкам (lesson-43, js/exam.js v2.2),
+   финальные кнопки и печать сертификата (lesson-42, js/oral-exam.js v1.2). */
+
+/* ── Предупреждение о пропущенных вопросах перед проверкой ── */
+.exam-submit-warn {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  margin-top: 18px;
+  background: rgba(var(--exam-gold-rgb), 0.1);
+  border: 1px solid rgba(var(--exam-gold-rgb), 0.45);
+  border-radius: 16px; padding: 12px 18px;
+  font-size: 13.5px; line-height: 1.55; color: var(--exam-ivory-soft);
+}
+.exam-submit-warn[hidden] { display: none; }
+.exam-submit-warn > span { flex: 1 1 260px; }
+.exam-warn-jump {
+  flex-shrink: 0;
+  background: transparent; border: 1px solid rgba(var(--exam-gold-rgb), 0.5);
+  color: var(--exam-gold-bright); border-radius: 100px;
+  font-family: var(--font-ui); font-weight: 700; font-size: 12.5px;
+  padding: 7px 16px; cursor: pointer;
+  transition: background 0.15s ease;
+}
+.exam-warn-jump:hover { background: rgba(var(--exam-gold-rgb), 0.15); }
+
+/* ── Подсветка вопроса, к которому «прыгнули» ── */
+@keyframes examQFlash {
+  0%, 55% { box-shadow: 0 0 0 2px rgba(var(--exam-gold-rgb), 0.8), 0 0 34px rgba(var(--exam-gold-rgb), 0.35); }
+  100%    { box-shadow: 0 0 0 0 rgba(var(--exam-gold-rgb), 0); }
+}
+.exam-q-flash { animation: examQFlash 1.5s ease-out; }
+
+/* ── Плавающий штурман по ошибкам после проверки ── */
+.exam-errnav {
+  position: fixed; right: 18px; bottom: 92px; z-index: 60;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(13, 18, 38, 0.94); color: var(--exam-ivory-soft);
+  border: 1px solid rgba(var(--exam-wine-bright-rgb), 0.6);
+  border-radius: 100px; padding: 10px 18px;
+  font-family: var(--font-ui); font-size: 12.5px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.8);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.exam-errnav b { color: var(--exam-gold-bright); }
+.exam-errnav:hover { transform: translateY(-1px); background: rgba(23, 29, 56, 0.96); }
+
+/* ── Финальные кнопки устного экзамена (печать + новая сессия) ── */
+.oe-final-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+.oe-final-actions .exam-restart-btn { margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .exam-q-flash { animation: none; }
+}
+
+/* ── Печать сертификата устного экзамена: на бумаге — светлая «пергаментная» версия ── */
+@media print {
+  body.oe-print-cert { height: 100vh !important; overflow: hidden !important; }
+  body.oe-print-cert * { visibility: hidden; }
+  body.oe-print-cert .oe-cert, body.oe-print-cert .oe-cert * { visibility: visible; }
+  body.oe-print-cert .oe-cert {
+    position: fixed; left: 0; top: 0; right: 0; margin: 0;
+    background: #fff; border: 2px solid #B08D3C; border-radius: 14px; padding: 12px;
+    animation: none; box-shadow: none;
+  }
+  body.oe-print-cert .oe-cert-inner { border-color: #C9A961; }
+  body.oe-print-cert .oe-cert-stamp { color: #A4791F; border-color: #A4791F; background: transparent; }
+  body.oe-print-cert .oe-cert .exam-intro-laurel { color: #A4791F; filter: none; }
+  body.oe-print-cert .oe-cert-eyebrow, body.oe-print-cert .oe-cert-sub,
+  body.oe-print-cert .oe-cert-date, body.oe-print-cert .oe-cert-sign,
+  body.oe-print-cert .oe-cert-score > span { color: #7A7260; }
+  body.oe-print-cert .oe-cert-title { color: #1E2436; }
+  body.oe-print-cert .oe-cert-name { color: #3A3F4F; }
+  body.oe-print-cert .oe-cert-name b, body.oe-print-cert .oe-cert-sign i { color: #A4791F; }
+  body.oe-print-cert .oe-cert-score > b { color: #A4791F; text-shadow: none; }
+  body.oe-print-cert .oe-cert-note { color: #3A3F4F; }
+  body.oe-print-cert .oe-cert-verdict { background: none; border: 2px solid #B08D3C; color: #7A5A12; }
+  body.oe-print-cert .oe-cert-foot { border-top-color: #D8CDB4; }
+}
+
+/* ═══════════════════════ БОНУС-БЛОКИ УРОКА 20.07 ═══════════════════════
+   Dettato lampo (диктант на слух из фраз урока) и Scrivi tu (мини-сочинение
+   с ИИ-разбором) — авто-инжект в конец обычных уроков, см. initLessonDictation
+   и initLessonWriting в js/app.js. Файлы уроков не меняются. */
+
+/* ── Общий каркас карточки бонус-блока ── */
+.dict-card, .wr-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 26px 28px 28px;
+  margin-top: 34px;
+  box-shadow: var(--shadow-md), var(--inner-light);
+  position: relative;
+  overflow: hidden;
+}
+.dict-card { border-left: 4px solid var(--olive); }
+.wr-card   { border-left: 4px solid var(--terracotta); }
+.dict-card::before, .wr-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: radial-gradient(90% 80% at 100% 0%, rgba(107,122,77,0.07), transparent 55%);
+}
+.wr-card::before { background: radial-gradient(90% 80% at 100% 0%, rgba(193,84,58,0.06), transparent 55%); }
+
+.dict-head { display: flex; align-items: flex-start; gap: 14px; position: relative; }
+.dict-head-icon {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--olive-soft);
+  color: var(--olive-deep);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+}
+.dict-head-icon svg { width: 24px; height: 24px; }
+.wr-head-icon { background: var(--terracotta-soft); color: var(--terracotta-deep); }
+.dict-kicker {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 3px;
+}
+.dict-title { margin: 0 0 4px; font-size: 21px; line-height: 1.2; color: var(--ink); }
+.dict-sub { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); }
+
+.dict-body { position: relative; margin-top: 18px; }
+
+/* ── Сцена диктанта: большая кнопка прослушивания ── */
+.dict-stage-row { display: flex; align-items: center; gap: 14px; }
+.dict-play-btn {
+  position: relative;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff;
+  background: linear-gradient(150deg, #8CA05E, var(--olive) 55%, var(--olive-deep));
+  box-shadow: 0 10px 22px -10px rgba(74,85,54,0.65), inset 0 1px 0 rgba(255,255,255,0.3);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.dict-play-btn svg { width: 24px; height: 24px; margin-left: 2px; }
+.dict-play-btn:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 14px 28px -10px rgba(74,85,54,0.75), inset 0 1px 0 rgba(255,255,255,0.3); }
+.dict-play-btn:active { transform: scale(0.95); }
+/* Волны звука видны только во время проигрывания */
+.dict-play-waves { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; display: none; }
+.dict-play-btn.is-playing .dict-play-waves { display: block; }
+.dict-play-waves i {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(107,122,77,0.55);
+  animation: dictWave 1.6s ease-out infinite;
+}
+.dict-play-waves i:nth-child(2) { animation-delay: 0.5s; }
+.dict-play-waves i:nth-child(3) { animation-delay: 1s; }
+@keyframes dictWave {
+  from { transform: scale(1); opacity: 0.9; }
+  to   { transform: scale(1.75); opacity: 0; }
+}
+.dict-step { font-size: 13px; color: var(--ink-soft); }
+.dict-step b { color: var(--olive-deep); }
+
+.dict-input-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.dict-input {
+  flex: 1 1 220px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--cream);
+  padding: 12px 16px;
+  font-family: inherit;
+  font-size: 15.5px;
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.dict-input:focus { outline: none; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(107,122,77,0.18); background: #fff; }
+.dict-input.is-ok   { border-color: var(--olive); background: rgba(228,233,216,0.5); }
+.dict-input.is-near { border-color: var(--gold);  background: rgba(245,231,200,0.45); }
+.dict-input.is-miss { border-color: var(--terracotta); background: rgba(240,220,211,0.4); }
+.dict-check-btn {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 22px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px; font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(150deg, #8CA05E, var(--olive) 55%, var(--olive-deep));
+  box-shadow: 0 8px 18px -8px rgba(74,85,54,0.6), inset 0 1px 0 rgba(255,255,255,0.25);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.dict-check-btn:hover { transform: translateY(-1px); }
+.dict-check-btn:active { transform: scale(0.96); }
+
+/* ── Разбор после проверки ── */
+.dict-feedback {
+  margin-top: 16px;
+  border-radius: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  background: var(--cream);
+}
+.dict-feedback.is-ok   { border-color: rgba(107,122,77,0.5);  background: rgba(228,233,216,0.45); }
+.dict-feedback.is-near { border-color: rgba(201,154,61,0.5);  background: rgba(245,231,200,0.4); }
+.dict-feedback.is-miss { border-color: rgba(193,84,58,0.4);   background: rgba(240,220,211,0.35); }
+.dict-verdict { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: var(--ink-soft); }
+.dict-feedback.is-ok .dict-verdict { color: var(--olive-deep); }
+.dict-feedback.is-near .dict-verdict { color: #8a6a1e; }
+.dict-feedback.is-miss .dict-verdict { color: var(--terracotta-deep); }
+.dict-ref { margin: 0; font-size: 17px; line-height: 1.6; font-style: italic; }
+.dict-w-ok   { color: var(--olive-deep); }
+.dict-w-miss { color: var(--terracotta-deep); font-weight: 700; text-decoration: underline dotted rgba(193,84,58,0.6) 2px; text-underline-offset: 3px; }
+.dict-ru { margin: 6px 0 0; font-size: 13px; color: var(--ink-mute); font-style: italic; }
+
+/* ── Точки прогресса партии ── */
+.dict-dots { display: flex; gap: 6px; margin-top: 16px; }
+.dict-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--cream-deep);
+  box-shadow: inset 0 1px 1px rgba(86,62,36,0.15);
+}
+.dict-dot.is-current { background: var(--ink-mute); }
+.dict-dot.is-ok   { background: var(--olive); }
+.dict-dot.is-near { background: var(--gold); }
+.dict-dot.is-miss { background: var(--terracotta); }
+
+/* ── Финал партии ── */
+.dict-final { text-align: center; }
+.dict-score-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.dict-score-pill {
+  border-radius: 100px;
+  padding: 7px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12.5px; font-weight: 700;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: var(--cream);
+}
+.dict-score-pill.is-ok   { border-color: rgba(107,122,77,0.5); color: var(--olive-deep); background: rgba(228,233,216,0.5); }
+.dict-score-pill.is-near { border-color: rgba(201,154,61,0.5); color: #8a6a1e; background: rgba(245,231,200,0.45); }
+.dict-score-pill.is-miss { border-color: rgba(193,84,58,0.4); color: var(--terracotta-deep); background: rgba(240,220,211,0.4); }
+.dict-praise { margin: 14px 0 16px; font-size: 14.5px; color: var(--ink-soft); }
+.dict-again-btn {
+  border: 1.5px solid var(--olive);
+  background: transparent;
+  color: var(--olive-deep);
+  border-radius: 100px;
+  padding: 10px 22px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13.5px; font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform var(--dur-fast) var(--ease-out);
+}
+.dict-again-btn:hover { background: var(--olive); color: #fff; transform: translateY(-1px); }
+
+/* ── Scrivi tu: подсказки, поле, разбор ── */
+.wr-hints { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+.wr-hint-chip {
+  border-radius: 100px;
+  padding: 5px 13px;
+  font-size: 12.5px; font-style: italic;
+  color: var(--terracotta-deep);
+  background: var(--terracotta-soft);
+  border: 1px solid rgba(193,84,58,0.25);
+}
+.wr-textarea {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  background: var(--cream);
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  resize: vertical;
+  min-height: 96px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.wr-textarea:focus { outline: none; border-color: var(--terracotta); box-shadow: 0 0 0 3px rgba(193,84,58,0.15); background: #fff; }
+.wr-actions { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+.wr-review-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: none;
+  border-radius: 100px;
+  padding: 11px 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px; font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(150deg, #D8734F, var(--terracotta) 55%, var(--terracotta-deep));
+  box-shadow: 0 8px 18px -8px rgba(168,68,46,0.6), inset 0 1px 0 rgba(255,255,255,0.25);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), opacity 0.15s ease;
+}
+.wr-review-btn .ico { width: 15px; height: 15px; }
+.wr-review-btn:hover { transform: translateY(-1px); }
+.wr-review-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+.wr-count { font-size: 12.5px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+
+.wr-feedback {
+  margin-top: 16px;
+  border-radius: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  background: var(--cream);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+.wr-feedback.is-loading { display: flex; align-items: center; gap: 10px; color: var(--ink-mute); }
+.wr-feedback.is-ai { border-color: rgba(201,154,61,0.45); background: linear-gradient(160deg, rgba(245,231,200,0.4), var(--cream)); }
+.wr-feedback p { margin: 0 0 10px; }
+.wr-feedback p:last-child { margin-bottom: 0; }
+.wr-fb-head {
+  display: flex; align-items: center; gap: 7px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #8a6a1e;
+  margin-bottom: 10px;
+}
+.wr-fb-head .ico { width: 14px; height: 14px; color: var(--gold); }
+.wr-fb-note { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--ink-mute); }
+.wr-checklist { margin: 0; padding: 0; list-style: none; }
+.wr-checklist li {
+  position: relative;
+  padding-left: 26px;
+  margin-bottom: 7px;
+  font-size: 13.5px;
+}
+.wr-checklist li:last-child { margin-bottom: 0; }
+.wr-checklist li::before {
+  content: '';
+  position: absolute; left: 0; top: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background-position: center; background-repeat: no-repeat; background-size: 10px;
+}
+.wr-checklist li.is-ok { color: var(--olive-deep); }
+.wr-checklist li.is-ok::before {
+  background-color: var(--olive-soft);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4.5 12.5L9.5 17.5L19.5 6.5' stroke='%234A5536' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.wr-checklist li.is-todo { color: var(--ink-soft); }
+.wr-checklist li.is-todo::before {
+  background-color: var(--terracotta-soft);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 6v7' stroke='%23A8442E' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='17' r='1.6' fill='%23A8442E'/%3E%3C/svg%3E");
+}
+
+/* ── Адаптив бонус-блоков ── */
+@media (max-width: 640px) {
+  .dict-card, .wr-card { padding: 20px 18px 22px; border-radius: 18px; }
+  .dict-title { font-size: 19px; }
+  .dict-play-btn { width: 52px; height: 52px; }
+  .dict-check-btn { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dict-play-waves i { animation: none; opacity: 0; }
+}
+
+/* ═══════════════════════ ФИНАЛ КУРСА: ДИПЛОМ A2 + ПЛАН B1 ═══════════════════════
+   Появляется на главной после сдачи обоих экзаменов (renderCourseFinale, js/app.js).
+   Золотая карточка → полноэкранный диплом с печатями и печатью на принтер. */
+
+.finale-card {
+  position: relative;
+  overflow: hidden;
+  margin-top: 26px;
+  border-radius: 24px;
+  padding: 28px 30px;
+  color: #FDF6E3;
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(226,180,87,0.35), transparent 55%),
+    linear-gradient(140deg, #3A342D, #2B2520 60%, #241F1A);
+  border: 1px solid rgba(226,180,87,0.5);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 40px -18px rgba(226,180,87,0.7);
+}
+.finale-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(60% 90% at 15% 100%, rgba(201,154,61,0.22), transparent 60%);
+}
+.finale-head { display: flex; gap: 16px; align-items: flex-start; position: relative; }
+.finale-laurel {
+  flex-shrink: 0;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--gold-bright);
+  border: 1.5px solid rgba(226,180,87,0.6);
+  background: rgba(226,180,87,0.12);
+  box-shadow: 0 0 24px -6px rgba(226,180,87,0.55);
+}
+.finale-laurel svg { width: 26px; height: 26px; }
+.finale-kicker {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gold-bright);
+  margin-bottom: 4px;
+}
+.finale-title { margin: 0 0 6px; font-size: 26px; line-height: 1.15; color: #FDF6E3; }
+.finale-sub { margin: 0; font-size: 14px; line-height: 1.55; color: rgba(253,246,227,0.75); }
+.finale-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; position: relative; }
+.finale-stat {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  border-radius: 100px;
+  padding: 7px 15px;
+  font-size: 12px;
+  color: rgba(253,246,227,0.75);
+  border: 1px solid rgba(226,180,87,0.35);
+  background: rgba(226,180,87,0.08);
+}
+.finale-stat b {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px; font-weight: 800; color: var(--gold-bright);
+  font-variant-numeric: tabular-nums;
+}
+.finale-open-btn {
+  position: relative;
+  margin-top: 20px;
+  border: none;
+  border-radius: 100px;
+  padding: 13px 30px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14.5px; font-weight: 800;
+  color: #2B2520;
+  cursor: pointer;
+  background: linear-gradient(150deg, #F0CF8A, var(--gold-bright) 45%, var(--gold));
+  box-shadow: 0 12px 26px -10px rgba(201,154,61,0.75), inset 0 1px 0 rgba(255,255,255,0.5);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.finale-open-btn:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -10px rgba(201,154,61,0.85), inset 0 1px 0 rgba(255,255,255,0.5); }
+.finale-open-btn:active { transform: scale(0.97); }
+
+/* ── План B1 ── */
+.finale-next-card {
+  margin-top: 18px;
+  border-radius: 22px;
+  padding: 26px 28px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold);
+  box-shadow: var(--shadow-md), var(--inner-light);
+}
+.finale-next-icon { background: var(--gold-soft); color: #8a6a1e; }
+.finale-weak { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+.finale-weak-cap { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+.finale-weak-chip {
+  border-radius: 100px;
+  padding: 5px 13px;
+  font-size: 12px; font-weight: 700;
+  color: var(--terracotta-deep);
+  background: var(--terracotta-soft);
+  border: 1px solid rgba(193,84,58,0.3);
+}
+.finale-steps { margin: 16px 0 0; padding: 0 0 0 0; list-style: none; counter-reset: fstep; }
+.finale-steps li {
+  position: relative;
+  counter-increment: fstep;
+  padding: 12px 0 12px 46px;
+  border-bottom: 1px dashed var(--line);
+}
+.finale-steps li:last-child { border-bottom: none; padding-bottom: 4px; }
+.finale-steps li::before {
+  content: counter(fstep);
+  position: absolute; left: 0; top: 12px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px; font-weight: 800;
+  color: #8a6a1e;
+  background: var(--gold-soft);
+  border: 1px solid rgba(201,154,61,0.4);
+}
+.finale-steps b { display: block; font-size: 14.5px; color: var(--ink); margin-bottom: 3px; }
+.finale-steps span { font-size: 13px; line-height: 1.55; color: var(--ink-soft); }
+
+/* ══════════════════════════ ПОЛНОЭКРАННЫЙ ДИПЛОМ A2 ══════════════════════════
+   Парадный диплом: гильошированный фон, гравюрная двойная рамка с филигранными
+   углами, кокарда-герб, фольгированный заголовок, наградные медали за экзамены и
+   золотая сургучная печать комиссии. Один визуальный язык с сертификатом устного
+   экзамена (oe-cert), но на светлом «пергаменте». Печать — через body.dp-print. */
+
+/* Палитра золота диплома — держим локально, чтобы легко тюнить не задев остальной сайт */
+.dp-diploma {
+  --dp-gold: #C79A3C;
+  --dp-gold-deep: #9A7322;
+  --dp-gold-bright: #E7C46A;
+  --dp-ink: #46351A;
+  padding: 30px 26px 10px;
+  perspective: 1400px;
+}
+.dp-panel { max-width: 760px; }
+
+/* Внешняя «паспарту»-рамка (двойная гравюрная линия), внутри — лист пергамента */
+.dp-frame {
+  position: relative;
+  isolation: isolate;
+  border-radius: 12px;
+  padding: 6px;                      /* поле между внешней и внутренней рамкой */
+  background:
+    linear-gradient(135deg, var(--dp-gold-bright), var(--dp-gold) 45%, var(--dp-gold-deep)) border-box;
+  border: 2px solid transparent;
+  box-shadow:
+    0 40px 80px -34px rgba(70,45,15,0.55),
+    0 12px 30px -16px rgba(70,45,15,0.30),
+    inset 0 0 0 1px rgba(255,253,246,0.6);
+  animation: dpRise 0.7s var(--ease-out) both;
+}
+@keyframes dpRise {
+  from { opacity: 0; transform: translateY(22px) rotateX(6deg); }
+  to   { opacity: 1; transform: none; }
+}
+/* Внутренняя гравюрная линия-кайма */
+.dp-frame::after {
+  content: '';
+  position: absolute; inset: 6px;
+  border: 1.5px solid rgba(154,115,34,0.55);
+  border-radius: 7px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Лист пергамента с гильоше (engine-turned) фоном */
+.dp-guilloche {
+  position: absolute; inset: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 0;
+  background:
+    radial-gradient(130% 100% at 50% -10%, rgba(245,231,200,0.7), transparent 62%),
+    linear-gradient(168deg, #FFFEF8, #FBF4E4 60%, #F6EDD8);
+}
+/* Тонкая золотая «сетка гравировки» — два перекрёстных штриха + концентрические кольца.
+   Слои полупрозрачны, дают эффект банкнотного гильоше, не мешая читать текст. */
+.dp-guilloche::before {
+  content: '';
+  position: absolute; inset: -20%;
+  background-image:
+    repeating-linear-gradient(45deg,  rgba(199,154,60,0.05) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-45deg, rgba(199,154,60,0.05) 0 1px, transparent 1px 9px);
+}
+.dp-guilloche::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    repeating-radial-gradient(circle at 50% 32%, rgba(199,154,60,0.055) 0 1px, transparent 1px 15px);
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 32%, #000 0%, transparent 70%);
+          mask-image: radial-gradient(120% 100% at 50% 32%, #000 0%, transparent 70%);
+}
+
+/* Филигранные углы */
+.dp-corner {
+  position: absolute;
+  width: 46px; height: 46px;
+  color: var(--dp-gold-deep);
+  z-index: 4;
+  opacity: 0.9;
+}
+.dp-corner-svg { width: 100%; height: 100%; display: block; }
+.dp-corner-tl { top: 12px; left: 12px; }
+.dp-corner-tr { top: 12px; right: 12px; transform: scaleX(-1); }
+.dp-corner-bl { bottom: 12px; left: 12px; transform: scaleY(-1); }
+.dp-corner-br { bottom: 12px; right: 12px; transform: scale(-1); }
+
+/* Содержимое */
+.dp-content {
+  position: relative;
+  z-index: 2;
+  padding: 36px 40px 30px;
+  text-align: center;
+}
+
+/* Герб диплома — аватарка сайта (сапог Италии) в круглом золотом медальоне */
+.dp-crest {
+  display: flex; align-items: center; justify-content: center;
+  width: 86px; height: 86px;
+  margin: 0 auto 14px;
+  padding: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 34%, #FFFDF6, #F3E8CE 78%, #EAD9B4);
+  box-shadow:
+    inset 0 0 0 2px var(--dp-gold),
+    inset 0 0 0 5px rgba(255,253,246,0.85),
+    inset 0 2px 4px rgba(255,255,255,0.6),
+    0 7px 16px -7px rgba(70,45,15,0.4);
+}
+.dp-crest-img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(70,45,15,0.28));
+}
+
+.dp-eyebrow {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--dp-gold-deep);
+  margin-bottom: 12px;
+}
+.dp-divider { display: block; width: 240px; max-width: 70%; margin: 0 auto 6px; color: var(--dp-gold); opacity: 0.85; }
+.dp-divider svg { width: 100%; height: auto; display: block; }
+
+.dp-title {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 58px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  /* золотая фольга: градиент по тексту + тонкая тень для «тиснения» */
+  background: linear-gradient(168deg, #E7C46A 0%, #C79A3C 42%, #9A7322 78%, #C79A3C 100%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--dp-gold-deep);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+  filter: drop-shadow(0 2px 3px rgba(120,85,20,0.28));
+}
+.dp-level { margin: 12px 0 0; font-family: var(--font-serif); font-size: 16px; color: var(--ink-soft); }
+.dp-level-badge {
+  display: inline-block;
+  vertical-align: 1px;
+  margin: 0 3px;
+  padding: 2px 12px 3px;
+  border-radius: 100px;
+  font-family: var(--font-ui);
+  font-weight: 800; font-size: 15px; letter-spacing: 0.04em;
+  color: #5A3F10;
+  background: linear-gradient(150deg, var(--dp-gold-bright), var(--dp-gold));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 3px 8px -3px rgba(154,115,34,0.7);
+}
+
+.dp-conferred {
+  margin: 26px 0 0;
+  font-family: var(--font-ui);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.28em;
+  color: var(--ink-mute);
+}
+.dp-name {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-style: italic; font-weight: 700;
+  font-size: 46px; line-height: 1.05;
+  color: var(--terra);
+}
+.dp-name-rule {
+  display: block;
+  width: 190px; max-width: 60%;
+  height: 12px;
+  margin: 8px auto 0;
+  background:
+    linear-gradient(90deg, transparent, var(--dp-gold) 22%, var(--dp-gold) 78%, transparent),
+    radial-gradient(circle at 50% 0, var(--dp-gold) 2px, transparent 2.5px);
+  background-repeat: no-repeat;
+  background-size: 100% 1px, 100% 100%;
+  background-position: 0 6px, 0 0;
+  opacity: 0.7;
+}
+.dp-name-rule::after {
+  content: '❖';
+  display: block; text-align: center;
+  color: var(--dp-gold-deep); font-size: 11px; line-height: 12px;
+}
+.dp-note { margin: 18px auto 0; max-width: 440px; font-family: var(--font-serif); font-size: 14px; line-height: 1.7; color: var(--ink-soft); }
+
+/* Наградные медали за экзамены */
+.dp-seals { display: flex; justify-content: center; gap: 40px; margin-top: 30px; flex-wrap: wrap; }
+.dp-medal { position: relative; display: flex; flex-direction: column; align-items: center; width: 128px; }
+.dp-medal-ribbon {
+  position: absolute; top: 30px; left: 50%;
+  width: 46px; height: 46px; transform: translateX(-50%);
+  z-index: 0;
+}
+.dp-medal-ribbon i {
+  position: absolute; top: 4px;
+  width: 17px; height: 52px;
+  background: linear-gradient(180deg, #C0432E, #8F2E1F);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+.dp-medal-ribbon i:nth-child(1) { left: 1px;  transform: rotate(12deg); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); }
+.dp-medal-ribbon i:nth-child(2) { right: 1px; transform: rotate(-12deg); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); background: linear-gradient(180deg, #128A4B, #0C6537); }
+.dp-medal-disc {
+  position: relative;
+  z-index: 1;
+  width: 82px; height: 82px;
+  border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px;
+  color: #5A3F10;
+  background:
+    radial-gradient(circle at 38% 30%, #F7E1A0, #D8A748 46%, #A2761F 100%);
+  box-shadow:
+    0 6px 16px -6px rgba(120,85,20,0.75),
+    inset 0 2px 3px rgba(255,255,255,0.55),
+    inset 0 0 0 3px rgba(255,247,220,0.35),
+    inset 0 0 0 4px rgba(126,87,25,0.45);
+}
+.dp-medal-disc::after {
+  content: '';
+  position: absolute; inset: 6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(90,63,16,0.4);
+}
+.dp-medal-star { width: 16px; height: 16px; color: rgba(90,63,16,0.85); margin-top: 2px; }
+.dp-medal-star svg { width: 100%; height: 100%; }
+.dp-medal-pct {
+  font-family: var(--font-ui);
+  font-weight: 800; font-size: 23px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #4A340D;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+}
+.dp-medal-pct i { font-style: normal; font-size: 13px; opacity: 0.8; }
+.dp-medal-cap {
+  margin-top: 12px;
+  font-family: var(--font-ui);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--dp-gold-deep);
+}
+.dp-medal.is-empty .dp-medal-disc { background: radial-gradient(circle at 38% 30%, #EDE6D5, #D8CDB4 60%, #BCB194); box-shadow: inset 0 2px 3px rgba(255,255,255,0.5), inset 0 0 0 3px rgba(255,255,255,0.3), inset 0 0 0 4px rgba(140,125,95,0.35); color: #8A7D66; }
+.dp-medal.is-empty .dp-medal-ribbon { opacity: 0.4; filter: grayscale(0.5); }
+.dp-medal.is-empty .dp-medal-cap { color: var(--ink-mute); }
+
+/* Подвал с датой, сургучной печатью и подписью */
+.dp-foot {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-top: 30px; padding-top: 20px;
+  border-top: 1px solid rgba(154,115,34,0.3);
+}
+.dp-foot-col { display: flex; flex-direction: column; gap: 3px; }
+.dp-foot-col small { font-family: var(--font-ui); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-mute); }
+.dp-foot-col b { font-family: var(--font-serif); font-size: 14px; font-weight: 700; color: var(--ink-soft); font-style: italic; }
+.dp-foot-date { text-align: left; }
+.dp-foot-sign { text-align: right; }
+.dp-wax { width: 76px; height: 76px; }
+.dp-wax-svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 5px 9px rgba(90,60,15,0.45)); transform: rotate(-6deg); }
+.dp-wax-text { font-family: var(--font-ui); font-size: 7.4px; font-weight: 700; letter-spacing: 1.3px; }
+
+.dp-actions { display: flex; justify-content: center; padding: 20px 22px 28px; }
+.dp-print-btn {
+  display: inline-flex; align-items: center; gap: 9px;
+  border: 1.5px solid var(--dp-gold);
+  background: linear-gradient(150deg, rgba(231,196,106,0.16), rgba(199,154,60,0.08));
+  color: var(--dp-gold-deep);
+  border-radius: 100px;
+  padding: 12px 28px;
+  font-family: var(--font-ui);
+  font-size: 13.5px; font-weight: 700;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, transform var(--dur-fast) var(--ease-out), box-shadow 0.16s ease;
+}
+.dp-print-btn .ico { width: 17px; height: 17px; }
+.dp-print-btn:hover {
+  background: linear-gradient(150deg, var(--dp-gold-bright), var(--dp-gold));
+  color: #4A340D;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -10px rgba(154,115,34,0.75);
+}
+.dp-print-btn:active { transform: scale(0.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dp-frame { animation: none; }
+}
+
+@media (max-width: 640px) {
+  .finale-card { padding: 22px 20px; }
+  .finale-title { font-size: 22px; }
+  .finale-next-card { padding: 20px 18px; }
+  .dp-diploma { padding: 16px 10px 6px; }
+  .dp-content { padding: 26px 18px 22px; }
+  .dp-title { font-size: 42px; }
+  .dp-name { font-size: 33px; }
+  .dp-seals { gap: 26px; }
+  .dp-foot { grid-template-columns: 1fr; justify-items: center; gap: 12px; }
+  .dp-foot-date, .dp-foot-sign { text-align: center; align-items: center; order: 2; }
+  .dp-wax { order: 1; }
+  .dp-corner { width: 34px; height: 34px; }
+}
+
+/* Печать диплома: на бумагу уходит только лист, декор сохраняем, тени убираем */
+@media print {
+  body.dp-print * { visibility: hidden; }
+  body.dp-print .dp-diploma, body.dp-print .dp-diploma * { visibility: visible; }
+  body.dp-print .dp-diploma {
+    position: fixed; left: 0; top: 0; right: 0; margin: 0; padding: 0;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  body.dp-print .dp-frame { box-shadow: none; animation: none; }
+}
+
+/* ============ ФРАЗОВЫЙ КОНСТРУКТОР «COSTRUISCI LA FRASE» ============ */
+/* Карточка в правой колонке главной + полноэкранная модалка-игра.
+   Дизайн-язык — как у словарного тренажёра: крем, терракота, золото. */
+
+.frase-stats-row {
+  display: flex; flex-wrap: wrap; gap: 8px 14px;
+  margin: 10px 0 12px;
+}
+.frase-stats-row-center { justify-content: center; margin: 18px 0 22px; }
+.frase-stat {
+  font-size: 12.5px; color: #9a8f80;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.frase-stat b { color: #75695a; font-weight: 700; }
+
+.frase-modal-panel { max-width: 720px; }
+
+.frase-wrap { padding: 34px 38px 30px; }
+.frase-intro { text-align: center; padding-top: 46px; }
+.frase-logo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 58px; height: 58px; border-radius: 18px;
+  background: linear-gradient(135deg, #F6EEDD, #EFE3C9);
+  border: 1px solid var(--line);
+  color: var(--terra);
+  margin-bottom: 14px;
+}
+.frase-logo .ico, .frase-logo svg { width: 28px; height: 28px; }
+.frase-logo-done { background: linear-gradient(135deg, #EDF2E0, #E0E9CC); color: var(--olive-deep); }
+.frase-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 26px; color: #3E3427; margin: 0 0 10px;
+}
+.frase-sub {
+  font-size: 14.5px; line-height: 1.55; color: #8a7c66;
+  max-width: 440px; margin: 0 auto 6px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.frase-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 34px; border-radius: 14px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--terra-bright), var(--terra));
+  color: #FFF7EA; font-size: 15px; font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 6px 18px rgba(180, 74, 47, 0.28);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.frase-btn:hover { transform: translateY(-1px); box-shadow: 0 9px 24px rgba(180, 74, 47, 0.34); }
+.frase-btn-ghost {
+  padding: 11px 20px; border-radius: 12px; cursor: pointer;
+  background: transparent; border: 1px solid var(--line);
+  color: #8a7c66; font-size: 13.5px; font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: background .16s ease, border-color .16s ease;
+}
+.frase-btn-ghost:hover { background: rgba(255,255,255,0.7); border-color: #d3c5a8; }
+
+.frase-head-row {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+  padding-right: 46px; /* не заезжать под круглую кнопку закрытия модалки */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.frase-progress { font-size: 13px; font-weight: 700; color: #75695a; }
+.frase-run {
+  font-size: 12px; color: #9a8f80;
+  padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line);
+  background: rgba(255,255,255,0.6);
+}
+.frase-run.is-hot { color: #a3552f; border-color: #E4C48A; background: #FBF3DF; }
+.frase-lesson-tag {
+  margin-left: auto; font-size: 11.5px; letter-spacing: .04em;
+  color: #a3947f; text-transform: uppercase; font-weight: 700;
+}
+.frase-bar {
+  height: 5px; border-radius: 999px; background: #EFE7D6;
+  overflow: hidden; margin-bottom: 20px;
+}
+.frase-bar-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold), var(--terra-bright));
+  transition: width .35s ease;
+}
+.frase-ru {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic; font-size: 19px; line-height: 1.45;
+  color: #4A3F30; margin: 0 0 18px;
+}
+.frase-built {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  min-height: 58px; padding: 12px;
+  border: 1.6px dashed #d8ccb4; border-radius: 14px;
+  background: rgba(255,255,255,0.55);
+  margin-bottom: 16px;
+  transition: border-color .2s ease, background .2s ease;
+}
+.frase-built-hint {
+  font-size: 13px; color: #b6ab99;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.frase-built.is-ok { border-color: var(--olive); background: #F2F5E8; border-style: solid; }
+.frase-built.is-wrong { animation: fraseShake .4s ease; border-color: #C96A4A; background: #FAEEE7; }
+@keyframes fraseShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  55% { transform: translateX(5px); }
+  80% { transform: translateX(-3px); }
+}
+.frase-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.frase-chip {
+  padding: 9px 14px; border-radius: 11px; cursor: pointer;
+  background: #FFFDF7; border: 1px solid #DDD2BC;
+  box-shadow: 0 2px 0 rgba(160, 140, 100, 0.18);
+  font-size: 15.5px; color: #3E3427;
+  font-family: Georgia, 'Times New Roman', serif;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.frase-chip:hover { transform: translateY(-1px); background: #FFF; box-shadow: 0 3px 0 rgba(160, 140, 100, 0.22); }
+.frase-chip:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(160, 140, 100, 0.18); }
+.frase-chip.is-placed { background: #F6EEDD; border-color: #D9C9A6; }
+.frase-built.is-ok .frase-chip.is-placed { background: #EDF2E0; border-color: #B9C79A; color: #3F4A2A; }
+.frase-actions { display: flex; gap: 10px; }
+.frase-actions-center { justify-content: center; }
+
+@media (max-width: 640px) {
+  .frase-wrap { padding: 26px 18px 24px; }
+  .frase-title { font-size: 22px; }
+  .frase-ru { font-size: 17px; }
+  .frase-chip { font-size: 14.5px; padding: 8px 12px; }
+}
+
+/* ============ ГЛАВНАЯ v6 (2026-07-21): полка на всю ширину, рутина дня, скайлайн ============ */
+
+/* ── 1. Полка видео — самостоятельная полноширинная секция ПОД двухколоночным
+   блоком. Раньше рельс уезжал под правую колонку с блюром — выглядело как
+   переполнение; теперь у полки собственный ряд, а у страницы — спокойный низ. ── */
+.video-shelf-outer {
+  max-width: 1280px;
+  padding: 0 48px 64px;
+}
+.video-shelf-outer .video-section { margin-top: 6px; }
+.welcome-content { padding-bottom: 10px; }
+
+/* под-рельсовая механика больше не нужна ни на какой ширине */
+@media (min-width: 1281px) {
+  .video-grid { width: auto; padding-right: 4px; }
+  .video-edge-blur { display: none; }
+}
+/* мягкое затухание карточек у правого края — теперь на ЛЮБОЙ ширине
+   (намёк «дальше есть ещё»; в конце прокрутки маска снимается — .rail-end) */
+.video-grid {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 64px), rgba(0,0,0,0.25) calc(100% - 14px), transparent 100%);
+          mask-image: linear-gradient(to right, #000 calc(100% - 64px), rgba(0,0,0,0.25) calc(100% - 14px), transparent 100%);
+}
+.video-viewport.rail-end .video-grid { -webkit-mask-image: none; mask-image: none; }
+
+@media (max-width: 1100px) {
+  .video-shelf-outer { padding: 0 16px 44px; }
+}
+@media (max-width: 640px) {
+  .video-shelf-outer { padding: 0 12px 40px; }
+}
+
+/* ── 2. Карточки правой колонки: мягкий подъём при наведении ── */
+.vocab-section {
+  transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out);
+}
+.vocab-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px -14px rgba(60,42,24,0.24), 0 3px 8px -2px rgba(60,42,24,0.08);
+}
+
+/* ── 3. La routine di oggi — золотой акцент и чек-лист дня ── */
+#routineCard .vocab-card-head { background: linear-gradient(180deg, rgba(201,154,61,0.14), rgba(201,154,61,0.015)); }
+#routineCard .vocab-card-head::before { background: var(--gold); }
+#routineCard .vocab-card-icon { background: linear-gradient(150deg, rgba(201,154,61,0.26), rgba(201,154,61,0.10)); color: #9a7226; }
+#routineCard .vocab-card-status { color: #9a7226; }
+#routineCard .vocab-status-dot { background: var(--gold); box-shadow: 0 0 0 3px rgba(201,154,61,0.22); }
+
+.routine-body { display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 16px; }
+.routine-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left;
+  padding: 10px 12px;
+  border-radius: 13px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.routine-row:hover { background: rgba(255,255,255,0.75); border-color: var(--line); transform: translateX(2px); }
+.routine-ico {
+  flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--cream); border: 1px solid var(--line);
+  color: #8a7c66;
+}
+.routine-ico .ico, .routine-ico svg { width: 17px; height: 17px; }
+.routine-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.routine-title { font-size: 13.5px; font-weight: 700; color: #4A3F30; line-height: 1.2; }
+.routine-sub { font-size: 11.5px; color: #a3947f; line-height: 1.2; }
+.routine-track {
+  margin-top: 3px;
+  height: 4px; border-radius: 999px;
+  background: #EFE7D6; overflow: hidden;
+}
+.routine-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold), var(--terra-bright));
+  transition: width 0.4s var(--ease-out);
+}
+.routine-count { flex-shrink: 0; font-size: 12px; font-weight: 700; color: #8a7c66; }
+.routine-dot {
+  flex-shrink: 0; width: 8px; height: 8px; border-radius: 50%;
+  border: 1.6px solid #cbbfa8;
+}
+.routine-check {
+  flex-shrink: 0;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--olive-soft); color: var(--olive-deep);
+}
+.routine-check svg { width: 11px; height: 11px; }
+.routine-row.is-done .routine-ico { background: var(--olive-soft); border-color: #cdd8b4; color: var(--olive-deep); }
+.routine-row.is-done .routine-title { color: #5b6844; }
+.routine-row.is-done .routine-fill { background: var(--olive); }
+
+/* всё закрыто — карточка мягко «золотится» */
+#routineCard.is-complete { border-color: #E2CE9E; box-shadow: 0 12px 32px -12px rgba(201,154,61,0.35), 0 2px 6px -2px rgba(60,42,24,0.06); }
+.routine-fatto {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 2px; padding: 9px 12px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #FBF3DF, #F6E9C9);
+  border: 1px solid #E2CE9E;
+  font-size: 12.5px; font-weight: 700; color: #8a6a1f;
+}
+.routine-fatto svg { width: 13px; height: 13px; }
+
+/* ── 4. Costruisci la frase: шалфейно-золотой акцент (у каждой карточки свой цвет) ── */
+#fraseCard .vocab-card-head { background: linear-gradient(180deg, rgba(140,156,96,0.13), rgba(140,156,96,0.015)); }
+#fraseCard .vocab-card-head::before { background: var(--sage-bright, #8C9C60); }
+#fraseCard .vocab-card-icon { background: linear-gradient(150deg, rgba(140,156,96,0.24), rgba(140,156,96,0.10)); color: #5f6f37; }
+#fraseCard .vocab-card-status { color: #5f7040; }
+#fraseCard .vocab-status-dot { background: var(--sage-bright, #8C9C60); box-shadow: 0 0 0 3px rgba(140,156,96,0.2); }
+
+/* ── 5. Хиро: триколор-кромка и силуэт итальянского города ── */
+.welcome-hero::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  width: auto; height: 3px;
+  border-radius: 0;
+  background: linear-gradient(90deg, #009246 0 33.4%, #F4F5F0 33.4% 66.7%, #CE2B37 66.7% 100%);
+  opacity: 0.85;
+  z-index: 3;
+  pointer-events: none;
+}
+.hero-skyline {
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  width: 100%; height: 210px;
+  z-index: 1;
+  pointer-events: none;
+}
+.hero-skyline .hsl-back  { fill: rgba(58,16,7,0.28); }
+.hero-skyline .hsl-front { fill: rgba(44,11,4,0.50); }
+@media (max-width: 900px) { .hero-skyline { height: 150px; } }
+
+/* ── 6. Тизер дневника под карточкой урока (Il mio percorso) ── */
+.diary-teaser {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  margin-top: 22px;
+  padding: 18px 22px;
+  text-align: left;
+  cursor: pointer;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 10px 28px -12px rgba(60,42,24,0.18), 0 2px 6px -2px rgba(60,42,24,0.06);
+  transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out), border-color 0.22s var(--ease-out);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.diary-teaser:hover {
+  transform: translateY(-2px);
+  border-color: #d3c5a8;
+  box-shadow: 0 16px 36px -14px rgba(60,42,24,0.24), 0 3px 8px -2px rgba(60,42,24,0.08);
+}
+.dt-level { position: relative; flex-shrink: 0; width: 64px; height: 64px; }
+.dt-ring { width: 64px; height: 64px; transform: rotate(-90deg); }
+.dt-ring-bg   { fill: none; stroke: #EFE7D6; stroke-width: 5; }
+.dt-ring-fill { fill: none; stroke: var(--gold); stroke-width: 5; stroke-linecap: round; }
+.dt-level-code {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px; font-weight: 700; color: #6f5320;
+}
+.dt-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.dt-title { font-family: Georgia, 'Times New Roman', serif; font-size: 17px; color: #3E3427; }
+.dt-sub { font-size: 12.5px; color: #9a8f80; line-height: 1.35; }
+.dt-stats { display: flex; gap: 22px; flex-shrink: 0; }
+.dt-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  font-size: 11px; color: #a3947f;
+}
+.dt-stat b { font-family: Georgia, 'Times New Roman', serif; font-size: 19px; color: #4A3F30; font-weight: 700; }
+.dt-arrow { flex-shrink: 0; color: var(--terra); }
+.dt-arrow .ico, .dt-arrow svg { width: 18px; height: 18px; }
+@media (max-width: 760px) {
+  .dt-stats { display: none; }
+  .diary-teaser { gap: 14px; padding: 15px 16px; }
+}
+
+/* ============ АДАПТИВНОСТЬ ГЛАВНОЙ v7: колонки без мёртвой зоны ============ */
+/* Проблема: .welcome-content растягивал колонки до равной высоты (align-items:stretch),
+   а правая колонка с 4 карточками была вдвое выше левой — под карточкой урока зияла
+   пустота ~840px. Решение: колонки больше НЕ растягиваются (align-items:start), в рельсе
+   остались только «рутина дня» + словарный тренажёр (высота ≈ левой колонки), а истории
+   и конструктор фраз уехали в .practice-grid на всю ширину. */
+.welcome-content { align-items: start; }
+
+/* карточки в рельсе — своя естественная высота, без flex-растяжки под общий рост */
+.welcome-side-rail { align-self: start; }
+.vocab-combo-card { flex: 0 0 auto; }
+.vocab-section-idea2,
+.vocab-section-idea2 > .vocab-card-body { flex: 0 0 auto; min-height: 0; }
+
+/* ── Сетка тренажёров: 2–3 колонки на широком, 1 на узком ── */
+.practice-grid {
+  max-width: 1280px;
+  padding: 0 48px 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 1100px) { .practice-grid { padding: 0 16px 8px; gap: 18px; } }
+@media (max-width: 640px)  { .practice-grid { padding: 0 12px 6px; gap: 16px; grid-template-columns: 1fr; } }
+
+/* ============ MASONRY ГЛАВНОЙ (v8): колонки без провалов ============ */
+/* Две равные колонки; РАСПРЕДЕЛЕНИЕ карточек делает JS (layoutHomeCards) — кладёт
+   каждую следующую в колонку, которая сейчас короче. Поэтому карточки разной высоты
+   (рутина 250px vs словарь 500px) больше не оставляют дыр, как это делали
+   фиксированные колонки. Ниже 1281px — одна колонка, вторая скрывается. */
+.home-cards {
+  max-width: 1280px;
+  padding: 40px 48px 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.hc-col {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0; /* иначе длинные слова распирают колонку */
+}
+.home-primary { min-width: 0; }
+
+@media (max-width: 1280px) {
+  .home-cards { grid-template-columns: 1fr; padding: 32px 16px 8px; gap: 20px; }
+}
+@media (max-width: 640px) {
+  .home-cards { padding: 24px 12px 6px; gap: 16px; }
+  .hc-col { gap: 16px; }
+}
+
+/* Страховка от «пустого трека»: если вторая колонка пуста (JS ещё не разложил
+   карточки или не успел отреагировать на смену ширины), сетка схлопывается в одну
+   колонку сама. Без этого на границе 1280px можно было увидеть карточки в левой
+   половине и пустую правую. Правило работает независимо от JS. */
+.home-cards:has(.hc-col:last-child:empty) { grid-template-columns: 1fr; }
+
+/* ============ ИКОНКИ ГЛАВНОЙ v9: премиальные app-плитки + цветовой код ============ */
+/* Раньше глифы были мелкими и тонкими для своих плиток, а иконки строк «рутины» —
+   безжизненные кремовые квадраты в едином коричневом цвете, оторванные от цветов
+   карточек, к которым они ведут. Здесь: объёмные плитки (внутренний блик + мягкая
+   тень, как у иконок приложений), крупнее и увереннее глиф, и — главное — каждая
+   иконка несёт цвет своей активности, так что правая колонка читается как один
+   цветовой язык (золото · олива · терракота · шалфей). */
+
+/* ── Плитка-иконка в шапке карточки ── */
+.vocab-card-icon {
+  width: 42px; height: 42px;
+  border-radius: 13px;
+  position: relative;
+  isolation: isolate;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.75),
+    inset 0 0 0 1px rgba(255,255,255,0.30),
+    0 5px 12px -4px rgba(60,42,24,0.28),
+    0 1px 2px rgba(60,42,24,0.10);
+  transition: transform 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out);
+}
+.vocab-card-icon .ico, .vocab-card-icon .ico svg,
+.vocab-card-icon-muted .ico, .vocab-card-icon svg { width: 22px; height: 22px; }
+/* лёгкий отклик плитки при наведении на карточку */
+.vocab-section:hover .vocab-card-icon { transform: translateY(-1px) scale(1.04); }
+
+/* Насыщенные градиенты плиток по активностям (перекрывают базовые за счёт ID/позже в файле) */
+#routineCard .vocab-card-icon {
+  background: linear-gradient(145deg, #F1D79A 0%, #E7C071 55%, #DBAE55 100%);
+  color: #6b4d15;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), inset 0 0 0 1px rgba(255,255,255,0.35),
+    0 5px 13px -4px rgba(150,110,30,0.42), 0 1px 2px rgba(60,42,24,0.10);
+}
+#vocabTrainerCard .vocab-card-icon {
+  background: linear-gradient(145deg, #C4CE9F 0%, #A6B577 55%, #93A45F 100%);
+  color: #3f4a24;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(255,255,255,0.3),
+    0 5px 13px -4px rgba(90,105,50,0.42), 0 1px 2px rgba(60,42,24,0.10);
+}
+.vocab-section-idea2 .vocab-card-icon {
+  background: linear-gradient(145deg, #EBB199 0%, #DB8265 55%, #CE6A48 100%);
+  color: #6e2413; opacity: 1;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), inset 0 0 0 1px rgba(255,255,255,0.28),
+    0 5px 13px -4px rgba(150,50,30,0.40), 0 1px 2px rgba(60,42,24,0.10);
+}
+#fraseCard .vocab-card-icon {
+  background: linear-gradient(145deg, #BFCB95 0%, #9DAE6C 55%, #8A9C58 100%);
+  color: #3d4a1f;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 1px rgba(255,255,255,0.3),
+    0 5px 13px -4px rgba(95,110,55,0.42), 0 1px 2px rgba(60,42,24,0.10);
+}
+
+/* ── Иконки строк «La routine di oggi»: цвет по активности (к которой ведёт строка) ── */
+.routine-ico {
+  width: 36px; height: 36px;
+  border-radius: 11px;
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    inset 0 0 0 1px rgba(255,255,255,0.28),
+    0 3px 8px -3px rgba(60,42,24,0.24);
+  transition: transform 0.16s var(--ease-out);
+}
+.routine-ico .ico, .routine-ico svg { width: 18px; height: 18px; }
+.routine-row:hover .routine-ico { transform: scale(1.06); }
+
+/* vocab → олива, frase → шалфей, story → терракота; done-состояние (ниже) всегда важнее */
+.routine-row[data-routine="vocab"]:not(.is-done) .routine-ico {
+  background: linear-gradient(145deg, #C4CE9F, #97A863); color: #3f4a24;
+}
+.routine-row[data-routine="frase"]:not(.is-done) .routine-ico {
+  background: linear-gradient(145deg, #BFCB95, #8E9F5C); color: #3d4a1f;
+}
+.routine-row[data-routine="story"]:not(.is-done) .routine-ico {
+  background: linear-gradient(145deg, #EBB199, #D07750); color: #6e2413;
+}
+/* Завершённый шаг — зелёная плитка с галочкой-настроением (перебивает цвет активности) */
+.routine-row.is-done .routine-ico {
+  background: linear-gradient(145deg, #BBD08C, #8FB255) !important;
+  color: #33430f !important;
+}
+
+/* ============ ВЫРАВНИВАНИЕ НИЗА КОЛОНОК (v8.7) ============ */
+/* Требование: обе колонки заканчиваются на одном уровне, расположение карточек НЕ
+   меняется. Делаем колонки равной высоты (по более длинной), а последнюю карточку
+   короткой колонки тянем до общего низа. Слева всегда завершает «La routine di oggi» —
+   её чек-лист равномерно распределяется по высоте, читаясь как заполненная панель. */
+@media (min-width: 1281px) {
+  .home-cards { align-items: stretch; }
+  /* последняя карточка каждой колонки поглощает свободную высоту (растёт лишь в
+     той колонке, что короче — в длинной слэка нет, поэтому её хвост не меняется) */
+  .hc-col > :last-child { flex: 1 1 auto; }
+  .hc-col > :last-child > .vocab-card-body { flex: 1 1 auto; }
+  /* Когда карточка рутины вытянута до общего низа — не разгоняем ПРОМЕЖУТКИ между
+     строками (это давало уродливые провалы), а даём каждой строке равную долю высоты:
+     строки становятся просторнее, содержимое центрируется — получается спокойный
+     «настроенческий» чек-лист, заполняющий панель. */
+  .hc-col #routineCard { flex: 1 1 auto; }
+  .hc-col #routineCard .routine-body { flex: 1 1 auto; }
+  .hc-col #routineCard .routine-row { flex: 1 1 0; min-height: 46px; }
+}
+
+/* ============ КОМПАКТНЫЕ ПРАВЫЕ КАРТОЧКИ (v8.8) ============ */
+/* Правая колонка (словарь · истории · фразы) была на ~160px длиннее левой, из-за чего
+   карточку рутины приходилось сильно растягивать (строки становились гигантскими).
+   Аккуратно ужимаем внутренние отступы правых карточек (без потери «воздуха» и вида) —
+   разница падает до ~30px, и рутина дотягивается почти без растяжки строк. */
+
+/* тела правых карточек — чуть плотнее по вертикали */
+#vocabTrainerCard > .vocab-card-body,
+.vocab-section-idea2 > .vocab-card-body,
+#fraseCard > .vocab-card-body { padding-top: 14px; padding-bottom: 15px; }
+
+/* Словарный тренажёр */
+#vocabTrainerCard .vocab-trainer-sub { margin-bottom: 10px; }
+#vocabTrainerCard .vocab-flip-area { padding: 13px 16px 12px; min-height: 88px; gap: 9px; }
+#vocabTrainerCard .vocab-actions { margin-top: 10px; }
+#vocabTrainerCard .vocab-daily-row { margin-top: 11px; }
+#vocabTrainerCard .vocab-progress-row { margin-top: 11px; }
+#vocabTrainerCard .vocab-progress-label { margin-top: 4px; margin-bottom: 6px; }
+#vocabTrainerCard .vocab-open-btn { margin-top: 11px; }
+
+/* Истории — компактнее: короткая цитата не держит лишнюю высоту (min-height↓),
+   декоративная кавычка меньше под уменьшенный блок */
+.vocab-section-idea2 .story-theme { margin-bottom: 9px; }
+.vocab-section-idea2 .story-preview-quote { padding: 15px 20px 14px; margin-bottom: 10px; min-height: 68px; }
+.vocab-section-idea2 .story-preview-quote-mark { font-size: 46px; top: 0; left: 12px; }
+.vocab-section-idea2 .story-preview-meta { margin-bottom: 8px; }
+
+/* Costruisci la frase */
+#fraseCard .vocab-trainer-sub { margin-bottom: 11px; }
+#fraseCard .frase-stats-row { margin: 8px 0 10px; }
+#fraseCard .vocab-open-btn { margin-top: 11px; }

@@ -113,6 +113,20 @@
     let t;
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
   }
+  function ruPlural(n, one, few, many) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+    return many;
+  }
+  // Скролл к вопросу + короткая золотая подсветка (используют «прыжок к пропуску» и штурман по ошибкам)
+  function flashQuestion(qEl) {
+    qEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    qEl.classList.remove('exam-q-flash');
+    void qEl.offsetWidth;
+    qEl.classList.add('exam-q-flash');
+    setTimeout(() => qEl.classList.remove('exam-q-flash'), 1600);
+  }
 
   // ── Точка входа: вызывается из showLesson() в app.js, как и initLessonGames ──
   function initFinalExam(rootEl) {
@@ -248,8 +262,6 @@
       ${lettura.map(l => `
         <div class="exam-reading">
           <div class="exam-reading-text" data-lang="it">${examEsc(l.textIt)}</div>
-          <button type="button" class="exam-reading-toggle" data-role="toggle-translation">Показать перевод</button>
-          <div class="exam-reading-text exam-reading-ru" data-lang="ru" hidden>${examEsc(l.textRu)}</div>
         </div>
         ${l.questions.map(renderQuestion).join('')}
       `).join('')}
@@ -309,6 +321,10 @@
         ${renderLetturaBlock(bank.lettura)}
         ${renderAscoltoBlock(bank.ascolto)}
         ${renderProduzioneBlock(bank.produzione)}
+        <div class="exam-submit-warn" data-exam-warn hidden>
+          <span data-warn-text></span>
+          <button type="button" class="exam-warn-jump" data-role="jump-blank">К первому пропущенному ↑</button>
+        </div>
         <div class="exam-submit-bar">
           <div class="exam-submit-info">
             <span class="exam-submit-progress" data-exam-progress>Отвечено 0 из ${totalGraded}</span>
@@ -341,6 +357,17 @@
     const resultsEl = holder.querySelector('[data-exam-results]');
     const progressEl = bodyEl.querySelector('[data-exam-progress]');
     const fillEl = bodyEl.querySelector('[data-exam-fill]');
+    const warnEl = bodyEl.querySelector('[data-exam-warn]');
+    const warnText = warnEl.querySelector('[data-warn-text]');
+
+    // Предохранитель отправки: первый клик «Проверить» при пропусках только предупреждает,
+    // повторный — реально завершает. Любое новое действие в тесте снимает «взвод».
+    state.submitArmed = false;
+    const disarmSubmit = () => { state.submitArmed = false; warnEl.hidden = true; };
+    const blankList = () => gradedList.filter(q => {
+      const qEl = bodyEl.querySelector(`[data-qid="${q.id}"]`);
+      return !(qEl && isAnswered(qEl, q));
+    });
 
     const updateProgress = () => {
       let n = 0;
@@ -363,8 +390,8 @@
       updateProgress();
     });
 
-    bodyEl.addEventListener('change', updateProgress);
-    bodyEl.addEventListener('input', debouncedProgress);
+    bodyEl.addEventListener('change', () => { updateProgress(); disarmSubmit(); });
+    bodyEl.addEventListener('input', () => { debouncedProgress(); disarmSubmit(); });
 
     bodyEl.addEventListener('click', (e) => {
       const listenBtn = e.target.closest('[data-role="listen"]');
@@ -376,17 +403,27 @@
         else done();
         return;
       }
-      const toggleBtn = e.target.closest('[data-role="toggle-translation"]');
-      if (toggleBtn) {
-        const wrap = toggleBtn.closest('.exam-reading');
-        const ru = wrap.querySelector('[data-lang="ru"]');
-        const showing = !ru.hidden;
-        ru.hidden = showing;
-        toggleBtn.textContent = showing ? 'Показать перевод' : 'Скрыть перевод';
+      const jumpBtn = e.target.closest('[data-role="jump-blank"]');
+      if (jumpBtn) {
+        const blanks = blankList();
+        if (blanks.length) {
+          const qEl = bodyEl.querySelector(`[data-qid="${blanks[0].id}"]`);
+          if (qEl) flashQuestion(qEl);
+        }
         return;
       }
       const submitBtn = e.target.closest('[data-role="exam-submit"]');
-      if (submitBtn) { gradeExam(state); }
+      if (submitBtn) {
+        const blanks = blankList().length;
+        if (blanks && !state.submitArmed) {
+          state.submitArmed = true;
+          warnText.textContent = `Без ответа ${blanks} ${ruPlural(blanks, 'вопрос', 'вопроса', 'вопросов')} — ${blanks === 1 ? 'он пойдёт' : 'они пойдут'} в зачёт как неверные. Заполни пропуски или нажми «Проверить» ещё раз, чтобы завершить.`;
+          warnEl.hidden = false;
+          return;
+        }
+        disarmSubmit();
+        gradeExam(state);
+      }
     });
 
     updateProgress();
@@ -561,7 +598,35 @@
     resultsEl.hidden = false;
     resultsEl.innerHTML = renderResults(analytics, prevLast);
     wireResults(state, resultsEl, analytics, prevLast);
+    setupErrorNav(state);
     resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Подтверждённый A2 — праздник: общий конфетти-салют приложения (если доступен)
+    if (cefrVerdict(analytics).cls === 'pass' && typeof window.launchConfetti === 'function') {
+      setTimeout(() => { try { window.launchConfetti(); } catch (e) {} }, 600);
+    }
+  }
+
+  // Плавающий «штурман по ошибкам»: после проверки циклично ведёт по вопросам
+  // с ошибками (включая «почти») — не нужно выискивать красные карточки скроллом.
+  function setupErrorNav(state) {
+    const holder = state.holder;
+    const prev = holder.querySelector('.exam-errnav');
+    if (prev) prev.remove();
+    const errs = [...holder.querySelectorAll('.exam-q.is-wrong, .exam-q.is-near')];
+    if (!errs.length) return;
+    const nav = document.createElement('button');
+    nav.type = 'button';
+    nav.className = 'exam-errnav';
+    nav.title = 'Перейти к следующей ошибке';
+    let idx = 0;
+    const setLabel = () => { nav.innerHTML = `К ошибке <b>${idx + 1} / ${errs.length}</b> ↧`; };
+    setLabel();
+    nav.addEventListener('click', () => {
+      flashQuestion(errs[idx]);
+      idx = (idx + 1) % errs.length;
+      setLabel();
+    });
+    holder.appendChild(nav);
   }
 
   // ══════════════════════════ РЕЗУЛЬТАТЫ И ИИ-ФИДБЕК ══════════════════════════
