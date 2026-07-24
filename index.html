@@ -15,7 +15,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
     <link rel="manifest" href="./site.webmanifest">
 <!-- ?v= — защита от кэша браузера: при заметных правках стилей/скриптов поднимаем номер -->
-<link rel="stylesheet" href="./styles.css?v=9.0">
+<link rel="stylesheet" href="./styles.css?v=10.0">
 </head>
 
 <body>
@@ -123,13 +123,14 @@
       <!-- Маршрут курса: 43 занятия, 3 этапа, золотые рубежи (рисует renderCourseRoute) -->
       <div class="course-route-wrap" id="courseRoute"></div>
 
-      <!-- ГЛАВНАЯ: masonry-раскладка карточек.
-           Колонки балансируются в JS (layoutHomeCards) по фактической высоте —
-           карточки разной длины больше не оставляют провалов на широком экране.
-           Все карточки стартуют в первой колонке: если JS не отработает,
-           раскладка деградирует в одну колонку и остаётся рабочей. -->
-      <div class="home-cards" id="homeCards">
-        <div class="hc-col">
+      <!-- ГЛАВНАЯ v10 (2026-07-24): дашборд в две колонки.
+           Слева — путь ученика (урок · Il mio percorso · мой прогресс),
+           справа — панель «Тренажёры». Раскладка задана прямо в разметке;
+           JS-мазонри отключён для .home-dash (см. layoutHomeCards).
+           Новые плитки-режимы пока СТАТИЧНЫ (функционал не подключён). -->
+      <div class="home-cards home-dash" id="homeCards">
+        <!-- ── ЛЕВАЯ КОЛОНКА: путь ученика ── -->
+        <div class="hc-col hc-col-left">
           <div class="home-primary" id="homePrimary">
             <div class="welcome-section-label"><span class="welcome-section-label-text">Текущий урок</span></div>
             <div class="lesson-grid" id="lessonGrid"></div>
@@ -142,20 +143,48 @@
             <div id="diaryTeaser"></div>
           </div>
 
-<section class="vocab-section" id="routineCard">
-              <div class="vocab-card-head">
-                <span class="vocab-card-icon"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></span>
-                <div class="vocab-card-head-text">
-                  <span class="vocab-card-title">La routine di oggi</span>
-                  <span class="vocab-card-status"><span class="vocab-status-dot"></span>Загрузка…</span>
-                </div>
+          <!-- Мой прогресс: сводка дневных целей. СТАТИКА — цифры/статусы заглушены. -->
+          <section class="dash-progress" id="dashProgress">
+            <div class="dash-progress-head">
+              <span class="dash-progress-sun"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></span>
+              <span class="dash-progress-title">Мой прогресс</span>
+            </div>
+            <div class="dash-progress-list">
+              <div class="dash-prog-row dash-prog-vocab is-done">
+                <span class="dash-prog-ico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5" transform="rotate(-7 10.5 12)"/><rect x="6.5" y="4.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
+                <span class="dash-prog-text"><b>10 слов</b><span>словарный тренажёр</span></span>
+                <span class="dash-prog-track"><span class="dash-prog-fill" style="width:100%"></span></span>
+                <span class="dash-prog-check"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
               </div>
-              <div class="vocab-card-body">
-                <p class="vocab-trainer-sub">Собираем план дня…</p>
+              <div class="dash-prog-row dash-prog-frase">
+                <span class="dash-prog-ico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 4.5H6.5C5.4 4.5 4.5 5.4 4.5 6.5V10c1.7 0 2.6.9 2.6 2s-.9 2-2.6 2v3.5c0 1.1.9 2 2 2H10c0-1.7.9-2.6 2-2.6s2 .9 2 2.6h3.5c1.1 0 2-.9 2-2V14c-1.7 0-2.6-.9-2.6-2s.9-2 2.6-2V6.5c0-1.1-.9-2-2-2H14c0 1.7-.9 2.6-2 2.6s-2-.9-2-2.6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span></span>
+                <span class="dash-prog-text"><b>5 фраз</b><span>собери фразу</span></span>
+                <span class="dash-prog-track"><span class="dash-prog-fill" style="width:20%"></span></span>
+                <span class="dash-prog-count">1/5</span>
               </div>
-            </section>
+              <div class="dash-prog-row dash-prog-story is-done">
+                <span class="dash-prog-ico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v14H5.5C4.7 18 4 17.3 4 16.5V5.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5.5C20 4.7 19.3 4 18.5 4H11v14h7.5c.8 0 1.5-.7 1.5-1.5V5.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span></span>
+                <span class="dash-prog-text"><b>1 история</b><span>истории</span></span>
+                <span class="dash-prog-track"><span class="dash-prog-fill" style="width:100%"></span></span>
+                <span class="dash-prog-check"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+              </div>
+            </div>
+          </section>
+        </div>
 
-<section class="vocab-section" id="vocabTrainerCard">
+        <!-- ── ПРАВАЯ КОЛОНКА: панель «Тренажёры» ── -->
+        <div class="hc-col hc-col-right">
+          <div class="trainers-panel">
+            <div class="trainers-head">
+              <span class="trainers-head-ico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v14H5.5C4.7 18 4 17.3 4 16.5V5.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M20 5.5C20 4.7 19.3 4 18.5 4H11v14h7.5c.8 0 1.5-.7 1.5-1.5V5.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span></span>
+              <div class="trainers-head-text">
+                <h2 class="trainers-head-title">Тренажёры</h2>
+                <p class="trainers-head-sub">Практика, которая помогает запоминать</p>
+              </div>
+            </div>
+
+            <!-- Большая карточка словарного тренажёра — рендерится JS (renderVocabTrainer) -->
+            <section class="vocab-section" id="vocabTrainerCard">
               <div class="vocab-card-head">
                 <span class="vocab-card-icon"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3.5" y="6.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5" transform="rotate(-7 10.5 12)"/><rect x="6.5" y="4.5" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/></svg></span></span>
                 <div class="vocab-card-head-text">
@@ -168,44 +197,69 @@
               </div>
             </section>
 
-<section class="vocab-section vocab-section-idea2">
-              <div class="vocab-card-head">
-                <span class="vocab-card-icon vocab-card-icon-muted"><span class="ico ico-sparkle"><svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 3C12.3 6.2 13.1 8.5 14.3 10C15.5 11.5 17.5 12.4 20.5 12.7C17.5 13 15.5 13.9 14.3 15.4C13.1 16.9 12.3 19.2 12 22.4C11.7 19.2 10.9 16.9 9.7 15.4C8.5 13.9 6.5 13 3.5 12.7C6.5 12.4 8.5 11.5 9.7 10C10.9 8.5 11.7 6.2 12 3Z"/></svg></span></span>
-                <div class="vocab-card-head-text">
-                  <span class="vocab-card-title">Скоро: новый формат</span>
-                  <span class="vocab-card-status vocab-card-status-soon"><span class="vocab-status-dot"></span>В разработке</span>
-                </div>
-              </div>
-              <div class="vocab-card-body">
-                <p class="vocab-idea2-text">Ещё один способ закрепить лексику — думаем над форматом.</p>
-                <div class="vocab-idea2-preview">
-                  <div class="vocab-idea2-preview-row">
-                    <span class="vocab-idea2-chip"></span>
-                    <span class="vocab-idea2-chip short"></span>
+            <!-- Сетка режимов 2×2. СТАТИКА — кнопки пока без обработчиков. -->
+            <div class="trainers-grid">
+              <div class="mode-card mode-frase">
+                <div class="mode-card-top">
+                  <span class="mode-ico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 4.5H6.5C5.4 4.5 4.5 5.4 4.5 6.5V10c1.7 0 2.6.9 2.6 2s-.9 2-2.6 2v3.5c0 1.1.9 2 2 2H10c0-1.7.9-2.6 2-2.6s2 .9 2 2.6h3.5c1.1 0 2-.9 2-2V14c-1.7 0-2.6-.9-2.6-2s.9-2 2.6-2V6.5c0-1.1-.9-2-2-2H14c0 1.7-.9 2.6-2 2.6s-2-.9-2-2.6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span></span>
+                  <div class="mode-head-text">
+                    <span class="mode-title">Собери фразу</span>
+                    <span class="mode-eyebrow"><span class="mode-dot"></span>Грамматика и порядок слов</span>
                   </div>
-                  <div class="vocab-idea2-preview-row">
-                    <span class="vocab-idea2-chip short"></span>
-                    <span class="vocab-idea2-chip"></span>
-                  </div>
-                  <div class="vocab-idea2-lock"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="11" width="14" height="9.5" rx="2.2" stroke="currentColor" stroke-width="1.6"/><path d="M7.5 11V8.5C7.5 6 9.5 4 12 4C14.5 4 16.5 6 16.5 8.5V11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></svg></span></div>
                 </div>
+                <p class="mode-desc">Составляй фразы из слов и тренируй правильную грамматику.</p>
+                <button class="mode-btn" type="button">Играть</button>
               </div>
-            </section>
 
-<section class="vocab-section" id="fraseCard">
-              <div class="vocab-card-head">
-                <span class="vocab-card-icon"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 4.5H6.5C5.4 4.5 4.5 5.4 4.5 6.5V10c1.7 0 2.6.9 2.6 2s-.9 2-2.6 2v3.5c0 1.1.9 2 2 2H10c0-1.7.9-2.6 2-2.6s2 .9 2 2.6h3.5c1.1 0 2-.9 2-2V14c-1.7 0-2.6-.9-2.6-2s.9-2 2.6-2V6.5c0-1.1-.9-2-2-2H14c0 1.7-.9 2.6-2 2.6s-2-.9-2-2.6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span></span>
-                <div class="vocab-card-head-text">
-                  <span class="vocab-card-title">Costruisci la frase</span>
-                  <span class="vocab-card-status"><span class="vocab-status-dot"></span>Загрузка…</span>
+              <div class="mode-card mode-stories">
+                <div class="mode-card-top">
+                  <span class="mode-ico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v14H5.5C4.7 18 4 17.3 4 16.5V5.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M20 5.5C20 4.7 19.3 4 18.5 4H11v14h7.5c.8 0 1.5-.7 1.5-1.5V5.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span></span>
+                  <div class="mode-head-text">
+                    <span class="mode-title">Истории</span>
+                    <span class="mode-eyebrow"><span class="mode-dot"></span>Чтение и понимание</span>
+                  </div>
                 </div>
+                <p class="mode-desc">Читай короткие истории, узнавай новые слова и понимай контекст.</p>
+                <button class="mode-btn" type="button">Читать</button>
               </div>
-              <div class="vocab-card-body">
-                <p class="vocab-trainer-sub">Собираем фразы из твоих уроков…</p>
+
+              <div class="mode-card mode-talk">
+                <span class="mode-badge">НОВОЕ</span>
+                <div class="mode-card-top">
+                  <span class="mode-ico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="9" y="3" width="6" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 18v3M8.5 21h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></span>
+                  <div class="mode-head-text">
+                    <span class="mode-title">Разговор с ИИ</span>
+                    <span class="mode-eyebrow"><span class="mode-dot"></span>Голосовая практика</span>
+                  </div>
+                </div>
+                <p class="mode-desc">Поговори с ИИ на тему урока. Он поможет, исправит ошибки и подскажет новые слова.</p>
+                <button class="mode-btn" type="button"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="9.5" y="3.5" width="5" height="10" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 11a5.5 5.5 0 0 0 11 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 16.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Начать разговор</button>
               </div>
-            </section>
+
+              <div class="mode-card mode-listen">
+                <div class="mode-card-top">
+                  <span class="mode-ico"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13.5V12C4 7.6 7.6 4 12 4C16.4 4 20 7.6 20 12V13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="2.7" y="13" width="4" height="6" rx="1.6" stroke="currentColor" stroke-width="1.4"/><rect x="17.3" y="13" width="4" height="6" rx="1.6" stroke="currentColor" stroke-width="1.4"/></svg></span></span>
+                  <div class="mode-head-text">
+                    <span class="mode-title">Аудирование</span>
+                    <span class="mode-eyebrow"><span class="mode-dot"></span>На слух и понимание</span>
+                  </div>
+                </div>
+                <p class="mode-desc">Слушай диалоги и предложения и отвечай на вопросы.</p>
+                <button class="mode-btn" type="button">Слушать</button>
+              </div>
+            </div>
+
+            <!-- Совет на сегодня -->
+            <div class="trainers-tip">
+              <span class="trainers-tip-sun"><span class="ico"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></span>
+              <div class="trainers-tip-text">
+                <span class="trainers-tip-label">Совет на сегодня</span>
+                <span class="trainers-tip-quote">«Ripetizione è madre dell'apprendimento.»</span>
+              </div>
+              <span class="trainers-tip-arrow"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 6L15.5 12L9.5 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            </div>
+          </div>
         </div>
-        <div class="hc-col"></div>
       </div>
 
       <div class="video-shelf-outer">
@@ -410,7 +464,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
-<script src="./js/app.js?v=9.0"></script>
+<script src="./js/app.js?v=10.0"></script>
 
 <!-- МОДАЛКА НАСТРОЕК — вне .app, чтобы position:fixed работал на iOS -->
 <div class="settings-modal-overlay" id="settingsModal">

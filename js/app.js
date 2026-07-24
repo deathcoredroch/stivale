@@ -2718,16 +2718,20 @@ function renderPhraseIntro() {
   const today = phraseToday(); const best = phraseStats().bestRun;
   phraseContent().innerHTML = `
     <div class="frase-wrap frase-intro">
-      <span class="frase-kicker">Puzzle di parole</span>
-      <span class="frase-logo"><span class="ico">${ICON_PHRASE_PUZZLE}</span></span>
-      <h3 class="frase-title">Costruisci la frase</h3>
-      <p class="frase-sub">Партия — ${PHRASE_RUN} ${storyPlural(PHRASE_RUN, 'фраза', 'фразы', 'фраз')} из диалогов твоих уроков. Читай перевод, собирай итальянскую фразу из слов по порядку. Собранная фраза озвучивается.</p>
-      <div class="frase-stats-row frase-stats-row-center">
-        <span class="frase-stat"><b>${pool.length}</b><span class="frase-stat-label">в колоде</span></span>
-        <span class="frase-stat"><b>${today}</b><span class="frase-stat-label">сегодня</span></span>
-        <span class="frase-stat"><b>${best || '—'}</b><span class="frase-stat-label">лучшая серия</span></span>
+      <div class="frase-hero">
+        <span class="frase-kicker">Puzzle di parole</span>
+        <span class="frase-logo"><span class="ico">${ICON_PHRASE_PUZZLE}</span></span>
+        <h3 class="frase-title">Costruisci la frase</h3>
       </div>
-      <button type="button" class="frase-btn frase-btn-start"><span class="ico">${ICON_PHRASE_PUZZLE}</span>Играть</button>
+      <div class="frase-intro-body">
+        <p class="frase-sub">Партия — ${PHRASE_RUN} ${storyPlural(PHRASE_RUN, 'фраза', 'фразы', 'фраз')} из диалогов твоих уроков. Читай перевод, собирай итальянскую фразу из слов по порядку. Собранная фраза озвучивается.</p>
+        <div class="frase-stats-row frase-stats-row-center">
+          <span class="frase-stat"><b>${pool.length}</b><span class="frase-stat-label">в колоде</span></span>
+          <span class="frase-stat"><b>${today}</b><span class="frase-stat-label">сегодня</span></span>
+          <span class="frase-stat"><b>${best || '—'}</b><span class="frase-stat-label">лучшая серия</span></span>
+        </div>
+        <button type="button" class="frase-btn frase-btn-start"><span class="ico">${ICON_PHRASE_PUZZLE}</span>Играть</button>
+      </div>
     </div>
   `;
   phraseContent().querySelector('.frase-btn-start').addEventListener('click', startPhraseRun);
@@ -2871,16 +2875,20 @@ function renderPhraseResult() {
   gamePlaySound(g.perfect >= total * 0.6 ? 'win' : 'tap');
   phraseContent().innerHTML = `
     <div class="frase-wrap frase-intro">
-      <span class="frase-logo frase-logo-done"><span class="ico">${ICON_PHRASE_PUZZLE}</span></span>
-      <h3 class="frase-title">${bravo}</h3>
-      <div class="frase-stats-row frase-stats-row-center">
-        <span class="frase-stat"><b>${g.perfect} из ${total}</b><span class="frase-stat-label">с первой попытки</span></span>
-        <span class="frase-stat"><b>${phraseToday()}</b><span class="frase-stat-label">сегодня собрано</span></span>
-        <span class="frase-stat"><b>${best || '—'}</b><span class="frase-stat-label">лучшая серия</span></span>
+      <div class="frase-hero frase-hero-done">
+        <span class="frase-logo frase-logo-done"><span class="ico">${ICON_PHRASE_PUZZLE}</span></span>
+        <h3 class="frase-title">${bravo}</h3>
       </div>
-      <div class="frase-actions frase-actions-center">
-        <button type="button" class="frase-btn frase-btn-start"><span class="ico">${ICON_PHRASE_PUZZLE}</span>Ещё партию</button>
-        <button type="button" class="frase-btn-ghost" id="fraseCloseBtn2">Закрыть</button>
+      <div class="frase-intro-body">
+        <div class="frase-stats-row frase-stats-row-center">
+          <span class="frase-stat"><b>${g.perfect} из ${total}</b><span class="frase-stat-label">с первой попытки</span></span>
+          <span class="frase-stat"><b>${phraseToday()}</b><span class="frase-stat-label">сегодня собрано</span></span>
+          <span class="frase-stat"><b>${best || '—'}</b><span class="frase-stat-label">лучшая серия</span></span>
+        </div>
+        <div class="frase-actions frase-actions-center">
+          <button type="button" class="frase-btn frase-btn-start"><span class="ico">${ICON_PHRASE_PUZZLE}</span>Ещё партию</button>
+          <button type="button" class="frase-btn-ghost" id="fraseCloseBtn2">Закрыть</button>
+        </div>
       </div>
     </div>
   `;
@@ -3826,6 +3834,10 @@ function homeCardKey(el) {
 function layoutHomeCards() {
   const wrap = document.getElementById('homeCards');
   if (!wrap) return;
+  // Дашборд v10: колонки заданы прямо в разметке (левая — путь ученика,
+  // правая — панель «Тренажёры»). Балансировать высоты не нужно и вредно —
+  // это разнесло бы панель. Раскладку целиком держит CSS.
+  if (wrap.classList.contains('home-dash')) return;
   // Пока главная скрыта, все высоты равны нулю — раскладка вышла бы мусорной.
   // showWelcome() позовёт нас снова, когда экран станет видимым.
   if (welcomeScreen && welcomeScreen.classList.contains('hidden')) return;

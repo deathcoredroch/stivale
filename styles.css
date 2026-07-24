@@ -9415,50 +9415,72 @@
 
 .frase-modal-panel { max-width: 720px; }
 
-/* ── Каркас: мягкая шалфейно-золотая аура по углам, как у флип-карточки тренажёра ── */
+/* ── Каркас игрового экрана: мягкая шалфейно-золотая аура по углам ── */
 .frase-wrap { position: relative; overflow: hidden; padding: 36px 40px 32px; }
-.frase-wrap::before {
+.frase-wrap:not(.frase-intro)::before {
   content: ''; position: absolute; width: 260px; height: 260px; border-radius: 50%;
   top: -110px; left: -90px; pointer-events: none;
   background: radial-gradient(circle, rgba(140,156,96,0.16), transparent 70%);
 }
-.frase-wrap::after {
+.frase-wrap:not(.frase-intro)::after {
   content: ''; position: absolute; width: 240px; height: 240px; border-radius: 50%;
   bottom: -100px; right: -80px; pointer-events: none;
   background: radial-gradient(circle, rgba(201,154,61,0.14), transparent 70%);
 }
 .frase-wrap > * { position: relative; z-index: 1; }
 
-.frase-intro { text-align: center; padding-top: 40px; }
+/* ── Интро/результат: насыщенная цветная «шапка» + белая карточка снизу.
+   min-height:100% работает только когда предок (.story-modal-scroll) имеет
+   определённую высоту — то есть на мобильном полноэкранном виде модалки;
+   там же .frase-intro-body центрирует остаток по вертикали, а не оставляет
+   короткий контент прилипшим к верху с пустотой под ним. На десктопе, где
+   панель по высоте равна контенту, оба правила не действуют (высоты auto). */
+.frase-wrap.frase-intro {
+  padding: 0; text-align: center;
+  display: flex; flex-direction: column; min-height: 100%;
+}
+.frase-hero {
+  position: relative; overflow: hidden;
+  padding: 42px 32px 34px;
+  background: linear-gradient(165deg, var(--sage-bright) 0%, var(--sage-deep) 100%);
+}
+.frase-hero-done { background: linear-gradient(165deg, var(--gold-hot) 0%, var(--gold-deep) 100%); }
+.frase-hero::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(255,255,255,0.24), transparent 60%),
+    radial-gradient(65% 85% at 100% 100%, rgba(0,0,0,0.14), transparent 60%);
+}
+.frase-hero > * { position: relative; z-index: 1; }
 .frase-kicker {
   display: inline-block; font-family: var(--font-sans); font-size: 11px; font-weight: 800;
-  letter-spacing: .12em; text-transform: uppercase; color: var(--sage);
-  margin-bottom: 12px;
+  letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,0.8);
+  margin-bottom: 14px;
 }
 .frase-logo {
   display: inline-flex; align-items: center; justify-content: center;
   width: 72px; height: 72px; border-radius: var(--r-lg);
-  background: linear-gradient(150deg, var(--sage-tint), var(--sage-tint-2));
-  border: 1px solid rgba(140,156,96,0.35);
-  color: var(--sage-deep);
-  margin-bottom: 18px;
-  box-shadow: 0 12px 28px -14px rgba(111,125,72,0.5), inset 0 1px 0 rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.32);
+  color: #fff;
+  margin-bottom: 16px;
+  box-shadow: 0 14px 30px -12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35);
   animation: fraseLogoIn .5s var(--ease-spring) both;
 }
 .frase-logo .ico, .frase-logo svg { width: 34px; height: 34px; }
-.frase-logo-done {
-  background: linear-gradient(150deg, var(--gold-tint), #F2DFAE);
-  border-color: rgba(201,154,61,0.4);
-  color: var(--gold-deep);
-  box-shadow: 0 12px 30px -14px rgba(201,154,61,0.5), inset 0 1px 0 rgba(255,255,255,0.7);
-}
 @keyframes fraseLogoIn {
   from { opacity: 0; transform: scale(.55) rotate(-14deg); }
   to   { opacity: 1; transform: scale(1) rotate(0); }
 }
 .frase-title {
   font-family: var(--font-serif); font-weight: 700;
-  font-size: 27px; color: var(--ink); margin: 0 0 10px; line-height: 1.22;
+  font-size: 26px; color: #fff; margin: 0; line-height: 1.26;
+  text-shadow: 0 2px 14px rgba(0,0,0,0.16);
+}
+.frase-intro-body {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 30px 32px 34px;
 }
 .frase-sub {
   font-family: var(--font-sans); font-size: 14.5px; line-height: 1.6; color: var(--ink-mute);
@@ -9600,7 +9622,9 @@
 .frase-actions-center { justify-content: center; }
 
 @media (max-width: 640px) {
-  .frase-wrap { padding: 28px 20px 26px; }
+  .frase-wrap:not(.frase-intro) { padding: 28px 20px 26px; }
+  .frase-hero { padding: 34px 22px 28px; }
+  .frase-intro-body { padding: 26px 22px 30px; }
   .frase-title { font-size: 22px; }
   .frase-ru { font-size: 17.5px; }
   .frase-prompt { padding: 20px 18px 18px; }
@@ -10000,3 +10024,233 @@
 #fraseCard .vocab-trainer-sub { margin-bottom: 11px; }
 #fraseCard .frase-stats-row { margin: 8px 0 10px; }
 #fraseCard .vocab-open-btn { margin-top: 11px; }
+
+/* ============================================================================
+   ГЛАВНАЯ v10 (2026-07-24): дашборд в две колонки
+   Слева — путь ученика на тёплой персиковой подложке (урок · Il mio percorso ·
+   Мой прогресс). Справа — панель «Тренажёры»: большая карточка словаря +
+   сетка 2×2 цветных плиток-режимов + совет дня. Раскладка целиком на CSS
+   (JS-мазонри отключён для .home-dash). Новые плитки пока СТАТИЧНЫ.
+   ============================================================================ */
+
+/* ── Каркас: две равные колонки, выравнивание по верху ── */
+.home-cards.home-dash { align-items: start; }
+
+/* ── Левая колонка — персиковая подложка «пути» ── */
+.hc-col-left {
+  gap: 20px;
+  padding: 22px;
+  border-radius: 26px;
+  background: linear-gradient(158deg, #FBE6DA 0%, #FCEEE7 52%, #FAF0E9 100%);
+  border: 1px solid #F3D8C9;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 18px 40px -26px rgba(150,74,44,0.30);
+}
+.hc-col-left .home-primary { display: flex; flex-direction: column; }
+/* тизер дневника уже несёт свой отступ сверху — на подложке лишний */
+.hc-col-left #diaryTeaser .diary-teaser { margin-top: 20px; }
+
+/* ── Карточка «Мой прогресс» ── */
+.dash-progress {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px 18px 18px;
+  box-shadow: 0 10px 28px -14px rgba(60,42,24,0.16), 0 2px 6px -3px rgba(60,42,24,0.06);
+}
+.dash-progress-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.dash-progress-sun {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, rgba(201,154,61,0.26), rgba(201,154,61,0.10));
+  color: #9a7226;
+}
+.dash-progress-sun .ico, .dash-progress-sun svg { width: 17px; height: 17px; }
+.dash-progress-title { font-family: var(--font-display); font-weight: 700; font-size: 17px; color: var(--ink); }
+
+.dash-progress-list { display: flex; flex-direction: column; gap: 12px; }
+.dash-prog-row {
+  --pa: #8A8072;                 /* акцент строки, переопределяется по типу */
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.dash-prog-vocab { --pa: #7C5CBF; }
+.dash-prog-frase { --pa: #C09030; }
+.dash-prog-story { --pa: #6F7D48; }
+.dash-prog-ico {
+  grid-row: 1 / span 2;
+  width: 34px; height: 34px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--pa);
+  background: color-mix(in srgb, var(--pa) 14%, #fff);
+  border: 1px solid color-mix(in srgb, var(--pa) 24%, #fff);
+}
+.dash-prog-ico .ico, .dash-prog-ico svg { width: 18px; height: 18px; }
+.dash-prog-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.dash-prog-text b { font-size: 14px; font-weight: 700; color: #3E3427; line-height: 1.15; }
+.dash-prog-text span { font-size: 11.5px; color: #a3947f; line-height: 1.2; }
+.dash-prog-track {
+  grid-column: 2;
+  height: 5px; border-radius: 999px; background: #EFE7D6; overflow: hidden;
+}
+.dash-prog-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--pa), color-mix(in srgb, var(--pa) 60%, #fff));
+}
+.dash-prog-check, .dash-prog-count {
+  grid-row: 1 / span 2; grid-column: 3;
+  align-self: center; justify-self: end;
+}
+.dash-prog-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--olive-soft); color: var(--olive-deep);
+}
+.dash-prog-check .ico, .dash-prog-check svg { width: 12px; height: 12px; }
+.dash-prog-count { font-size: 12.5px; font-weight: 700; color: #a3947f; }
+
+/* ── Правая колонка — панель «Тренажёры» ── */
+.hc-col-right { gap: 0; }
+.trainers-panel { display: flex; flex-direction: column; gap: 18px; }
+
+.trainers-head { display: flex; align-items: center; gap: 14px; padding: 2px 2px 0; }
+.trainers-head-ico {
+  flex-shrink: 0; width: 46px; height: 46px; border-radius: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, rgba(193,84,58,0.22), rgba(193,84,58,0.08));
+  color: var(--terracotta);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 3px 8px -3px rgba(150,74,44,0.30);
+}
+.trainers-head-ico .ico, .trainers-head-ico svg { width: 24px; height: 24px; }
+.trainers-head-title { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1.05; color: var(--terracotta-deep); }
+.trainers-head-sub { margin: 3px 0 0; font-size: 13px; color: var(--ink-mute); }
+
+/* ── Сетка 2×2 плиток-режимов ── */
+.trainers-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.mode-card {
+  --m-bg: #fff; --m-ink: var(--ink); --m-accent: var(--ink-soft);
+  --m-icobg: rgba(255,255,255,0.5); --m-icotx: var(--ink-soft);
+  --m-btnbg: rgba(255,255,255,0.6); --m-btntx: var(--ink-soft); --m-btnbd: rgba(255,255,255,0.7);
+  position: relative;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 16px 15px;
+  border-radius: 20px;
+  background: var(--m-bg);
+  border: 1px solid rgba(255,255,255,0.55);
+  box-shadow: 0 12px 26px -16px rgba(60,42,24,0.35), inset 0 1px 0 rgba(255,255,255,0.45);
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.mode-card:hover { transform: translateY(-3px); box-shadow: 0 20px 36px -18px rgba(60,42,24,0.42), inset 0 1px 0 rgba(255,255,255,0.5); }
+.mode-card-top { display: flex; align-items: flex-start; gap: 11px; }
+.mode-ico {
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--m-icobg); color: var(--m-icotx);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 3px 8px -4px rgba(40,25,10,0.35);
+}
+.mode-ico .ico, .mode-ico svg { width: 21px; height: 21px; }
+.mode-head-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-top: 1px; }
+/* у плитки с бейджем «НОВОЕ» — правый отступ, чтобы заголовок не подлезал под него */
+.mode-card:has(.mode-badge) .mode-head-text { padding-right: 42px; }
+.mode-title { font-family: var(--font-display); font-weight: 700; font-size: 17px; line-height: 1.1; color: var(--m-ink); }
+.mode-eyebrow { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--m-accent); letter-spacing: 0.01em; }
+.mode-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--m-accent); flex-shrink: 0; }
+.mode-desc { margin: 0; flex: 1 1 auto; font-size: 12.5px; line-height: 1.5; color: color-mix(in srgb, var(--m-ink) 78%, #fff); font-family: var(--font-ui); }
+.mode-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; padding: 10px 14px;
+  border-radius: 12px; cursor: pointer;
+  font-family: var(--font-ui); font-size: 13.5px; font-weight: 700;
+  background: var(--m-btnbg); color: var(--m-btntx);
+  border: 1px solid var(--m-btnbd);
+  transition: filter 0.16s ease, transform 0.16s ease;
+}
+.mode-btn .ico, .mode-btn svg { width: 16px; height: 16px; }
+.mode-btn:hover { filter: brightness(0.98) saturate(1.05); transform: translateY(-1px); }
+.mode-btn:active { transform: translateY(0); }
+
+/* Бейдж «НОВОЕ» */
+.mode-badge {
+  position: absolute; top: 13px; right: 13px;
+  padding: 3px 9px; border-radius: 100px;
+  font-family: var(--font-ui); font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em;
+  background: rgba(255,255,255,0.75); color: var(--m-accent);
+  box-shadow: 0 2px 6px -2px rgba(40,25,10,0.25);
+}
+
+/* Цветовые темы плиток */
+.mode-frase {
+  --m-bg: linear-gradient(160deg, #F6DFA0 0%, #F0CE76 100%);
+  --m-ink: #6E4E12; --m-accent: #9A6E18;
+  --m-icobg: #EAC463; --m-icotx: #6E4E12;
+  --m-btnbg: rgba(255,255,255,0.78); --m-btntx: #8A6417; --m-btnbd: rgba(255,255,255,0.9);
+  border-color: #E8CE8C;
+}
+.mode-stories {
+  --m-bg: linear-gradient(160deg, #DBE8C1 0%, #C7D89C 100%);
+  --m-ink: #3C4A22; --m-accent: #58692F;
+  --m-icobg: #BED28E; --m-icotx: #465829;
+  --m-btnbg: rgba(255,255,255,0.8); --m-btntx: #55672F; --m-btnbd: rgba(255,255,255,0.9);
+  border-color: #CBD9A9;
+}
+.mode-talk {
+  --m-bg: linear-gradient(160deg, #D7C9EE 0%, #C1AEE4 100%);
+  --m-ink: #3F2D6E; --m-accent: #5B3FA0;
+  --m-icobg: #C2B0E8; --m-icotx: #4E3494;
+  --m-btnbg: linear-gradient(150deg, #7C5BC2 0%, #6A48B2 100%); --m-btntx: #fff; --m-btnbd: rgba(255,255,255,0.25);
+  border-color: #D0C2EC;
+}
+.mode-listen {
+  --m-bg: linear-gradient(160deg, #C7DBF0 0%, #AFCBEB 100%);
+  --m-ink: #22375F; --m-accent: #35548C;
+  --m-icobg: #ABC8EC; --m-icotx: #2E4E8C;
+  --m-btnbg: rgba(255,255,255,0.82); --m-btntx: #345C9E; --m-btnbd: rgba(255,255,255,0.9);
+  border-color: #BDD3EE;
+}
+
+/* ── Совет на сегодня ── */
+.trainers-tip {
+  display: flex; align-items: center; gap: 13px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.trainers-tip:hover { border-color: #d9c9a8; transform: translateY(-1px); box-shadow: 0 10px 24px -14px rgba(60,42,24,0.22); }
+.trainers-tip-sun {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, rgba(201,154,61,0.24), rgba(201,154,61,0.08));
+  color: #9a7226;
+}
+.trainers-tip-sun .ico, .trainers-tip-sun svg { width: 17px; height: 17px; }
+.trainers-tip-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.trainers-tip-label { font-family: var(--font-ui); font-size: 11px; font-weight: 700; color: var(--ink-mute); letter-spacing: 0.02em; }
+.trainers-tip-quote { font-family: var(--font-display); font-style: italic; font-size: 14px; color: #5C5348; line-height: 1.3; }
+.trainers-tip-arrow {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ink-mute); background: rgba(255,255,255,0.7); border: 1px solid var(--line);
+}
+.trainers-tip-arrow svg { width: 15px; height: 15px; }
+
+/* ── Адаптив ── */
+@media (max-width: 1280px) {
+  /* колонки уже складываются в одну (см. базовое правило .home-cards);
+     персиковая подложка становится компактнее */
+  .hc-col-left { padding: 18px; border-radius: 22px; }
+}
+@media (max-width: 560px) {
+  .trainers-grid { grid-template-columns: 1fr; }
+  .trainers-head-title { font-size: 26px; }
+  .hc-col-left { padding: 14px; }
+}
