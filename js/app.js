@@ -6145,3 +6145,28 @@ if (lessonScrollSync) {
   if (ls) new MutationObserver(lessonScrollSync).observe(ls, { attributes: true, attributeFilter: ['class'] });
 }
 bindScrollTopButton(document.getElementById('hwModalContent'), document.getElementById('hwScrollTopBtn'), 120);
+
+// ============ ПЛИТКИ «ТРЕНАЖЁРЫ»: подключение «Собери фразу» и «Истории» ============
+// Плитки дашборда были статичными (см. index.html). Вешаем на «Играть»/«Читать» те же
+// действия, что и в рутине: конструктор фраз и модалка историй. Остальные две плитки
+// («Разговор с ИИ», «Аудирование») пока без функционала — не трогаем.
+(function bindTrainerModeTiles() {
+  const fraseBtn = document.querySelector('.mode-frase .mode-btn');
+  if (fraseBtn) fraseBtn.addEventListener('click', () => openPhraseModal());
+
+  const storyBtn = document.querySelector('.mode-stories .mode-btn');
+  if (storyBtn) storyBtn.addEventListener('click', async () => {
+    // В дашборде видимой карточки историй нет, а весь механизм генерации (loadStory)
+    // рендерит превью в секцию .vocab-section-idea2. Держим её скрытой в DOM — тогда
+    // и первичная генерация, и «Новая история» из модалки работают как раньше.
+    let sec = document.querySelector('.vocab-section-idea2');
+    if (!sec) {
+      sec = document.createElement('div');
+      sec.className = 'vocab-section-idea2';
+      sec.style.display = 'none';
+      document.body.appendChild(sec);
+    }
+    await loadStory(false);   // возьмёт из кэша или сгенерирует офлайн-историю, выставит currentStory
+    openStoryModal();
+  });
+})();

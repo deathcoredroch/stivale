@@ -4567,10 +4567,11 @@
        через эти переменные. */
     --lc-accent: var(--terracotta);
     --lc-accent-rgb: 193, 84, 58;
-    --lc-btn-0: #CE6144;
-    --lc-btn-1: #A8442E;
-    --lc-btn-h0: #C1543A;
-    --lc-btn-h1: #963C28;
+    /* CTA v10: плоский красный вместо градиента (обычный урок, макет-дашборд) */
+    --lc-btn-0: #DF4433;
+    --lc-btn-1: #DF4433;
+    --lc-btn-h0: #CC3B2B;
+    --lc-btn-h1: #CC3B2B;
     --lc-edge-mid: #E07A5F;
     --lc-edge-hi: var(--gold-bright);
     background: var(--paper);
@@ -4612,7 +4613,7 @@
     border-radius: 100px;
     margin-bottom: 14px;
   }
-  .lesson-card h3 { margin: 0 0 8px; font-size: 23px; color: var(--ink); line-height: 1.25; }
+  .lesson-card h3 { margin: 0 0 8px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 800; font-size: 22px; color: var(--ink); line-height: 1.25; }
   .lesson-card p { margin: 0 0 18px; font-size: 14.5px; color: #75695a; line-height: 1.55; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   .lesson-card-meta {
     display: flex;
@@ -6633,21 +6634,10 @@
     from { background-position: 0% 0; }
     to   { background-position: 220% 0; }
   }
-  /* водяной номер урока (attr(data-num) проставляет renderLessonGrid) */
-  .lesson-card::after {
-    content: attr(data-num);
-    position: absolute;
-    top: -34px; right: 14px;
-    font-family: var(--font-serif);
-    font-size: 168px;
-    font-style: italic;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -6px;
-    color: rgba(var(--lc-accent-rgb),0.07);
-    pointer-events: none;
-    z-index: 0;
-  }
+  /* Водяной номер урока убран v10 (2026-07-24): в макете-дашборде карточка урока
+     без крупной полупрозрачной цифры на фоне — оставляем правило выключенным
+     через display:none, а не удаляем совсем (data-num ещё используется в разметке). */
+  .lesson-card::after { display: none; }
   .lesson-card > * { position: relative; z-index: 1; }
   .lesson-continue-btn {
     position: relative;
@@ -10000,18 +9990,30 @@
    разница падает до ~30px, и рутина дотягивается почти без растяжки строк. */
 
 /* тела правых карточек — чуть плотнее по вертикали */
-#vocabTrainerCard > .vocab-card-body,
 .vocab-section-idea2 > .vocab-card-body,
 #fraseCard > .vocab-card-body { padding-top: 14px; padding-bottom: 15px; }
+#vocabTrainerCard > .vocab-card-body { padding: 12px 14px 12px; }
 
 /* Словарный тренажёр */
-#vocabTrainerCard .vocab-trainer-sub { margin-bottom: 10px; }
-#vocabTrainerCard .vocab-flip-area { padding: 13px 16px 12px; min-height: 88px; gap: 9px; }
-#vocabTrainerCard .vocab-actions { margin-top: 10px; }
-#vocabTrainerCard .vocab-daily-row { margin-top: 11px; }
-#vocabTrainerCard .vocab-progress-row { margin-top: 11px; }
-#vocabTrainerCard .vocab-progress-label { margin-top: 4px; margin-bottom: 6px; }
-#vocabTrainerCard .vocab-open-btn { margin-top: 11px; }
+#vocabTrainerCard .vocab-trainer-sub { margin-bottom: 7px; }
+#vocabTrainerCard .vocab-flip-area { padding: 8px 12px 8px; min-height: 58px; gap: 6px; }
+#vocabTrainerCard .vocab-actions { margin-top: 7px; }
+#vocabTrainerCard .vocab-daily-row { margin-top: 7px; }
+#vocabTrainerCard .vocab-progress-row { margin-top: 7px; }
+#vocabTrainerCard .vocab-progress-label { margin-top: 3px; margin-bottom: 4px; }
+#vocabTrainerCard .vocab-open-btn { margin-top: 7px; padding: 9px; }
+/* Кнопка «Открыть тренажёр» v10: золотой градиент по макету-дашборду (только у большой
+   карточки словаря на главной — конструктор фраз/другие места сохраняют старый аутлайн). */
+#vocabTrainerCard .vocab-open-btn {
+  border-color: transparent;
+  background: linear-gradient(150deg, var(--gold-hot), var(--gold-deep));
+  color: #fff;
+  box-shadow: 0 6px 16px -8px rgba(185,138,47,0.55), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+#vocabTrainerCard .vocab-open-btn:hover {
+  background: linear-gradient(150deg, var(--gold-deep), #8f6b22);
+  box-shadow: 0 10px 22px -8px rgba(185,138,47,0.65), inset 0 1px 0 rgba(255,255,255,0.3);
+}
 
 /* Истории — компактнее: короткая цитата не держит лишнюю высоту (min-height↓),
    декоративная кавычка меньше под уменьшенный блок */
@@ -10039,13 +10041,19 @@
 /* ── Левая колонка — персиковая подложка «пути» ── */
 .hc-col-left {
   gap: 20px;
-  padding: 22px;
-  border-radius: 26px;
+  padding: 10px 10px 27px;
+  border-radius: 20px;
   background: linear-gradient(158deg, #FBE6DA 0%, #FCEEE7 52%, #FAF0E9 100%);
   border: 1px solid #F3D8C9;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 18px 40px -26px rgba(150,74,44,0.30);
 }
-.hc-col-left .home-primary { display: flex; flex-direction: column; }
+.hc-col-left .home-primary { display: flex; flex-direction: column; position: relative; }
+
+/* Декоративные книги над карточкой урока — «выглядывают» из-за верхнего края (по макету) */
+.lesson-books { position: absolute; left: 0; right: 0; top: 37px; height: 0; z-index: 6; pointer-events: none; }
+.lesson-book { position: absolute; bottom: 0; filter: drop-shadow(0 8px 14px rgba(60,30,15,0.28)); }
+.lesson-book-lg { width: 158px; left: 49%; transform: translate(-50%, 74%); }
+.lesson-book-sm { width: 110px; right: 7%;  transform: translateY(42%); }
 /* тизер дневника уже несёт свой отступ сверху — на подложке лишний */
 .hc-col-left #diaryTeaser .diary-teaser { margin-top: 20px; }
 
@@ -10112,11 +10120,11 @@
 
 /* ── Правая колонка — панель «Тренажёры» ── */
 .hc-col-right { gap: 0; }
-.trainers-panel { display: flex; flex-direction: column; gap: 18px; }
+.trainers-panel { display: flex; flex-direction: column; gap: 14px; }
 
 .trainers-head { display: flex; align-items: center; gap: 14px; padding: 2px 2px 0; }
 .trainers-head-ico {
-  flex-shrink: 0; width: 46px; height: 46px; border-radius: 14px;
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 13px;
   display: inline-flex; align-items: center; justify-content: center;
   background: linear-gradient(150deg, rgba(193,84,58,0.22), rgba(193,84,58,0.08));
   color: var(--terracotta);
@@ -10130,7 +10138,8 @@
 .trainers-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  row-gap: 12px;
+  column-gap: 20px;
   align-items: stretch;
 }
 
@@ -10139,15 +10148,18 @@
   --m-icobg: rgba(255,255,255,0.5); --m-icotx: var(--ink-soft);
   --m-btnbg: rgba(255,255,255,0.6); --m-btntx: var(--ink-soft); --m-btnbd: rgba(255,255,255,0.7);
   position: relative;
-  display: flex; flex-direction: column; gap: 10px;
-  padding: 16px 16px 15px;
+  overflow: hidden;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 20px 20px 18px;
   border-radius: 20px;
   background: var(--m-bg);
-  border: 1px solid rgba(255,255,255,0.55);
+  border: 1.5px solid var(--m-border, rgba(255,255,255,0.55));
   box-shadow: 0 12px 26px -16px rgba(60,42,24,0.35), inset 0 1px 0 rgba(255,255,255,0.45);
   transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
 }
 .mode-card:hover { transform: translateY(-3px); box-shadow: 0 20px 36px -18px rgba(60,42,24,0.42), inset 0 1px 0 rgba(255,255,255,0.5); }
+/* содержимое поверх декоративной подложки/иконки-эмодзи */
+.mode-card-top, .mode-desc, .mode-btn { position: relative; z-index: 1; }
 .mode-card-top { display: flex; align-items: flex-start; gap: 11px; }
 .mode-ico {
   flex-shrink: 0; width: 38px; height: 38px; border-radius: 12px;
@@ -10166,10 +10178,10 @@
 .mode-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   width: 100%; padding: 10px 14px;
-  border-radius: 12px; cursor: pointer;
+  border-radius: 100px; cursor: pointer;
   font-family: var(--font-ui); font-size: 13.5px; font-weight: 700;
   background: var(--m-btnbg); color: var(--m-btntx);
-  border: 1px solid var(--m-btnbd);
+  border: 1.5px solid var(--m-btnbd);
   transition: filter 0.16s ease, transform 0.16s ease;
 }
 .mode-btn .ico, .mode-btn svg { width: 16px; height: 16px; }
@@ -10178,48 +10190,74 @@
 
 /* Бейдж «НОВОЕ» */
 .mode-badge {
-  position: absolute; top: 13px; right: 13px;
+  position: absolute; top: 16px; right: 16px; z-index: 2;
   padding: 3px 9px; border-radius: 100px;
   font-family: var(--font-ui); font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em;
-  background: rgba(255,255,255,0.75); color: var(--m-accent);
+  background: rgba(255,255,255,0.85); color: var(--m-accent);
   box-shadow: 0 2px 6px -2px rgba(40,25,10,0.25);
 }
 
-/* Цветовые темы плиток */
+/* Декоративный стикер-иллюстрация в правом верхнем углу плитки — не мешает тексту/кнопке (z-index 0) */
+.mode-art {
+  position: absolute;
+  top: 8px; right: 8px;
+  z-index: 0;
+  width: 84px; height: auto;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 6px 11px rgba(40,25,10,0.22));
+}
+.mode-frase .mode-art   { width: 92px; top: 4px;  right: 4px; }
+.mode-stories .mode-art { width: 88px; top: 4px;  right: 8px; }
+/* чат уводим ниже бейджа «НОВОЕ», по правому краю у описания — над кнопкой */
+.mode-talk .mode-art    { width: 82px; top: 44px; right: 6px; }
+.mode-listen .mode-art  { width: 94px; top: 2px;  right: 4px; }
+
+/* Цветовые темы плиток — бледные пастельные подложки, как в макете */
 .mode-frase {
-  --m-bg: linear-gradient(160deg, #F6DFA0 0%, #F0CE76 100%);
+  --m-bg: linear-gradient(160deg, #FBEBBF 0%, #F6DFA0 100%);
   --m-ink: #6E4E12; --m-accent: #9A6E18;
   --m-icobg: #EAC463; --m-icotx: #6E4E12;
-  --m-btnbg: rgba(255,255,255,0.78); --m-btntx: #8A6417; --m-btnbd: rgba(255,255,255,0.9);
-  border-color: #E8CE8C;
+  --m-btnbg: #FFFDF6; --m-btntx: #8A6417; --m-btnbd: #E7CE93;
+  --m-border: #EEDBA2;
+}
+/* точечная текстура на жёлтой плитке, как в макете */
+.mode-frase::before {
+  content: '';
+  position: absolute; inset: -20%;
+  z-index: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.55) 1.4px, transparent 1.6px);
+  background-size: 15px 15px;
+  transform: rotate(-22deg);
+  pointer-events: none;
 }
 .mode-stories {
-  --m-bg: linear-gradient(160deg, #DBE8C1 0%, #C7D89C 100%);
+  --m-bg: linear-gradient(160deg, #E7F1D5 0%, #DBE8C1 100%);
   --m-ink: #3C4A22; --m-accent: #58692F;
   --m-icobg: #BED28E; --m-icotx: #465829;
-  --m-btnbg: rgba(255,255,255,0.8); --m-btntx: #55672F; --m-btnbd: rgba(255,255,255,0.9);
-  border-color: #CBD9A9;
+  --m-btnbg: #FBFEF6; --m-btntx: #55672F; --m-btnbd: #CDDCAA;
+  --m-border: #D5E2B7;
 }
 .mode-talk {
-  --m-bg: linear-gradient(160deg, #D7C9EE 0%, #C1AEE4 100%);
+  --m-bg: linear-gradient(160deg, #E4DBF5 0%, #D7C9EE 100%);
   --m-ink: #3F2D6E; --m-accent: #5B3FA0;
   --m-icobg: #C2B0E8; --m-icotx: #4E3494;
   --m-btnbg: linear-gradient(150deg, #7C5BC2 0%, #6A48B2 100%); --m-btntx: #fff; --m-btnbd: rgba(255,255,255,0.25);
-  border-color: #D0C2EC;
+  --m-border: #DBCEF0;
 }
 .mode-listen {
-  --m-bg: linear-gradient(160deg, #C7DBF0 0%, #AFCBEB 100%);
+  --m-bg: linear-gradient(160deg, #DAE9F8 0%, #C7DBF0 100%);
   --m-ink: #22375F; --m-accent: #35548C;
   --m-icobg: #ABC8EC; --m-icotx: #2E4E8C;
-  --m-btnbg: rgba(255,255,255,0.82); --m-btntx: #345C9E; --m-btnbd: rgba(255,255,255,0.9);
-  border-color: #BDD3EE;
+  --m-btnbg: #F8FBFE; --m-btntx: #345C9E; --m-btnbd: #C4DAF1;
+  --m-border: #C9DDF3;
 }
 
 /* ── Совет на сегодня ── */
 .trainers-tip {
-  display: flex; align-items: center; gap: 13px;
-  padding: 14px 16px;
-  border-radius: 16px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  border-radius: 12px;
   background: var(--cream);
   border: 1px solid var(--line);
   cursor: pointer;
@@ -10227,17 +10265,17 @@
 }
 .trainers-tip:hover { border-color: #d9c9a8; transform: translateY(-1px); box-shadow: 0 10px 24px -14px rgba(60,42,24,0.22); }
 .trainers-tip-sun {
-  flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px;
+  flex-shrink: 0; width: 24px; height: 24px; border-radius: 8px;
   display: inline-flex; align-items: center; justify-content: center;
   background: linear-gradient(150deg, rgba(201,154,61,0.24), rgba(201,154,61,0.08));
   color: #9a7226;
 }
-.trainers-tip-sun .ico, .trainers-tip-sun svg { width: 17px; height: 17px; }
+.trainers-tip-sun .ico, .trainers-tip-sun svg { width: 13px; height: 13px; }
 .trainers-tip-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .trainers-tip-label { font-family: var(--font-ui); font-size: 11px; font-weight: 700; color: var(--ink-mute); letter-spacing: 0.02em; }
 .trainers-tip-quote { font-family: var(--font-display); font-style: italic; font-size: 14px; color: #5C5348; line-height: 1.3; }
 .trainers-tip-arrow {
-  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--ink-mute); background: rgba(255,255,255,0.7); border: 1px solid var(--line);
 }
@@ -10247,10 +10285,10 @@
 @media (max-width: 1280px) {
   /* колонки уже складываются в одну (см. базовое правило .home-cards);
      персиковая подложка становится компактнее */
-  .hc-col-left { padding: 18px; border-radius: 22px; }
+  .hc-col-left { padding: 10px; border-radius: 18px; }
 }
 @media (max-width: 560px) {
   .trainers-grid { grid-template-columns: 1fr; }
   .trainers-head-title { font-size: 26px; }
-  .hc-col-left { padding: 14px; }
+  .hc-col-left { padding: 8px; }
 }
